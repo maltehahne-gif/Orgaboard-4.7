@@ -1,0 +1,1 @@
+export function StatCard({label,value,accent}:{label:string;value:string;accent?:'green'|'orange'}){return <div className={`stat-card ${accent||''}`}><small>{label}</small><strong>{value}</strong></div>}
