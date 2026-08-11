@@ -82,3 +82,72 @@ async def create_sale(data: SaleIn, user: User = Depends(get_current_user), db: 
     db.commit()
     await manager.publish({"type":"data.changed","entity":"sale"}, employee_id=employee_id)
     return serialize(db, s)
+@router.delete("/{sale_id}", status_code=204)
+async def delete_sale(
+    sale_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    sale = db.get(Sale, sale_id)
+
+    if not sale:
+        raise HTTPException(
+            status_code=404,
+            detail="Verkauf nicht gefunden"
+        )
+
+    if user.role.value != "TEAM_LEADER":
+        employee_id = scoped_employee_id(db, user, None)
+
+        if sale.employee_id != employee_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Du darfst nur deine eigenen Verkäufe löschen"
+            )
+
+    employee_id = sale.employee_id
+    sale_date = sale.sold_at.date()
+
+    before = serialize(db, sale)
+
+    sale_items = (
+        db.query(SaleItem)
+        .filter(SaleItem.sale_id == sale.id)
+        .all()
+    )
+
+    for item in sale_items:
+        db.delete(item)
+
+    db.delete(sale)
+    db.flush()
+
+    refresh_weekly_stat(
+        db,
+        employee_id,
+        sale_date
+    )
+
+    audit(
+        db,
+        user,
+        "sale.deleted",
+        "sale",
+        sale_id,
+        before=before,
+        after=None,
+    )
+
+    db.commit()
+
+    await manager.publish(
+        {
+            "type": "data.changed",
+            "entity": "sale",
+            "action": "deleted",
+            "id": sale_id,
+        },
+        employee_id=employee_id,
+    )
+
+    return None

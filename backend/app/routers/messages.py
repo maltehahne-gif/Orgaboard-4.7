@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.database import get_db
 from app.core.security import get_current_user, require_csrf
-from app.models import Message, User
+from app.models import Message, MessageHidden, User
 from app.services.realtime import manager
 
 router = APIRouter(prefix="/messages", tags=["messages"])
@@ -28,7 +28,25 @@ def serialize(db: Session, m: Message):
 
 @router.get("")
 def list_messages(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    stmt = select(Message).where(or_(Message.sender_user_id == user.id, Message.recipient_user_id == user.id, Message.recipient_user_id.is_(None))).order_by(Message.created_at.desc()).limit(300)
+    stmt = (
+        select(Message)
+        .where(
+            or_(
+                Message.sender_user_id == user.id,
+                Message.recipient_user_id == user.id,
+                Message.recipient_user_id.is_(None)
+            )
+        )
+        .where(
+            ~Message.id.in_(
+                select(MessageHidden.message_id).where(
+                    MessageHidden.user_id == user.id
+                )
+            )
+        )
+        .order_by(Message.created_at.desc())
+        .limit(300)
+    )
     return [serialize(db, m) for m in db.scalars(stmt).all()]
 
 
@@ -51,3 +69,48 @@ def mark_read(message_id: str, user: User = Depends(get_current_user), db: Sessi
     if not m or (m.recipient_user_id not in (None, user.id)):
         raise HTTPException(status_code=404, detail="Nachricht nicht gefunden")
     m.read_at = datetime.now(timezone.utc); db.commit(); return {"ok": True}
+
+
+@router.delete("/clear", status_code=204, dependencies=[Depends(require_csrf)])
+def clear_messages(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    stmt = select(Message).where(
+        or_(
+            Message.sender_user_id == user.id,
+            Message.recipient_user_id == user.id,
+            Message.recipient_user_id.is_(None)
+        )
+    )
+
+    messages = db.scalars(stmt).all()
+
+    existing = set(
+        db.scalars(
+            select(MessageHidden.message_id).where(
+                MessageHidden.user_id == user.id
+            )
+        ).all()
+    )
+
+    for message in messages:
+        if message.id not in existing:
+            db.add(
+                MessageHidden(
+                    message_id=message.id,
+                    user_id=user.id
+                )
+            )
+
+    audit(
+        db,
+        user,
+        "messages.cleared",
+        "message",
+        None,
+        after={"hidden_count": len(messages)},
+    )
+
+    db.commit()
+    return None

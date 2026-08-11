@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from pydantic import BaseModel, EmailStr
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, select
@@ -81,3 +82,37 @@ def update_customer(customer_id: str, data: CustomerIn, user: User = Depends(get
     audit(db, user, "customer.updated", "customer", c.id, before=before, after=out(c))
     db.commit()
     return out(c)
+
+
+@router.delete("/{customer_id}", status_code=204, dependencies=[Depends(require_csrf)])
+def delete_customer(
+    customer_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    c = db.get(Customer, customer_id)
+
+    if not c or c.deleted_at:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+
+    # Mitarbeiter nur eigene Kunden, Teamleiter darf alle.
+    scoped_employee_id(db, user, c.employee_id)
+
+    before = out(c)
+
+    # Kunde wird absichtlich nicht physisch gelöscht.
+    # Dadurch bleiben Verkäufe, Termine und Kundenhistorie erhalten.
+    c.deleted_at = datetime.now(timezone.utc)
+
+    audit(
+        db,
+        user,
+        "customer.deleted",
+        "customer",
+        c.id,
+        before=before,
+        after={"deleted": True},
+    )
+
+    db.commit()
+    return None
