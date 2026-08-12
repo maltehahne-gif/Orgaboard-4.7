@@ -1,27 +1,36 @@
-import animatedScene from '../assets/dustin-chase-animated-v8.webp'
+import dustinScene from '../assets/dustin-chase-scene.png'
 
 export function LoginDustChase() {
   return (
-    <div
-      className="dustin-v8-scene"
-      aria-hidden="true"
-    >
-      <img
-        className="dustin-v8-animation"
-        src={animatedScene}
-        alt=""
-        draggable="false"
-      />
+    <div className="v7-login-scene" aria-hidden="true">
 
-      <div className="dustin-v8-readable-area" />
-      <div className="dustin-v8-vignette" />
-      <div className="dustin-v8-floor-glow" />
-
-      <div className="dustin-v8-extra-dust">
-        <i/><i/><i/><i/><i/><i/>
-        <i/><i/><i/><i/><i/><i/>
-        <i/><i/><i/><i/><i/><i/>
+      <div className="v7-scene-picture">
+        <img
+          src={dustinScene}
+          alt=""
+          draggable="false"
+        />
       </div>
+
+      <div className="v7-left-softener" />
+
+      <div className="v7-floor-glow" />
+
+      <div className="v7-floating-dust">
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+      </div>
+
     </div>
   )
 }

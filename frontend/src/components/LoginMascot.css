@@ -1,0 +1,277 @@
+/* Nur die Login-Seite bekommt Dustin */
+
+.login-page {
+  overflow-x: hidden;
+}
+
+.login-page .login-card {
+  position: relative;
+  z-index: 10;
+}
+
+/* Der komplette Teddy läuft über den Bildschirm */
+.login-mascot-stage {
+  position: fixed;
+  left: -390px;
+  bottom: 4px;
+  width: 350px;
+  z-index: 3;
+  pointer-events: none;
+  animation: login-dustin-travel 18s linear infinite;
+}
+
+.login-dustin {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 14px 14px rgba(0,0,0,.32));
+  animation: login-dustin-bob .45s ease-in-out infinite alternate;
+}
+
+/* Laufbewegung */
+@keyframes login-dustin-travel {
+  0% {
+    transform: translateX(0);
+  }
+
+  8% {
+    transform: translateX(12vw);
+  }
+
+  48% {
+    transform: translateX(calc(100vw + 170px));
+  }
+
+  100% {
+    transform: translateX(calc(100vw + 170px));
+  }
+}
+
+@keyframes login-dustin-bob {
+  from {
+    transform: translateY(0) rotate(-.5deg);
+  }
+
+  to {
+    transform: translateY(-7px) rotate(.5deg);
+  }
+}
+
+/* Beine bewegen */
+.login-leg {
+  transform-box: fill-box;
+  transform-origin: 50% 5%;
+}
+
+.login-leg-left {
+  animation: login-leg-left .45s ease-in-out infinite alternate;
+}
+
+.login-leg-right {
+  animation: login-leg-right .45s ease-in-out infinite alternate;
+}
+
+@keyframes login-leg-left {
+  from {
+    transform: rotate(-8deg);
+  }
+  to {
+    transform: rotate(10deg);
+  }
+}
+
+@keyframes login-leg-right {
+  from {
+    transform: rotate(10deg);
+  }
+  to {
+    transform: rotate(-8deg);
+  }
+}
+
+/* Winken */
+.login-wave-arm {
+  transform-box: fill-box;
+  transform-origin: 18% 72%;
+  animation: login-wave 1s ease-in-out infinite alternate;
+}
+
+@keyframes login-wave {
+  from {
+    transform: rotate(-7deg);
+  }
+
+  to {
+    transform: rotate(17deg);
+  }
+}
+
+/* Staubsauger bewegt sich */
+.login-vacuum-wand {
+  transform-box: fill-box;
+  transform-origin: 18% 12%;
+  animation: login-vacuum-sweep 1.15s ease-in-out infinite alternate;
+}
+
+@keyframes login-vacuum-sweep {
+  from {
+    transform: rotate(-2deg);
+  }
+
+  to {
+    transform: rotate(4deg);
+  }
+}
+
+.login-vacuum-head {
+  animation: login-vacuum-head .55s ease-in-out infinite alternate;
+}
+
+@keyframes login-vacuum-head {
+  from {
+    transform: translateX(-3px);
+  }
+
+  to {
+    transform: translateX(5px);
+  }
+}
+
+/* Blinzeln */
+.login-dustin-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: login-dustin-blink 5.5s infinite;
+}
+
+@keyframes login-dustin-blink {
+  0%, 44%, 48%, 100% {
+    transform: scaleY(1);
+  }
+
+  46% {
+    transform: scaleY(.08);
+  }
+}
+
+/* Staub */
+.login-dust {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.login-dust-one {
+  animation: login-dust-float 1.2s ease-out infinite;
+}
+
+.login-dust-two {
+  animation: login-dust-float 1.2s .5s ease-out infinite;
+}
+
+@keyframes login-dust-float {
+  0% {
+    opacity: 0;
+    transform: translate(0,0) scale(.55);
+  }
+
+  30% {
+    opacity: .9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(22px,-24px) scale(1.35);
+  }
+}
+
+/* Sprechblase */
+.login-mascot-bubble {
+  position: absolute;
+  z-index: 4;
+  top: 15px;
+  left: 240px;
+  min-width: 135px;
+  padding: 10px 13px;
+  border: 3px solid #15934d;
+  border-radius: 22px 22px 22px 5px;
+  background: rgba(250,255,251,.97);
+  color: #075a30;
+  font-weight: 800;
+  font-size: 16px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+
+  animation: login-bubble-show 18s linear infinite;
+}
+
+.login-mascot-bubble small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@keyframes login-bubble-show {
+  0%, 3% {
+    opacity: 0;
+    transform: translateY(8px) scale(.92);
+  }
+
+  7%, 25% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  30%, 100% {
+    opacity: 0;
+    transform: translateY(5px) scale(.96);
+  }
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .login-mascot-stage {
+    width: 270px;
+    left: -310px;
+    bottom: 2px;
+  }
+
+  .login-mascot-bubble {
+    left: 182px;
+    top: 14px;
+    min-width: 108px;
+    font-size: 13px;
+  }
+}
+
+/* Smartphone */
+@media (max-width: 600px) {
+  .login-mascot-stage {
+    width: 195px;
+    left: -230px;
+    bottom: 0;
+    opacity: .92;
+    animation-duration: 15s;
+  }
+
+  .login-mascot-bubble {
+    left: 128px;
+    top: 5px;
+    min-width: 92px;
+    padding: 6px 8px;
+    font-size: 11px;
+    border-width: 2px;
+  }
+
+  .login-mascot-bubble small {
+    font-size: 8px;
+  }
+}
+
+/* Barrierefreiheit */
+@media (prefers-reduced-motion: reduce) {
+  .login-mascot-stage {
+    display: none;
+  }
+}

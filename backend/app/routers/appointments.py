@@ -148,3 +148,51 @@ async def set_status(appointment_id: str, data: StatusIn, user: User = Depends(g
     db.commit()
     await manager.publish({"type":"data.changed","entity":"appointment"}, employee_id=a.employee_id)
     return serialize(db, a)
+
+
+
+# ORGABOARD APPOINTMENT DELETE
+
+@router.delete(
+    "/{appointment_id}",
+    status_code=204,
+    dependencies=[Depends(require_csrf)],
+)
+def delete_appointment(
+    appointment_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    appointment = db.get(
+        Appointment,
+        appointment_id,
+    )
+
+    if not appointment:
+        raise HTTPException(
+            status_code=404,
+            detail="Termin nicht gefunden",
+        )
+
+    # Mitarbeiter dürfen nur ihre eigenen Termine löschen.
+    # Teamleiter dürfen Termine des Teams löschen.
+    if user.role.value != "TEAM_LEADER":
+        employee_id = scoped_employee_id(
+            db,
+            user,
+            None,
+        )
+
+        if appointment.employee_id != employee_id:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Du darfst diesen Termin "
+                    "nicht löschen"
+                ),
+            )
+
+    db.delete(appointment)
+    db.commit()
+
+    return None

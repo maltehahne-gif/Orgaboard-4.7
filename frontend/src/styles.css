@@ -3524,3 +3524,1452 @@ body:has(.v7-login-scene) form {
   }
 }
 
+
+
+/* =========================================================
+   ORGABOARD LOGIN – DUSTIN V7 CLEAN CINEMATIC
+   ========================================================= */
+
+
+/*
+   Die komplette Szene bleibt ein einziges Bild.
+   Keine ausgeschnittenen Beine/Arme mehr.
+*/
+
+.v7-login-scene {
+  position: fixed;
+
+  inset: 0;
+
+  overflow: hidden;
+
+  pointer-events: none !important;
+  user-select: none;
+
+  z-index: 0;
+
+  background:
+    radial-gradient(
+      circle at 65% 75%,
+      rgba(24,92,49,.18),
+      transparent 36%
+    );
+}
+
+
+.v7-login-scene *,
+.v7-login-scene img {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+
+/* =========================================================
+   HAUPTBILD
+   ========================================================= */
+
+.v7-scene-picture {
+  position: absolute;
+
+  right: -4vw;
+  bottom: -1vh;
+
+  width: min(1450px, 118vw);
+
+  transform-origin: 60% 100%;
+
+  animation:
+    v7-cinematic-motion
+    10s
+    ease-in-out
+    infinite
+    alternate;
+}
+
+
+.v7-scene-picture img {
+  display: block;
+
+  width: 100%;
+  height: auto;
+
+  object-fit: contain;
+
+  opacity: .96;
+
+  filter:
+    contrast(1.04)
+    saturate(1.04)
+    drop-shadow(0 18px 28px rgba(0,0,0,.30));
+}
+
+
+/*
+   Kein Hin-und-Her-Wackeln.
+   Nur minimale Kamerabewegung.
+*/
+
+@keyframes v7-cinematic-motion {
+
+  0% {
+    transform:
+      translate3d(0,0,0)
+      scale(1);
+  }
+
+  100% {
+    transform:
+      translate3d(-10px,-3px,0)
+      scale(1.008);
+  }
+}
+
+
+/* =========================================================
+   LINKE SEITE RUHIG HALTEN
+   Dort befindet sich das echte Login-Fenster.
+   Gleichzeitig wird das im Bild angedeutete UI verdeckt.
+   ========================================================= */
+
+.v7-left-softener {
+  position: absolute;
+
+  inset: 0;
+
+  background:
+
+    linear-gradient(
+      90deg,
+      rgba(5,15,15,.98) 0%,
+      rgba(5,15,15,.94) 21%,
+      rgba(5,15,15,.66) 34%,
+      rgba(5,15,15,.18) 48%,
+      transparent 61%
+    ),
+
+    linear-gradient(
+      180deg,
+      rgba(4,13,13,.32) 0%,
+      transparent 45%
+    );
+
+  z-index: 2;
+}
+
+
+/* =========================================================
+   GRÜNER BODENSCHEIN
+   ========================================================= */
+
+.v7-floor-glow {
+  position: absolute;
+
+  left: 28%;
+  right: -5%;
+  bottom: -70px;
+
+  height: 175px;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      ellipse at center,
+      rgba(49,235,106,.15) 0%,
+      rgba(25,146,69,.07) 38%,
+      transparent 72%
+    );
+
+  filter: blur(14px);
+
+  animation:
+    v7-floor-pulse
+    4.5s
+    ease-in-out
+    infinite
+    alternate;
+}
+
+
+@keyframes v7-floor-pulse {
+
+  from {
+    opacity: .55;
+    transform: scaleX(.97);
+  }
+
+  to {
+    opacity: .85;
+    transform: scaleX(1.03);
+  }
+}
+
+
+/* =========================================================
+   FEINER ECHTER STAUB
+   Kein Cartoon-Kugel-Dreck mehr.
+   ========================================================= */
+
+.v7-floating-dust {
+  position: absolute;
+
+  left: 35%;
+  right: 0;
+
+  bottom: 3%;
+
+  height: 33%;
+
+  overflow: hidden;
+
+  opacity: .55;
+
+  z-index: 3;
+}
+
+
+.v7-floating-dust i {
+  position: absolute;
+
+  display: block;
+
+  width: 3px;
+  height: 3px;
+
+  border-radius: 50%;
+
+  background:
+    rgba(224,205,169,.80);
+
+  box-shadow:
+    0 0 5px rgba(230,216,185,.30);
+
+  animation:
+    v7-dust-float
+    4.6s
+    linear
+    infinite;
+}
+
+
+.v7-floating-dust i:nth-child(1) {
+  left: 8%;
+  bottom: 10%;
+  animation-delay: -.4s;
+}
+
+
+.v7-floating-dust i:nth-child(2) {
+  left: 17%;
+  bottom: 18%;
+
+  width: 5px;
+  height: 4px;
+
+  animation-delay: -2.1s;
+}
+
+
+.v7-floating-dust i:nth-child(3) {
+  left: 26%;
+  bottom: 7%;
+
+  animation-delay: -3.4s;
+}
+
+
+.v7-floating-dust i:nth-child(4) {
+  left: 39%;
+  bottom: 24%;
+
+  width: 4px;
+  height: 4px;
+
+  animation-delay: -1.7s;
+}
+
+
+.v7-floating-dust i:nth-child(5) {
+  left: 49%;
+  bottom: 13%;
+
+  animation-delay: -.9s;
+}
+
+
+.v7-floating-dust i:nth-child(6) {
+  left: 57%;
+  bottom: 31%;
+
+  width: 5px;
+  height: 5px;
+
+  animation-delay: -3.8s;
+}
+
+
+.v7-floating-dust i:nth-child(7) {
+  left: 66%;
+  bottom: 12%;
+
+  animation-delay: -2.6s;
+}
+
+
+.v7-floating-dust i:nth-child(8) {
+  left: 73%;
+  bottom: 27%;
+
+  width: 4px;
+  height: 3px;
+
+  animation-delay: -1.3s;
+}
+
+
+.v7-floating-dust i:nth-child(9) {
+  left: 80%;
+  bottom: 8%;
+
+  animation-delay: -4.1s;
+}
+
+
+.v7-floating-dust i:nth-child(10) {
+  left: 86%;
+  bottom: 35%;
+
+  width: 5px;
+  height: 4px;
+
+  animation-delay: -2.8s;
+}
+
+
+.v7-floating-dust i:nth-child(11) {
+  left: 91%;
+  bottom: 17%;
+
+  animation-delay: -.5s;
+}
+
+
+.v7-floating-dust i:nth-child(12) {
+  left: 96%;
+  bottom: 25%;
+
+  width: 4px;
+  height: 4px;
+
+  animation-delay: -3.1s;
+}
+
+
+@keyframes v7-dust-float {
+
+  0% {
+    opacity: 0;
+
+    transform:
+      translate3d(40px,15px,0)
+      scale(.6);
+  }
+
+  20% {
+    opacity: .75;
+  }
+
+  70% {
+    opacity: .45;
+  }
+
+  100% {
+    opacity: 0;
+
+    transform:
+      translate3d(-65px,-35px,0)
+      scale(1.3);
+  }
+}
+
+
+/* =========================================================
+   LOGIN IMMER ÜBER DER SZENE
+   Nur aktiv, wenn die Dustin-Szene auf der Seite existiert.
+   ========================================================= */
+
+body:has(.v7-login-scene) form {
+  position: relative;
+
+  z-index: 20;
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 1024px) {
+
+  .v7-scene-picture {
+    width: 1320px;
+
+    right: -330px;
+    bottom: -10px;
+  }
+
+  .v7-left-softener {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(5,15,15,.98) 0%,
+        rgba(5,15,15,.93) 35%,
+        rgba(5,15,15,.42) 54%,
+        transparent 72%
+      );
+  }
+
+}
+
+
+/* =========================================================
+   SMARTPHONE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .v7-login-scene {
+    background:
+      radial-gradient(
+        circle at 60% 85%,
+        rgba(34,179,83,.12),
+        transparent 45%
+      );
+  }
+
+
+  .v7-scene-picture {
+    width: 850px;
+
+    right: -410px;
+    bottom: -10px;
+
+    opacity: .72;
+
+    animation-duration: 12s;
+  }
+
+
+  .v7-left-softener {
+    background:
+
+      linear-gradient(
+        180deg,
+        rgba(5,15,15,.96) 0%,
+        rgba(5,15,15,.94) 48%,
+        rgba(5,15,15,.56) 70%,
+        transparent 100%
+      ),
+
+      linear-gradient(
+        90deg,
+        rgba(5,15,15,.92),
+        rgba(5,15,15,.40)
+      );
+  }
+
+
+  .v7-floating-dust {
+    left: 25%;
+    opacity: .30;
+  }
+
+}
+
+
+/* =========================================================
+   LOGIN DARF NIE BLOCKIERT WERDEN
+   ========================================================= */
+
+.v7-login-scene,
+.v7-login-scene * {
+  pointer-events: none !important;
+}
+
+
+/* Bewegung deaktivieren, wenn Nutzer das bevorzugt */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .v7-scene-picture,
+  .v7-floor-glow,
+  .v7-floating-dust i {
+    animation: none !important;
+  }
+
+}
+
+
+/* =========================================================
+   END DUSTIN V7
+   ========================================================= */
+
+
+
+/* ORGABOARD LOGIN PASSWORD RESET START */
+
+
+/* Passwort vergessen Link */
+
+.login-forgot-password {
+  width:fit-content;
+
+  align-self:flex-end;
+
+  margin:
+    -5px 0 8px auto;
+
+  padding:
+    4px 0;
+
+  border:
+    none !important;
+
+  background:
+    transparent !important;
+
+  box-shadow:
+    none !important;
+
+  color:
+    #42df91 !important;
+
+  font:
+    inherit;
+
+  font-size:
+    13px;
+
+  font-weight:
+    650;
+
+  cursor:
+    pointer;
+}
+
+
+.login-forgot-password:hover {
+  color:
+    #79f0b2 !important;
+
+  text-decoration:
+    underline;
+}
+
+
+/* Hinweis beim Passwort-Reset */
+
+.login-reset-info {
+  margin:
+    2px 0 4px;
+
+  color:
+    rgba(220,235,231,.68);
+
+  font-size:
+    12px;
+
+  line-height:
+    1.45;
+}
+
+
+/* Fehlermeldung */
+
+.login-reset-error {
+  margin:
+    5px 0;
+
+  padding:
+    10px 12px;
+
+  border:
+    1px solid
+    rgba(255,84,84,.34);
+
+  border-radius:
+    9px;
+
+  background:
+    rgba(126,20,28,.25);
+
+  color:
+    #ffb5b5;
+
+  font-size:
+    13px;
+
+  line-height:
+    1.4;
+}
+
+
+/* Erfolgsmeldung */
+
+.login-reset-success {
+  margin:
+    5px 0;
+
+  padding:
+    11px 12px;
+
+  border:
+    1px solid
+    rgba(45,226,133,.34);
+
+  border-radius:
+    9px;
+
+  background:
+    rgba(15,129,73,.20);
+
+  color:
+    #b0f5d1;
+
+  font-size:
+    13px;
+
+  line-height:
+    1.45;
+}
+
+
+/* Zurück zur Anmeldung */
+
+.login-reset-back {
+  margin:
+    4px auto 0;
+
+  padding:
+    7px 10px;
+
+  border:
+    none !important;
+
+  background:
+    transparent !important;
+
+  box-shadow:
+    none !important;
+
+  color:
+    rgba(222,236,232,.70) !important;
+
+  font:
+    inherit;
+
+  font-size:
+    13px;
+
+  cursor:
+    pointer;
+}
+
+
+.login-reset-back:hover {
+  color:
+    #ffffff !important;
+}
+
+
+/* Handy */
+
+@media (max-width:600px) {
+
+  .login-forgot-password {
+    font-size:
+      13px;
+  }
+
+  .login-reset-error,
+  .login-reset-success {
+    font-size:
+      12px;
+  }
+
+}
+
+
+/* ORGABOARD LOGIN PASSWORD RESET END */
+
+
+
+/* ===== EINFACHER PRODUKTKATALOG ===== */
+
+.simple-products-page{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+.simple-products-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:20px;
+}
+
+.simple-products-head h1{
+  margin:0 0 5px;
+}
+
+.simple-products-head p{
+  margin:0;
+  opacity:.68;
+}
+
+.simple-product-search{
+  min-height:54px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 16px;
+  border:1px solid rgba(111,231,174,.26);
+  border-radius:14px;
+  background:rgba(6,26,24,.72);
+}
+
+.simple-product-search svg{
+  opacity:.7;
+}
+
+.simple-product-search input{
+  width:100%;
+  border:0 !important;
+  outline:none;
+  background:transparent !important;
+  box-shadow:none !important;
+  font-size:16px;
+}
+
+.simple-product-count{
+  font-size:13px;
+  opacity:.62;
+}
+
+.simple-product-grid{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fill,minmax(250px,1fr));
+  gap:16px;
+}
+
+.simple-product-card{
+  min-height:205px;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  border:1px solid rgba(111,231,174,.20);
+  border-radius:18px;
+  background:rgba(7,27,25,.74);
+}
+
+.simple-product-icon{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  margin-bottom:13px;
+  border-radius:12px;
+  background:rgba(49,223,136,.12);
+  color:#42df91;
+}
+
+.simple-product-category{
+  margin-bottom:6px;
+  color:#42df91;
+  font-size:12px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.simple-product-card h3{
+  margin:0 0 9px;
+  font-size:18px;
+}
+
+.simple-product-card p{
+  margin:0;
+  flex:1;
+  opacity:.72;
+  line-height:1.45;
+  font-size:14px;
+}
+
+.simple-product-card-bottom{
+  padding-top:17px;
+  margin-top:16px;
+  border-top:1px solid rgba(255,255,255,.07);
+}
+
+.simple-product-card-bottom strong{
+  color:#43e58f;
+  font-size:19px;
+}
+
+.simple-product-modal-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:rgba(0,8,7,.78);
+  backdrop-filter:blur(8px);
+}
+
+.simple-product-modal{
+  width:min(520px,100%);
+  max-height:90vh;
+  overflow:auto;
+  padding:24px;
+  display:flex;
+  flex-direction:column;
+  gap:17px;
+  border:1px solid rgba(65,229,143,.38);
+  border-radius:20px;
+  background:#09211e;
+  box-shadow:0 24px 80px rgba(0,0,0,.45);
+}
+
+.simple-product-modal-head{
+  display:flex;
+  justify-content:space-between;
+  gap:15px;
+}
+
+.simple-product-modal-head h2{
+  margin:0 0 4px;
+}
+
+.simple-product-modal-head p{
+  margin:0;
+  opacity:.65;
+}
+
+.simple-product-modal label{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  font-size:13px;
+  font-weight:650;
+}
+
+.simple-product-modal input,
+.simple-product-modal textarea{
+  width:100%;
+}
+
+.simple-product-close{
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  padding:0;
+}
+
+.simple-product-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding-top:5px;
+}
+
+.simple-product-error{
+  padding:11px 13px;
+  border:1px solid rgba(255,90,90,.35);
+  border-radius:10px;
+  background:rgba(120,25,25,.2);
+  color:#ffb4b4;
+}
+
+.simple-product-success{
+  padding:11px 13px;
+  border:1px solid rgba(65,229,143,.32);
+  border-radius:10px;
+  background:rgba(24,126,75,.18);
+  color:#b5f5d4;
+}
+
+@media(max-width:650px){
+
+  .simple-products-head{
+    flex-direction:column;
+  }
+
+  .simple-products-head .primary{
+    width:100%;
+  }
+
+  .simple-product-grid{
+    grid-template-columns:1fr;
+  }
+
+  .simple-product-modal{
+    padding:18px;
+  }
+}
+
+
+
+/* ORGABOARD FAST SALE SEARCH START */
+
+.sale-fast-form{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+
+.sale-base-grid{
+  display:grid;
+  grid-template-columns:
+    repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+
+
+.sale-fast-form label{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+
+.sale-products-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  padding-top:5px;
+}
+
+
+.sale-products-head h3{
+  margin:0 0 4px;
+}
+
+
+.sale-products-head p{
+  margin:0;
+  opacity:.64;
+  font-size:13px;
+}
+
+
+.sale-product-list{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+
+.sale-product-entry{
+  position:relative;
+
+  display:grid;
+  grid-template-columns:
+    34px minmax(0,1fr);
+
+  gap:12px;
+
+  padding:16px;
+
+  border:
+    1px solid
+    rgba(84,222,153,.22);
+
+  border-radius:16px;
+
+  background:
+    rgba(5,24,22,.58);
+}
+
+
+.sale-product-number{
+  width:30px;
+  height:30px;
+
+  display:grid;
+  place-items:center;
+
+  border-radius:10px;
+
+  background:
+    rgba(52,224,136,.14);
+
+  color:#42df91;
+
+  font-weight:800;
+}
+
+
+.sale-product-main{
+  min-width:0;
+
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+
+.sale-product-search{
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  min-height:48px;
+
+  padding:
+    0 12px;
+
+  border:
+    1px solid
+    rgba(83,226,156,.30);
+
+  border-radius:12px;
+
+  background:
+    rgba(4,18,17,.88);
+}
+
+
+.sale-product-search:focus-within{
+  border-color:
+    rgba(64,235,147,.72);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(55,225,139,.10);
+}
+
+
+.sale-product-search svg{
+  flex:0 0 auto;
+  opacity:.65;
+}
+
+
+.sale-product-search input{
+  width:100%;
+
+  border:0 !important;
+  outline:0 !important;
+
+  background:
+    transparent !important;
+
+  box-shadow:
+    none !important;
+}
+
+
+.sale-search-clear{
+  width:31px;
+  height:31px;
+
+  flex:0 0 auto;
+
+  padding:0;
+
+  display:grid;
+  place-items:center;
+
+  border:0 !important;
+
+  background:
+    transparent !important;
+}
+
+
+.sale-product-results{
+  max-height:350px;
+
+  overflow:auto;
+
+  display:flex;
+  flex-direction:column;
+
+  border:
+    1px solid
+    rgba(83,226,156,.20);
+
+  border-radius:13px;
+
+  background:#071d1a;
+
+  box-shadow:
+    0 18px 42px
+    rgba(0,0,0,.35);
+}
+
+
+.sale-product-result{
+  width:100%;
+
+  display:grid;
+
+  grid-template-columns:
+    40px
+    minmax(0,1fr)
+    auto;
+
+  align-items:center;
+
+  gap:12px;
+
+  padding:
+    13px 14px;
+
+  border:0;
+  border-bottom:
+    1px solid
+    rgba(255,255,255,.06);
+
+  border-radius:0;
+
+  background:
+    transparent;
+
+  color:inherit;
+
+  text-align:left;
+
+  cursor:pointer;
+}
+
+
+.sale-product-result:last-child{
+  border-bottom:0;
+}
+
+
+.sale-product-result:hover{
+  background:
+    rgba(47,218,132,.10);
+}
+
+
+.sale-result-icon{
+  width:38px;
+  height:38px;
+
+  display:grid;
+  place-items:center;
+
+  border-radius:11px;
+
+  background:
+    rgba(48,224,136,.12);
+
+  color:#48e395;
+}
+
+
+.sale-result-content{
+  min-width:0;
+
+  display:flex;
+  flex-direction:column;
+
+  gap:3px;
+}
+
+
+.sale-result-content strong{
+  font-size:14px;
+}
+
+
+.sale-result-category{
+  color:#48df94;
+
+  font-size:11px;
+  font-weight:750;
+
+  text-transform:uppercase;
+
+  letter-spacing:.035em;
+}
+
+
+.sale-result-content small{
+  max-width:580px;
+
+  overflow:hidden;
+
+  color:
+    rgba(229,241,237,.60);
+
+  font-size:12px;
+
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+
+.sale-result-price{
+  padding-left:12px;
+
+  color:#48e395;
+
+  font-weight:800;
+
+  white-space:nowrap;
+}
+
+
+.sale-product-no-result{
+  padding:18px;
+
+  color:
+    rgba(224,237,233,.65);
+
+  font-size:13px;
+
+  text-align:center;
+}
+
+
+.sale-selected-product{
+  display:flex;
+
+  gap:12px;
+
+  padding:13px;
+
+  border:
+    1px solid
+    rgba(62,226,143,.24);
+
+  border-radius:13px;
+
+  background:
+    rgba(38,188,112,.08);
+}
+
+
+.sale-selected-check{
+  width:34px;
+  height:34px;
+
+  flex:0 0 auto;
+
+  display:grid;
+  place-items:center;
+
+  border-radius:50%;
+
+  background:
+    rgba(46,223,134,.16);
+
+  color:#4ce69a;
+}
+
+
+.sale-selected-info{
+  min-width:0;
+
+  display:flex;
+  flex-direction:column;
+
+  gap:3px;
+}
+
+
+.sale-selected-info span{
+  color:#47df94;
+
+  font-size:12px;
+  font-weight:700;
+}
+
+
+.sale-selected-info p{
+  margin:4px 0 0;
+
+  color:
+    rgba(227,239,235,.68);
+
+  font-size:12px;
+
+  line-height:1.45;
+}
+
+
+.sale-product-values{
+  display:grid;
+
+  grid-template-columns:
+    130px
+    minmax(170px,220px);
+
+  gap:12px;
+}
+
+
+.sale-price-input{
+  display:flex;
+  align-items:center;
+
+  position:relative;
+}
+
+
+.sale-price-input input{
+  width:100%;
+
+  padding-right:35px;
+}
+
+
+.sale-price-input span{
+  position:absolute;
+
+  right:13px;
+
+  opacity:.65;
+}
+
+
+.sale-remove-product{
+  width:fit-content;
+
+  display:flex;
+  align-items:center;
+
+  gap:6px;
+
+  padding:4px 0;
+
+  border:0 !important;
+
+  background:
+    transparent !important;
+
+  color:
+    #ff9d9d !important;
+
+  font-size:12px;
+}
+
+
+.sale-fast-total{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+
+  padding:17px 18px;
+
+  border:
+    1px solid
+    rgba(63,228,143,.25);
+
+  border-radius:14px;
+
+  background:
+    rgba(34,175,102,.08);
+}
+
+
+.sale-fast-total span{
+  font-size:14px;
+  font-weight:700;
+}
+
+
+.sale-fast-total strong{
+  color:#4be699;
+
+  font-size:24px;
+}
+
+
+@media(max-width:760px){
+
+  .sale-base-grid{
+    grid-template-columns:1fr;
+  }
+
+
+  .sale-products-head{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+
+  .sale-product-entry{
+    grid-template-columns:1fr;
+  }
+
+
+  .sale-product-number{
+    display:none;
+  }
+
+
+  .sale-product-result{
+    grid-template-columns:
+      38px
+      minmax(0,1fr);
+  }
+
+
+  .sale-result-price{
+    grid-column:
+      2;
+
+    padding-left:0;
+  }
+
+
+  .sale-product-values{
+    grid-template-columns:
+      1fr 1fr;
+  }
+
+}
+
+
+@media(max-width:480px){
+
+  .sale-product-values{
+    grid-template-columns:1fr;
+  }
+
+
+  .sale-product-result{
+    padding:12px;
+  }
+
+}
+
+/* ORGABOARD FAST SALE SEARCH END */
+
+
+
+/* ORGABOARD APPOINTMENT DELETE START */
+
+.appointment-delete-button{
+  margin-left:8px;
+}
+
+@media(max-width:600px){
+  .appointment-delete-button{
+    margin-left:4px;
+  }
+}
+
+/* ORGABOARD APPOINTMENT DELETE END */
+

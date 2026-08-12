@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     seed_allow_demo_business_data: bool = False
     auto_create_schema: bool = True
     business_timezone: str = "Europe/Berlin"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    smtp_use_tls: bool = True
+    password_reset_exp_minutes: int = 20
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

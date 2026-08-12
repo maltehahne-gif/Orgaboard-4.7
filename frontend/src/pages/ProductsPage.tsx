@@ -1,9 +1,515 @@
-import {FormEvent,useEffect,useState} from 'react'
-import {ExternalLink,Plus,ShieldCheck} from 'lucide-react'
-import {api,money} from '../lib/api'
-import type {Customer,Product} from '../types'
-import {useAuth} from '../lib/auth'
-import {Modal} from '../components/Modal'
-import {useToast} from '../components/Toast'
+import {
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 
-export function ProductsPage(){const {me}=useAuth();const [rows,setRows]=useState<Product[]>([]);const [customers,setCustomers]=useState<Customer[]>([]);const [presentCustomer,setPresentCustomer]=useState('');const [selected,setSelected]=useState<Product|null>(null);const [open,setOpen]=useState(false);const [form,setForm]=useState({name:'',category:'',description:'',source_url:'',official_url:'',verified:false,price_eur:'',price_source:'',price_verified:false,image_url:'',image_source:'',image_usage_note:'',image_verified:false});const toast=useToast();const load=()=>api<Product[]>(`/products${me?.role==='TEAM_LEADER'?'?include_unverified=true':''}`).then(setRows);useEffect(()=>{load();api<Customer[]>('/customers').then(setCustomers)},[me?.role]);async function markPresented(){if(!selected||!presentCustomer){toast('Bitte einen Kunden auswählen','error');return}try{await api('/presentations',{method:'POST',body:JSON.stringify({customer_id:presentCustomer,product_id:selected.id,presented_at:new Date().toISOString(),appointment_id:null,notes:null})});toast('Produktvorstellung gespeichert');setPresentCustomer('')}catch(err){toast(err instanceof Error?err.message:'Fehler','error')}}async function save(e:FormEvent){e.preventDefault();const price=form.price_eur?{amount_cents:Math.round(Number(form.price_eur.replace(',','.'))*100),currency:'EUR',source_url:form.price_source,verified:form.price_verified}:null;const image=form.image_url?{url:form.image_url,source_url:form.image_source,usage_note:form.image_usage_note||null,verified:form.image_verified}:null;try{await api('/products/import',{method:'POST',body:JSON.stringify({name:form.name,category:form.category,description:form.description||null,source_url:form.source_url,official_url:form.official_url||null,verified:form.verified,functions:[],technical:{},variants:[],accessories:[],price,image})});setOpen(false);load();toast('Produktdatensatz importiert')}catch(err){toast(err instanceof Error?err.message:'Fehler','error')}}return <div className="page"><div className="page-head"><div><h1>Produkte</h1><p>Es werden nur verifizierte Fakten als verlässlich dargestellt.</p></div>{me?.role==='TEAM_LEADER'&&<button className="primary" onClick={()=>setOpen(true)}><Plus size={18}/> Produktquelle importieren</button>}</div><div className="product-grid">{rows.map(p=><button className="product-card" key={p.id} onClick={()=>setSelected(p)}>{p.image?<img src={p.image.url} alt={p.image.alt_text||p.name}/>:<div className="product-placeholder">Kein freigegebenes Bild</div>}<div><span className="eyebrow">{p.category||'Produkt'}</span><h3>{p.name}</h3><strong>{p.price?money(p.price.amount_cents):'Preis nicht verifiziert'}</strong><small>{p.verified?<><ShieldCheck size={13}/> verifizierte Basisdaten</>:'nicht freigegeben'}</small></div></button>)}</div>{!rows.length&&<div className="empty card">Noch keine verifizierten Produktdaten vorhanden. Der Teamleiter kann eine offizielle oder lizenzierte Quelle importieren.</div>}{selected&&<Modal title={selected.name} onClose={()=>setSelected(null)}><div className="product-detail">{selected.image&&<img src={selected.image.url} alt={selected.image.alt_text||selected.name}/>}<h2>{selected.name}</h2><div className="price-big">{selected.price?money(selected.price.amount_cents):'Dazu habe ich aktuell keinen verifizierten Preis.'}</div><p>{selected.description||'Keine verifizierte Beschreibung hinterlegt.'}</p>{selected.functions.length>0&&<ul>{selected.functions.map((x,i)=><li key={i}>{x}</li>)}</ul>}{selected.official_url&&<a className="button-link" target="_blank" rel="noreferrer" href={selected.official_url}>Offizielle Produktseite <ExternalLink size={15}/></a>}<div className="product-action"><label>Bei Kunde vorgestellt<select value={presentCustomer} onChange={e=>setPresentCustomer(e.target.value)}><option value="">Kunde wählen…</option>{customers.map(c=><option key={c.id} value={c.id}>{c.full_name}</option>)}</select></label><button className="primary" onClick={markPresented}>Produkt vorgestellt</button></div><small className="source-note">Quelle: {selected.source_url||'nicht hinterlegt'} · Stand: {selected.source_updated_at?new Date(selected.source_updated_at).toLocaleString('de-DE'):'unbekannt'}</small></div></Modal>}{open&&<Modal title="Kontrollierter Produktimport" onClose={()=>setOpen(false)}><form className="form-grid" onSubmit={save}><label>Produktname<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><label>Kategorie<input value={form.category} onChange={e=>setForm({...form,category:e.target.value})}/></label><label className="span-2">Beschreibung<textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label><label className="span-2">Quelldokument / URL<input required type="url" value={form.source_url} onChange={e=>setForm({...form,source_url:e.target.value})}/></label><label className="span-2">Offizielle Produktseite<input type="url" value={form.official_url} onChange={e=>setForm({...form,official_url:e.target.value})}/></label><label className="check"><input type="checkbox" checked={form.verified} onChange={e=>setForm({...form,verified:e.target.checked})}/> Basisdaten manuell geprüft</label><label>Preis in EUR<input inputMode="decimal" value={form.price_eur} onChange={e=>setForm({...form,price_eur:e.target.value})}/></label><label>Preisquelle<input type="url" value={form.price_source} onChange={e=>setForm({...form,price_source:e.target.value})}/></label><label className="check"><input type="checkbox" checked={form.price_verified} onChange={e=>setForm({...form,price_verified:e.target.checked})}/> Preis geprüft</label><label>Bild-URL<input type="url" value={form.image_url} onChange={e=>setForm({...form,image_url:e.target.value})}/></label><label>Bildquelle<input type="url" value={form.image_source} onChange={e=>setForm({...form,image_source:e.target.value})}/></label><label className="check"><input type="checkbox" checked={form.image_verified} onChange={e=>setForm({...form,image_verified:e.target.checked})}/> Bildnutzung geprüft</label><label className="span-2">Nutzungshinweis / Lizenz<input value={form.image_usage_note} onChange={e=>setForm({...form,image_usage_note:e.target.value})}/></label><div className="info-box span-2">Nur Daten importieren, deren Nutzung und Richtigkeit geprüft wurde. Die App markiert unsichere Preise/Bilder nicht als verifiziert.</div><div className="form-actions span-2"><button type="button" onClick={()=>setOpen(false)}>Abbrechen</button><button className="primary">Importieren</button></div></form></Modal>}</div>}
+import {
+  Plus,
+  Search,
+  Package,
+  X,
+} from 'lucide-react'
+
+import {api} from '../lib/api'
+
+
+type ProductRecord = {
+  id:string
+  name:string
+  category?:string
+  description?:string | null
+  verified?:boolean
+  price?:{
+    amount_cents?:number
+    currency?:string
+  } | null
+  prices?:Array<{
+    amount_cents?:number
+    currency?:string
+  }>
+}
+
+
+function getPrice(product:ProductRecord){
+
+  const cents =
+    product.price?.amount_cents
+    ?? product.prices?.[0]?.amount_cents
+
+  if(typeof cents !== 'number'){
+    return null
+  }
+
+  return cents / 100
+}
+
+
+export function ProductsPage(){
+
+  const [products,setProducts]=
+    useState<ProductRecord[]>([])
+
+  const [search,setSearch]=
+    useState('')
+
+  const [showForm,setShowForm]=
+    useState(false)
+
+  const [busy,setBusy]=
+    useState(false)
+
+  const [message,setMessage]=
+    useState('')
+
+  const [error,setError]=
+    useState('')
+
+  const [form,setForm]=useState({
+    name:'',
+    category:'',
+    description:'',
+    price:'',
+  })
+
+
+  async function load(){
+
+    try{
+
+      const result:any =
+        await api(
+          '/products?include_unverified=true'
+        )
+
+      setProducts(
+        Array.isArray(result)
+          ? result
+          : []
+      )
+
+    }catch(err){
+
+      console.error(err)
+
+    }
+  }
+
+
+  useEffect(()=>{
+    load()
+  },[])
+
+
+  const filtered=
+    useMemo(()=>{
+
+      const q=
+        search
+          .trim()
+          .toLowerCase()
+
+      if(!q){
+        return products
+      }
+
+      return products.filter(product=>{
+
+        const text=[
+          product.name,
+          product.category,
+          product.description,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+
+        return text.includes(q)
+      })
+
+    },[
+      products,
+      search,
+    ])
+
+
+  function resetForm(){
+
+    setForm({
+      name:'',
+      category:'',
+      description:'',
+      price:'',
+    })
+
+    setError('')
+    setMessage('')
+  }
+
+
+  async function saveProduct(
+    event:FormEvent
+  ){
+
+    event.preventDefault()
+
+    if(busy)return
+
+    const price=
+      Number(
+        form.price
+          .replace(',','.')
+      )
+
+    if(
+      !form.name.trim()
+      || !form.category.trim()
+      || !form.description.trim()
+      || !Number.isFinite(price)
+      || price < 0
+    ){
+      setError(
+        'Bitte Produktname, Kategorie, Beschreibung und Preis vollständig ausfüllen.'
+      )
+      return
+    }
+
+    setBusy(true)
+    setError('')
+    setMessage('')
+
+    try{
+
+      await api(
+        '/products/import',
+        {
+          method:'POST',
+
+          body:JSON.stringify({
+            name:form.name.trim(),
+            category:form.category.trim(),
+            description:
+              form.description.trim(),
+
+            functions:[],
+            variants:[],
+            accessories:[],
+
+            source_kind:
+              'manual_verified',
+
+            verified:true,
+
+            price:{
+              amount_cents:
+                Math.round(price * 100),
+
+              currency:'EUR',
+
+              source_url:
+                'manual-entry',
+
+              verified:false,
+            },
+          }),
+        }
+      )
+
+      setMessage(
+        'Produkt wurde gespeichert.'
+      )
+
+      resetForm()
+      setShowForm(false)
+
+      await load()
+
+    }catch(err){
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Produkt konnte nicht gespeichert werden.'
+      )
+
+    }finally{
+      setBusy(false)
+    }
+  }
+
+
+  return(
+    <section className="simple-products-page">
+
+      <div className="simple-products-head">
+
+        <div>
+          <h1>Produktkatalog</h1>
+
+          <p>
+            Produkte schnell finden und für
+            Verkäufe verwenden.
+          </p>
+        </div>
+
+
+        <button
+          className="primary"
+          type="button"
+          onClick={()=>{
+            resetForm()
+            setShowForm(true)
+          }}
+        >
+          <Plus size={18}/>
+          Neues Produkt
+        </button>
+
+      </div>
+
+
+      <div className="simple-product-search">
+
+        <Search size={20}/>
+
+        <input
+          value={search}
+          onChange={event=>
+            setSearch(
+              event.target.value
+            )
+          }
+          placeholder="Produkt suchen – z. B. VK7, SP7, Polster, Roboter…"
+        />
+
+      </div>
+
+
+      <div className="simple-product-count">
+        {filtered.length}
+        {' '}
+        Produkte
+      </div>
+
+
+      <div className="simple-product-grid">
+
+        {filtered.map(product=>{
+
+          const price=
+            getPrice(product)
+
+          return(
+            <article
+              className="simple-product-card"
+              key={product.id}
+            >
+
+              <div className="simple-product-icon">
+                <Package size={23}/>
+              </div>
+
+
+              <div className="simple-product-category">
+                {product.category || 'Produkt'}
+              </div>
+
+
+              <h3>
+                {product.name}
+              </h3>
+
+
+              {product.description && (
+                <p>
+                  {product.description}
+                </p>
+              )}
+
+
+              <div className="simple-product-card-bottom">
+
+                {price!==null ? (
+                  <strong>
+                    {price.toLocaleString(
+                      'de-DE',
+                      {
+                        style:'currency',
+                        currency:'EUR',
+                      }
+                    )}
+                  </strong>
+                ) : (
+                  <span>
+                    Preis nicht hinterlegt
+                  </span>
+                )}
+
+              </div>
+
+            </article>
+          )
+        })}
+
+      </div>
+
+
+      {showForm && (
+
+        <div
+          className="simple-product-modal-backdrop"
+          onMouseDown={()=>
+            setShowForm(false)
+          }
+        >
+
+          <form
+            className="simple-product-modal"
+            onSubmit={saveProduct}
+            onMouseDown={event=>
+              event.stopPropagation()
+            }
+          >
+
+            <div className="simple-product-modal-head">
+
+              <div>
+                <h2>
+                  Neues Produkt
+                </h2>
+
+                <p>
+                  Nur die wichtigen Angaben.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="simple-product-close"
+                onClick={()=>
+                  setShowForm(false)
+                }
+              >
+                <X size={20}/>
+              </button>
+
+            </div>
+
+
+            <label>
+              Produktname
+
+              <input
+                value={form.name}
+                onChange={event=>
+                  setForm({
+                    ...form,
+                    name:event.target.value,
+                  })
+                }
+                placeholder="z. B. Kobold VK7 Akku-Staubsauger"
+                required
+              />
+            </label>
+
+
+            <label>
+              Kategorie
+
+              <input
+                value={form.category}
+                onChange={event=>
+                  setForm({
+                    ...form,
+                    category:event.target.value,
+                  })
+                }
+                placeholder="z. B. Akku-Staubsauger"
+                required
+              />
+            </label>
+
+
+            <label>
+              Beschreibung
+
+              <textarea
+                value={form.description}
+                onChange={event=>
+                  setForm({
+                    ...form,
+                    description:event.target.value,
+                  })
+                }
+                rows={4}
+                placeholder="Kurze verständliche Produktbeschreibung"
+                required
+              />
+            </label>
+
+
+            <label>
+              Preis in EUR
+
+              <input
+                value={form.price}
+                onChange={event=>
+                  setForm({
+                    ...form,
+                    price:event.target.value,
+                  })
+                }
+                inputMode="decimal"
+                placeholder="949,00"
+                required
+              />
+            </label>
+
+
+            {error && (
+              <div className="simple-product-error">
+                {error}
+              </div>
+            )}
+
+
+            {message && (
+              <div className="simple-product-success">
+                {message}
+              </div>
+            )}
+
+
+            <div className="simple-product-actions">
+
+              <button
+                type="button"
+                onClick={()=>
+                  setShowForm(false)
+                }
+              >
+                Abbrechen
+              </button>
+
+              <button
+                className="primary"
+                type="submit"
+                disabled={busy}
+              >
+                {busy
+                  ? 'Speichern…'
+                  : 'Produkt speichern'
+                }
+              </button>
+
+            </div>
+
+          </form>
+
+        </div>
+      )}
+
+    </section>
+  )
+}

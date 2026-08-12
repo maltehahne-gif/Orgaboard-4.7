@@ -1,11 +1,22 @@
+import logging
+import smtplib
+from email.message import EmailMessage
+from urllib.parse import urlencode, urlparse
 from pydantic import BaseModel, EmailStr
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import create_session_token, get_current_user, hash_password, make_csrf_token, verify_password, require_csrf
 from app.models import Employee, User
+
+
+from app.core.security import (
+    create_password_reset_token,
+    decode_password_reset_token,
+    password_fingerprint,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -73,3 +84,342 @@ def change_password(data: PasswordChangeIn, user: User = Depends(get_current_use
     user.must_change_password = False
     db.commit()
     return {"ok": True}
+
+
+# ORGABOARD PASSWORD RESET ROUTES
+
+logger = logging.getLogger(__name__)
+
+
+class PasswordResetRequestIn(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirmIn(BaseModel):
+    token: str
+    new_password: str
+
+
+def _password_reset_frontend_url(request: Request) -> str:
+    """
+    Ermittelt die sichere Frontend-Adresse.
+
+    GitHub-Codespaces-Domains werden akzeptiert.
+    Für eine spätere eigene Domain kann FRONTEND_ORIGIN
+    in der Konfiguration verwendet werden.
+    """
+
+    configured = str(
+        getattr(settings, "frontend_origin", "") or ""
+    ).rstrip("/")
+
+    origin = request.headers.get("origin", "").rstrip("/")
+
+    if origin:
+        try:
+            parsed = urlparse(origin)
+
+            # Aktuelle GitHub-Codespaces-Adresse
+            if (
+                parsed.scheme == "https"
+                and parsed.hostname
+                and parsed.hostname.endswith(".app.github.dev")
+            ):
+                return origin
+
+            # Konfigurierte Produktionsadresse
+            if configured and origin == configured:
+                return configured
+
+            # lokale Entwicklung
+            if parsed.hostname in {"localhost", "127.0.0.1"}:
+                return origin
+
+        except Exception:
+            pass
+
+    if configured:
+        return configured
+
+    raise HTTPException(
+        status_code=503,
+        detail=(
+            "Die Frontend-Adresse für den "
+            "Passwort-Reset ist nicht eingerichtet."
+        ),
+    )
+
+
+def _send_password_reset_email(
+    recipient: str,
+    reset_url: str,
+) -> None:
+
+    if not settings.smtp_host:
+        raise RuntimeError("SMTP_HOST fehlt")
+
+    if not settings.smtp_from_email:
+        raise RuntimeError("SMTP_FROM_EMAIL fehlt")
+
+    message = EmailMessage()
+
+    message["Subject"] = "OrgaBoard – Passwort zurücksetzen"
+    message["From"] = settings.smtp_from_email
+    message["To"] = recipient
+
+    message.set_content(
+        f"""Hallo,
+
+für dein OrgaBoard-Konto wurde eine
+Passwort-Zurücksetzung angefordert.
+
+Öffne diesen Link:
+
+{reset_url}
+
+Der Link ist nur
+{settings.password_reset_exp_minutes} Minuten gültig.
+
+Falls du diese Anfrage nicht gestellt hast,
+kannst du diese E-Mail ignorieren.
+
+OrgaBoard
+"""
+    )
+
+    message.add_alternative(
+        f"""
+<html>
+<body style="
+    margin:0;
+    padding:30px;
+    background:#071815;
+    color:#eef7f3;
+    font-family:Arial,sans-serif;
+">
+
+<div style="
+    max-width:520px;
+    margin:auto;
+    padding:30px;
+    background:#0b2621;
+    border:1px solid #23845c;
+    border-radius:18px;
+">
+
+<h2 style="
+    margin-top:0;
+    color:#31df88;
+">
+OrgaBoard
+</h2>
+
+<h3>Passwort zurücksetzen</h3>
+
+<p>
+Für dein OrgaBoard-Konto wurde eine
+Passwort-Zurücksetzung angefordert.
+</p>
+
+<p style="margin:30px 0;">
+<a
+    href="{reset_url}"
+    style="
+        display:inline-block;
+        padding:14px 22px;
+        border-radius:10px;
+        background:#20c875;
+        color:#ffffff;
+        text-decoration:none;
+        font-weight:bold;
+    "
+>
+Neues Passwort festlegen
+</a>
+</p>
+
+<p style="color:#a8bbb5;">
+Der Link ist nur
+{settings.password_reset_exp_minutes} Minuten gültig.
+</p>
+
+<p style="color:#80958e;">
+Falls du diese Anfrage nicht gestellt hast,
+kannst du diese E-Mail ignorieren.
+</p>
+
+</div>
+</body>
+</html>
+""",
+        subtype="html",
+    )
+
+    with smtplib.SMTP(
+        settings.smtp_host,
+        settings.smtp_port,
+        timeout=20,
+    ) as smtp:
+
+        smtp.ehlo()
+
+        if settings.smtp_use_tls:
+            smtp.starttls()
+            smtp.ehlo()
+
+        if (
+            settings.smtp_user
+            and settings.smtp_password
+        ):
+            smtp.login(
+                settings.smtp_user,
+                settings.smtp_password,
+            )
+
+        smtp.send_message(message)
+
+
+@router.post("/password-reset/request")
+def request_password_reset(
+    data: PasswordResetRequestIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Fordert einen Passwort-Link an.
+
+    Wichtig:
+    Bei unbekannten E-Mail-Adressen kommt absichtlich
+    dieselbe Antwort zurück. So kann niemand herausfinden,
+    welche Personen ein OrgaBoard-Konto besitzen.
+    """
+
+    if (
+        not settings.smtp_host
+        or not settings.smtp_from_email
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Der E-Mail-Versand für die "
+                "Passwort-Zurücksetzung ist "
+                "noch nicht eingerichtet."
+            ),
+        )
+
+    normalized_email = data.email.lower().strip()
+
+    user = db.scalar(
+        select(User).where(
+            User.email == normalized_email,
+            User.is_active.is_(True),
+        )
+    )
+
+    generic_response = {
+        "ok": True,
+        "message": (
+            "Falls ein Konto mit dieser E-Mail-Adresse "
+            "existiert, wurde ein Reset-Link versendet."
+        ),
+    }
+
+    if not user:
+        return generic_response
+
+    token = create_password_reset_token(user)
+
+    base_url = _password_reset_frontend_url(request)
+
+    reset_url = (
+        f"{base_url}/?"
+        + urlencode(
+            {
+                "reset_token": token,
+            }
+        )
+    )
+
+    try:
+        _send_password_reset_email(
+            user.email,
+            reset_url,
+        )
+    except Exception:
+        logger.exception(
+            "Passwort-Reset-E-Mail konnte "
+            "nicht versendet werden"
+        )
+
+        # Nach außen weiterhin keine Information darüber,
+        # ob die E-Mail-Adresse existiert.
+        return generic_response
+
+    return generic_response
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(
+    data: PasswordResetConfirmIn,
+    db: Session = Depends(get_db),
+):
+    if len(data.new_password) < 12:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Das neue Passwort muss mindestens "
+                "12 Zeichen lang sein."
+            ),
+        )
+
+    payload = decode_password_reset_token(
+        data.token
+    )
+
+    user_id = payload.get("sub")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Passwort-Link ist ungültig.",
+        )
+
+    user = db.get(
+        User,
+        user_id,
+    )
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Der Passwort-Link ist ungültig "
+                "oder abgelaufen."
+            ),
+        )
+
+    # Der Token enthält einen Fingerabdruck des alten
+    # Passworts. Nach einem erfolgreichen Reset ist
+    # derselbe Link deshalb automatisch unbrauchbar.
+    if payload.get("pwd") != password_fingerprint(
+        user.password_hash
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Dieser Passwort-Link wurde bereits "
+                "verwendet oder ist ungültig."
+            ),
+        )
+
+    user.password_hash = hash_password(
+        data.new_password
+    )
+
+    db.commit()
+
+    return {
+        "ok": True,
+        "message": "Passwort wurde erfolgreich geändert.",
+    }
+

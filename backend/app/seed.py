@@ -5,7 +5,7 @@ from app.core.security import hash_password
 from app.models import Employee, Role, User
 
 USERS=[
-    ("Björn Hahne","bjoern.hahne@example.com",Role.EMPLOYEE),
+    ("Björn Hahne","hahne.erfurt@gmail.com",Role.EMPLOYEE),
     ("Jessica Wunder","jessica.wunder@example.com",Role.EMPLOYEE),
     ("Susanne Menzel","susanne.menzel@example.com",Role.EMPLOYEE),
     ("Britta C.B","britta.cb@example.com",Role.EMPLOYEE),

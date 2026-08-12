@@ -76,3 +76,53 @@ def require_csrf(
 
 def password_fingerprint(password_hash: str) -> str:
     return hashlib.sha256(password_hash.encode()).hexdigest()[:16]
+
+
+# ORGABOARD PASSWORD RESET TOKEN
+
+def create_password_reset_token(user: User) -> str:
+    now = datetime.now(timezone.utc)
+
+    payload = {
+        "sub": str(user.id),
+        "purpose": "password_reset",
+        "pwd": password_fingerprint(user.password_hash),
+        "iat": int(now.timestamp()),
+        "exp": int(
+            (
+                now
+                + timedelta(
+                    minutes=settings.password_reset_exp_minutes
+                )
+            ).timestamp()
+        ),
+    }
+
+    return jwt.encode(
+        payload,
+        settings.jwt_secret,
+        algorithm="HS256",
+    )
+
+
+def decode_password_reset_token(token: str) -> dict:
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=["HS256"],
+        )
+    except jwt.PyJWTError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Link ist ungültig oder abgelaufen",
+        ) from exc
+
+    if payload.get("purpose") != "password_reset":
+        raise HTTPException(
+            status_code=400,
+            detail="Ungültiger Passwort-Link",
+        )
+
+    return payload
+

@@ -1,0 +1,9 @@
+
+# Lokale Zugangsdaten / Secrets
+.env
+_pycache_/
+.pyc
+.bak
+**/_pycache_/
+*.pyc
+*.pyo
