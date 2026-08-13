@@ -37,6 +37,9 @@ services:
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
       PASSWORD_RESET_EXP_MINUTES: ${PASSWORD_RESET_EXP_MINUTES:-20}
+      CHAT_MEDIA_DIR: /data/chat-media
+    volumes:
+      - orgaboard_chat_media:/data/chat-media
     depends_on:
       db:
         condition: service_healthy
@@ -52,3 +55,4 @@ services:
 
 volumes:
   orgaboard_db:
+  orgaboard_chat_media:

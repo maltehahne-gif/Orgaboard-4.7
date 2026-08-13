@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.rbac import scoped_employee_id
 from app.core.security import get_current_user
 from app.core.timeutils import day_bounds, local_today, utc_aware
-from app.models import Appointment, AppointmentStatus, Customer, Message, Rental, RentalStatus, User
+from app.models import Appointment, AppointmentStatus, Customer, Message, MessageHidden, MessageRead, Rental, RentalStatus, User
 from app.services.stats import dashboard_stats
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -28,7 +28,34 @@ def dashboard(employee_id: str | None = None, user: User = Depends(get_current_u
     today_appts = db.scalars(appt_stmt).all()
     next_a = db.scalar(next_stmt)
     rentals = db.scalars(rental_stmt).all()
-    unread = db.query(Message).filter(Message.recipient_user_id == user.id, Message.read_at.is_(None)).count()
+    unread_stmt = (
+        select(Message.id)
+        .where(Message.sender_user_id != user.id)
+        .where(
+            or_(
+                Message.recipient_user_id.is_(None),
+                and_(
+                    Message.recipient_user_id == user.id,
+                    Message.read_at.is_(None),
+                ),
+            )
+        )
+        .where(
+            ~Message.id.in_(
+                select(MessageHidden.message_id).where(
+                    MessageHidden.user_id == user.id
+                )
+            )
+        )
+        .where(
+            ~Message.id.in_(
+                select(MessageRead.message_id).where(
+                    MessageRead.user_id == user.id
+                )
+            )
+        )
+    )
+    unread = len(db.scalars(unread_stmt).all())
     def a_out(a):
         c = db.get(Customer, a.customer_id) if a and a.customer_id else None
         return None if not a else {"id": a.id, "start_at": utc_aware(a.start_at), "end_at": utc_aware(a.end_at) if a.end_at else None, "customer_name": f"{c.first_name} {c.last_name}" if c else "Termin", "address": a.address_snapshot, "status": a.status.value, "appointment_type": a.appointment_type.value}

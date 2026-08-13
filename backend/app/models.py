@@ -246,6 +246,68 @@ class MessageHidden(Base):
     )
 
 
+class MessageRead(Base):
+    __tablename__ = "message_reads"
+    __table_args__ = (
+        UniqueConstraint("message_id", "user_id", name="uq_message_read_user"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    message_id: Mapped[str] = mapped_column(
+        ForeignKey("messages.id", ondelete="CASCADE"),
+        index=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True
+    )
+    read_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=now_utc
+    )
+
+
+class MessageAttachment(Base):
+    __tablename__ = "message_attachments"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=uid
+    )
+    message_id: Mapped[str] = mapped_column(
+        ForeignKey("messages.id", ondelete="CASCADE"),
+        index=True
+    )
+    kind: Mapped[str] = mapped_column(String(30), index=True)
+    file_name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True
+    )
+    content_type: Mapped[str | None] = mapped_column(
+        String(160),
+        nullable=True
+    )
+    size_bytes: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True
+    )
+    storage_name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        unique=True
+    )
+    metadata_json: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=now_utc,
+        index=True
+    )
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
