@@ -74,7 +74,7 @@ def make_payload(db: Session, employee_id: str, week_start: date) -> dict:
         ds, de = day_bounds(d)
         total = revenue_between(db, ds, de, employee_id)
         area = revenue_between(db, ds, de, employee_id, SaleChannel.FIELD)
-        k70 = revenue_between(db, ds, de, employee_id, SaleChannel.K70)
+        k70 = revenue_between(db, ds, de, employee_id, product_category="K70")
         units = units_between(db, ds, de, employee_id)
         week_revenue += total
         week_units += units

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import re
+import hashlib
 from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -113,14 +114,30 @@ def _local_answer(db: Session, user: User, c: Conversation, text: str) -> str:
 
 def _openai_answer(db: Session, user: User, c: Conversation, text: str) -> str:
     from openai import OpenAI
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = OpenAI(
+        api_key=settings.openai_api_key,
+        timeout=settings.openai_timeout_seconds,
+        max_retries=2,
+    )
     history = _recent_messages(db, c, 10)
     input_items = [{"role":m["role"],"content":m["content"]} for m in history]
     if not input_items or input_items[-1].get("content") != text:
         input_items.append({"role":"user","content":text})
     instructions = SYSTEM_PROMPT + f"\nAngemeldet: {user.full_name}; Rolle: {user.role.value}."
+    safety_identifier = hashlib.sha256(f"orgaboard:{user.id}".encode()).hexdigest()
     for _ in range(5):
-        response = client.responses.create(model=settings.openai_model, instructions=instructions, input=input_items, tools=TOOL_SPECS, store=False)
+        response = client.responses.create(
+            model=settings.openai_model,
+            instructions=instructions,
+            input=input_items,
+            tools=TOOL_SPECS,
+            store=False,
+            reasoning={"effort":"low"},
+            text={"verbosity":"low"},
+            max_output_tokens=settings.openai_max_output_tokens,
+            max_tool_calls=8,
+            safety_identifier=safety_identifier,
+        )
         calls = [o for o in response.output if getattr(o,"type",None)=="function_call"]
         if not calls:
             return response.output_text or "Dazu habe ich aktuell keine verlässlichen Daten."

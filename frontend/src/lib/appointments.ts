@@ -25,7 +25,7 @@ export const appointmentTypeOptions = [
   {value:'promotion',label:'Promotion',color:'#ffc400'},
   {value:'recommendation',label:'Empfehlung',color:'#c77dff'},
   {value:'premium_checkin',label:'Premium Check-in',color:'#ffb7c8'},
-  {value:'customer',label:'Termin Kundendaten',color:'#e8f51c'},
+  {value:'customer',label:'Termin Kundendaten',color:'#34d769'},
   {value:'team',label:'Termin Vorwerk ADM',color:'#28c7e8'},
   {value:'telephone',label:'Telefonie und Büro',color:'#ffcf23'},
   {value:'other',label:'Zeit privat',color:'#ff4545'},
@@ -108,6 +108,17 @@ export function appointmentPayload(form:AppointmentDraft) {
     end_at:form.end_at ? new Date(form.end_at).toISOString() : null,
     notes:form.notes.trim() || null,
   }
+}
+
+export function directionsUrl(address:string) {
+  const destination=address.trim()
+  return destination ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving` : ''
+}
+
+export function openDirections(address:string) {
+  const url=directionsUrl(address)
+  if(!url)return
+  window.open(url,'_blank','noopener,noreferrer')
 }
 
 function escapeCalendarText(value:string) {

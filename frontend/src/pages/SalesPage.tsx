@@ -44,6 +44,12 @@ type CatalogProduct = Product & {
     amount_cents?:number
     currency?:string
   }>
+
+  technical?:{
+    article_number?:string
+    k70_group?:string
+    available?:boolean
+  }
 }
 
 
@@ -324,6 +330,8 @@ export function SalesPage(){
           product.name,
           product.category,
           product.description,
+          product.technical?.article_number,
+          product.technical?.k70_group,
         ]
           .filter(Boolean)
           .join(' ')
@@ -601,21 +609,8 @@ export function SalesPage(){
                   c=>c.id===s.customer_id
                 )
 
-              const itemCount=
-                Array.isArray(s.items)
-                  ? s.items.reduce(
-                      (
-                        count:number,
-                        item:any
-                      )=>
-                        count
-                        + Number(
-                            item.quantity
-                            || 0
-                          ),
-                      0
-                    )
-                  : 0
+              const units=
+                Number(s.units || 0)
 
 
               return(
@@ -635,9 +630,9 @@ export function SalesPage(){
                   </td>
 
                   <td>
-                    {itemCount}
+                    {units}
                     {' '}
-                    {itemCount===1
+                    {units===1
                       ? 'Einheit'
                       : 'Einheiten'
                     }
@@ -927,6 +922,14 @@ export function SalesPage(){
                                       {product.category
                                         || 'Produkt'
                                       }
+                                      {product.technical?.k70_group
+                                        ? ` · ${product.technical.k70_group}`
+                                        : ''
+                                      }
+                                      {product.technical?.article_number
+                                        ? ` · Art. ${product.technical.article_number}`
+                                        : ''
+                                      }
                                     </span>
 
                                     {product.description && (
@@ -970,6 +973,14 @@ export function SalesPage(){
                             <span>
                               {selected.category
                                 || 'Produkt'
+                              }
+                              {selected.technical?.k70_group
+                                ? ` · ${selected.technical.k70_group}`
+                                : ''
+                              }
+                              {selected.technical?.article_number
+                                ? ` · Art. ${selected.technical.article_number}`
+                                : ''
                               }
                             </span>
 

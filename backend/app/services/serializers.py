@@ -3,6 +3,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from app.models import Customer, Employee, Product, ProductImage, ProductPrice, Sale, SaleItem, User
 from app.core.timeutils import local_today
+from app.services.stats import is_k70_category, product_unit_count_from_name
 
 
 def customer_name(db: Session, customer_id: str | None) -> str | None:
@@ -58,4 +59,14 @@ def sale_total(db: Session, sale_id: str) -> int:
 
 
 def sale_units(db: Session, sale_id: str) -> int:
-    return int(db.scalar(select(func.coalesce(func.sum(SaleItem.quantity), 0)).where(SaleItem.sale_id == sale_id)) or 0)
+    rows = db.execute(
+        select(SaleItem.quantity, Product.name, Product.category)
+        .select_from(SaleItem)
+        .outerjoin(Product, Product.id == SaleItem.product_id)
+        .where(SaleItem.sale_id == sale_id)
+    ).all()
+    return sum(
+        int(quantity or 0) * product_unit_count_from_name(product_name)
+        for quantity, product_name, category in rows
+        if not is_k70_category(category)
+    )

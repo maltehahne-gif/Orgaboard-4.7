@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,8 +11,21 @@ router = APIRouter(prefix="/assistant", tags=["assistant"])
 
 
 class ChatIn(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=4000)
     conversation_id: str | None = None
+
+
+@router.get("/status")
+def assistant_status(user: User = Depends(get_current_user)):
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    enabled = bool(settings.ai_enabled and settings.openai_api_key)
+    return {
+        "enabled": enabled,
+        "provider": "openai" if enabled else "local-safe",
+        "model": settings.openai_model if enabled else None,
+    }
 
 
 @router.post("/chat", dependencies=[Depends(require_csrf)])

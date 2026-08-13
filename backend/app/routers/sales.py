@@ -41,7 +41,7 @@ def serialize(db: Session, s: Sale):
         "channel": s.channel.value, "notes": s.notes,
         "items": [{"id": i.id, "product_id": i.product_id, "name": i.product_name_snapshot, "quantity": i.quantity, "unit_price_cents": i.unit_price_cents, "total_cents": i.quantity*i.unit_price_cents} for i in items],
         "total_cents": sum(i.quantity*i.unit_price_cents for i in items),
-        "units": sum(i.quantity for i in items),
+        "units": sale_units(db, s.id),
     }
 
 

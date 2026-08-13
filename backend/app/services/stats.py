@@ -6,7 +6,21 @@ from app.core.timeutils import day_bounds, local_today, month_bounds, week_bound
 from app.models import Employee, Product, Sale, SaleChannel, SaleItem, WeeklyStatistic
 
 
-def revenue_between(db: Session, start: datetime, end: datetime, employee_id: str | None = None, channel: SaleChannel | None = None) -> int:
+K70_CATEGORY = "k70"
+
+
+def is_k70_category(category: str | None) -> bool:
+    return (category or "").strip().casefold() == K70_CATEGORY
+
+
+def revenue_between(
+    db: Session,
+    start: datetime,
+    end: datetime,
+    employee_id: str | None = None,
+    channel: SaleChannel | None = None,
+    product_category: str | None = None,
+) -> int:
     stmt = (
         select(func.coalesce(func.sum(SaleItem.quantity * SaleItem.unit_price_cents), 0))
         .select_from(SaleItem)
@@ -17,6 +31,10 @@ def revenue_between(db: Session, start: datetime, end: datetime, employee_id: st
         stmt = stmt.where(Sale.employee_id == employee_id)
     if channel:
         stmt = stmt.where(Sale.channel == channel)
+    if product_category:
+        stmt = stmt.join(Product, Product.id == SaleItem.product_id).where(
+            func.lower(func.trim(Product.category)) == product_category.strip().casefold()
+        )
     return int(db.scalar(stmt) or 0)
 
 
@@ -62,6 +80,7 @@ def units_between(
         select(
             SaleItem.quantity,
             Product.name,
+            Product.category,
         )
         .select_from(SaleItem)
         .join(
@@ -87,7 +106,10 @@ def units_between(
 
     total = 0
 
-    for quantity, product_name in rows:
+    for quantity, product_name, product_category in rows:
+
+        if is_k70_category(product_category):
+            continue
 
         quantity = int(quantity or 0)
 
@@ -110,6 +132,9 @@ def dashboard_stats(db: Session, employee_id: str | None = None) -> dict:
     revenue_today = revenue_between(db, ds, de, employee_id)
     revenue_week = revenue_between(db, ws, we, employee_id)
     revenue_month = revenue_between(db, ms, me, employee_id)
+    k70_revenue_today = revenue_between(db, ds, de, employee_id, product_category=K70_CATEGORY)
+    k70_revenue_week = revenue_between(db, ws, we, employee_id, product_category=K70_CATEGORY)
+    k70_revenue_month = revenue_between(db, ms, me, employee_id, product_category=K70_CATEGORY)
     units_week = units_between(db, ws, we, employee_id)
     units_month = units_between(db, ms, me, employee_id)
     target = 30
@@ -123,6 +148,9 @@ def dashboard_stats(db: Session, employee_id: str | None = None) -> dict:
         "revenue_today_cents": revenue_today,
         "revenue_week_cents": revenue_week,
         "revenue_month_cents": revenue_month,
+        "k70_revenue_today_cents": k70_revenue_today,
+        "k70_revenue_week_cents": k70_revenue_week,
+        "k70_revenue_month_cents": k70_revenue_month,
         "units_week": units_week,
         "units_month": units_month,
         "units_target": target,

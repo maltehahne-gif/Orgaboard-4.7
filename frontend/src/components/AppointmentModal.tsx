@@ -1,7 +1,8 @@
 import {FormEvent,useEffect,useMemo,useState,type CSSProperties} from 'react'
+import {MapPinned} from 'lucide-react'
 import type {Appointment,Customer,Product} from '../types'
 import {Modal} from './Modal'
-import {appointmentDraft,appointmentStatuses,appointmentTypeOptions,newAppointmentDraft,type AppointmentDraft} from '../lib/appointments'
+import {appointmentDraft,appointmentStatuses,appointmentTypeOptions,newAppointmentDraft,openDirections,type AppointmentDraft} from '../lib/appointments'
 
 type TeamEmployee={id:string;display_name:string}
 
@@ -67,7 +68,7 @@ export function AppointmentModal({appointment,initialDay,ownEmployeeId='',isTeam
         </select>
       </label>
       {selectedCustomer&&<div className="appointment-customer-preview span-2">
-        <div><small>Anschrift</small><strong>{selectedCustomer.address||'Nicht hinterlegt'}</strong></div>
+        <div><small>Anschrift</small><strong>{selectedCustomer.address||'Nicht hinterlegt'}</strong>{selectedCustomer.address&&<button type="button" className="appointment-preview-directions" onClick={()=>openDirections(selectedCustomer.address)}><MapPinned size={15}/> Wegbeschreibung</button>}</div>
         <div><small>Telefon / Handynummer</small><strong>{selectedCustomer.phone||'Nicht hinterlegt'}</strong></div>
         <div><small>E-Mail-Adresse</small><strong>{selectedCustomer.email||'Nicht hinterlegt'}</strong></div>
       </div>}

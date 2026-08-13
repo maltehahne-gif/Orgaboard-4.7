@@ -1,4 +1,4 @@
-import {CalendarClock,Mail,PackageCheck,Target} from 'lucide-react'
+import {BadgeEuro,CalendarClock,CalendarDays,CalendarRange,Clock3,Info,Mail,MapPinned,PackageCheck,Target} from 'lucide-react'
 import {useCallback,useEffect,useState} from 'react'
 import {api,formatDateTime,money} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
@@ -7,10 +7,10 @@ import {useAuth} from '../lib/auth'
 import type {Appointment,Customer,Product} from '../types'
 import {AppointmentWeek} from '../components/AppointmentWeek'
 import {AppointmentModal} from '../components/AppointmentModal'
-import {addDays,appointmentPayload,downloadCalendarFile,startOfWorkWeek,type AppointmentDraft} from '../lib/appointments'
+import {addDays,appointmentPayload,downloadCalendarFile,openDirections,startOfWorkWeek,type AppointmentDraft} from '../lib/appointments'
 import {useToast} from '../components/Toast'
 
-type Dash={revenue_today_cents:number;revenue_week_cents:number;revenue_month_cents:number;units_week:number;units_month:number;units_target:number;units_missing:number;units_percent:number;next_appointment:Appointment|null;today_appointments:Appointment[];active_rentals:number;unread_messages:number}
+type Dash={revenue_today_cents:number;revenue_week_cents:number;revenue_month_cents:number;k70_revenue_today_cents:number;k70_revenue_week_cents:number;k70_revenue_month_cents:number;units_week:number;units_month:number;units_target:number;units_missing:number;units_percent:number;next_appointment:Appointment|null;today_appointments:Appointment[];active_rentals:number;unread_messages:number}
 type TeamEmployee={id:string;display_name:string}
 type Editor={appointment?:Appointment;initialDay?:Date}
 
@@ -83,10 +83,25 @@ export function DashboardPage(){
       onDelete={appointment=>remove(appointment)}
     />
     <div className="stat-grid"><StatCard label="Umsatz heute" value={money(dashboard.revenue_today_cents)} accent="green"/><StatCard label="Umsatz Woche" value={money(dashboard.revenue_week_cents)} accent="green"/><StatCard label="Umsatz Monat" value={money(dashboard.revenue_month_cents)}/><StatCard label="Noch bis 30 Einheiten" value={`${dashboard.units_missing}`} accent={dashboard.units_missing===0?'green':'orange'}/></div>
+    <section className="card k70-revenue-overview">
+      <div className="k70-revenue-head">
+        <div className="k70-revenue-title">
+          <span className="k70-revenue-logo"><BadgeEuro size={23}/></span>
+          <div><small>K70-MATERIAL</small><h2>K70-Umsatz</h2></div>
+        </div>
+        <span className="k70-revenue-badge">Separat ausgewertet</span>
+      </div>
+      <div className="k70-revenue-grid">
+        <article><div className="k70-revenue-label"><Clock3 size={17}/><span>Heute</span></div><strong>{money(dashboard.k70_revenue_today_cents)}</strong><small>Tagesumsatz</small></article>
+        <article><div className="k70-revenue-label"><CalendarDays size={17}/><span>Diese Woche</span></div><strong>{money(dashboard.k70_revenue_week_cents)}</strong><small>Wochenumsatz</small></article>
+        <article><div className="k70-revenue-label"><CalendarRange size={17}/><span>Dieser Monat</span></div><strong>{money(dashboard.k70_revenue_month_cents)}</strong><small>Monatsumsatz</small></article>
+      </div>
+      <div className="k70-revenue-note"><Info size={16}/><span>K70-Produkte fließen vollständig in den Umsatz ein, werden aber nicht als Einheit gezählt.</span></div>
+    </section>
     <div className="dashboard-grid">
       <section className="card big"><div className="section-title"><Target size={20}/><h2>Monatsziel</h2></div><div className="units-line"><strong>{dashboard.units_month}</strong><span>/ {dashboard.units_target} Einheiten</span></div><div className="progress"><span style={{width:`${Math.min(dashboard.units_percent,100)}%`}}/></div><p>{dashboard.units_percent}% erreicht · {dashboard.units_missing} Einheiten fehlen</p></section>
-      <section className="card"><div className="section-title"><CalendarClock size={20}/><h2>Nächster Termin</h2></div>{dashboard.next_appointment?<><h3>{dashboard.next_appointment.customer_name}</h3><p>{formatDateTime(dashboard.next_appointment.start_at)}</p><small>{dashboard.next_appointment.address||'Keine Adresse hinterlegt'}</small></>:<p>Kein kommender Termin.</p>}</section>
-      <section className="card"><div className="section-title"><CalendarClock size={20}/><h2>Heute</h2></div>{dashboard.today_appointments.length?dashboard.today_appointments.map(appointment=><div className="list-row" key={appointment.id}><strong>{new Date(appointment.start_at).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</strong><span>{appointment.customer_name}</span></div>):<p>Heute keine Termine.</p>}</section>
+      <section className="card"><div className="section-title"><CalendarClock size={20}/><h2>Nächster Termin</h2></div>{dashboard.next_appointment?<><h3>{dashboard.next_appointment.customer_name}</h3><p>{formatDateTime(dashboard.next_appointment.start_at)}</p><small>{dashboard.next_appointment.address||'Keine Adresse hinterlegt'}</small>{dashboard.next_appointment.address&&<button type="button" className="dashboard-directions-action" onClick={()=>openDirections(dashboard.next_appointment!.address!)}><MapPinned size={16}/> Wegbeschreibung</button>}</>:<p>Kein kommender Termin.</p>}</section>
+      <section className="card"><div className="section-title"><CalendarClock size={20}/><h2>Heute</h2></div>{dashboard.today_appointments.length?dashboard.today_appointments.map(appointment=><div className="list-row dashboard-today-appointment" key={appointment.id}><strong>{new Date(appointment.start_at).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</strong><span>{appointment.customer_name}</span>{appointment.address&&<button type="button" className="appointment-route-icon" onClick={()=>openDirections(appointment.address!)} aria-label={`Wegbeschreibung zu ${appointment.customer_name||appointment.address}`} title="Wegbeschreibung"><MapPinned size={15}/></button>}</div>):<p>Heute keine Termine.</p>}</section>
       <section className="card"><div className="section-title"><PackageCheck size={20}/><h2>Verleihgeräte</h2></div><div className="hero-number">{dashboard.active_rentals}</div><p>aktive Geräte im Verleih</p></section>
       <section className="card"><div className="section-title"><Mail size={20}/><h2>Nachrichten</h2></div><div className="hero-number">{dashboard.unread_messages}</div><p>ungelesene Nachrichten</p></section>
     </div>

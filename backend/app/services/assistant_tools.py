@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.rbac import current_employee, resolve_employee_by_name
 from app.core.timeutils import day_bounds, week_bounds
 from app.models import Appointment, AppointmentProduct, AppointmentStatus, AppointmentType, Customer, Employee, Message, Product, ProductPresentation, Rental, RentalStatus, Role, Sale, SaleChannel, SaleItem, User
-from app.services.serializers import current_price, product_out
+from app.services.serializers import current_price, product_out, sale_units
 from app.services.stats import revenue_between, units_between
 
 
@@ -197,7 +197,7 @@ def execute_tool(db: Session, user: User, name: str, args: dict) -> dict:
         s=Sale(customer_id=c.id,employee_id=e.id,sold_at=datetime.fromisoformat(args["sold_at"]),channel=SaleChannel(args["channel"]))
         db.add(s);db.flush()
         for p,item in resolved:db.add(SaleItem(sale_id=s.id,product_id=p.id,product_name_snapshot=p.name,quantity=item["quantity"],unit_price_cents=item["unit_price_cents"]))
-        db.commit();return {"created":True,"sale_id":s.id,"units":sum(i[1]["quantity"] for i in resolved),"total_cents":sum(i[1]["quantity"]*i[1]["unit_price_cents"] for i in resolved)}
+        db.commit();return {"created":True,"sale_id":s.id,"units":sale_units(db,s.id),"total_cents":sum(i[1]["quantity"]*i[1]["unit_price_cents"] for i in resolved)}
 
     if name == "send_message":
         term=f"%{args['recipient_name']}%"; users=db.scalars(select(User).where(User.full_name.ilike(term),User.is_active.is_(True))).all()

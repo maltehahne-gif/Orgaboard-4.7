@@ -29,6 +29,11 @@ type ProductRecord = {
     amount_cents?:number
     currency?:string
   }>
+  technical?:{
+    article_number?:string
+    k70_group?:string
+    available?:boolean
+  }
 }
 
 
@@ -120,6 +125,8 @@ export function ProductsPage(){
           product.name,
           product.category,
           product.description,
+          product.technical?.article_number,
+          product.technical?.k70_group,
         ]
           .filter(Boolean)
           .join(' ')
@@ -313,12 +320,22 @@ export function ProductsPage(){
 
               <div className="simple-product-category">
                 {product.category || 'Produkt'}
+                {product.technical?.k70_group
+                  ? ` · ${product.technical.k70_group}`
+                  : ''
+                }
               </div>
 
 
               <h3>
                 {product.name}
               </h3>
+
+              {product.technical?.article_number && (
+                <div className="simple-product-sku">
+                  Artikel-Nr. {product.technical.article_number}
+                </div>
+              )}
 
 
               {product.description && (

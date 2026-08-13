@@ -1,10 +1,10 @@
 import {useCallback,useEffect,useState} from 'react'
-import {CalendarPlus,Pencil,Trash2} from 'lucide-react'
+import {CalendarPlus,MapPinned,Pencil,Trash2} from 'lucide-react'
 import {api,formatDateTime} from '../lib/api'
 import type {Appointment,Customer,Product} from '../types'
 import {useToast} from '../components/Toast'
 import {AppointmentModal} from '../components/AppointmentModal'
-import {appointmentPayload,appointmentStatuses,appointmentTypeOption,downloadCalendarFile,type AppointmentDraft} from '../lib/appointments'
+import {appointmentPayload,appointmentStatuses,appointmentTypeOption,downloadCalendarFile,openDirections,type AppointmentDraft} from '../lib/appointments'
 import {connectRealtime} from '../lib/realtime'
 import {useAuth} from '../lib/auth'
 
@@ -74,6 +74,7 @@ export function AppointmentsPage(){
         </div>
         <div className="appointment-list-actions">
           <select aria-label="Terminstatus" value={appointment.status} onChange={event=>changeStatus(appointment.id,event.target.value)}>{appointmentStatuses.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select>
+          {appointment.address&&<button type="button" className="appointment-directions-action" onClick={()=>openDirections(appointment.address!)} title={`Wegbeschreibung zu ${appointment.address}`}><MapPinned size={16}/> Wegbeschreibung</button>}
           <button type="button" onClick={()=>setEditor({appointment})}><Pencil size={16}/> Bearbeiten</button>
           <button type="button" className="icon-danger" onClick={()=>remove(appointment)} aria-label="Termin löschen" title="Termin löschen"><Trash2 size={16}/></button>
         </div>

@@ -1,7 +1,7 @@
-import {CalendarPlus,Check,ChevronLeft,ChevronRight,Pencil,RotateCcw,Trash2} from 'lucide-react'
+import {CalendarPlus,Check,ChevronLeft,ChevronRight,MapPinned,Pencil,RotateCcw,Trash2} from 'lucide-react'
 import type {CSSProperties} from 'react'
 import type {Appointment} from '../types'
-import {addDays,appointmentTypeOption,appointmentTypeOptions,dateKey,downloadCalendarFile} from '../lib/appointments'
+import {addDays,appointmentTypeOption,appointmentTypeOptions,dateKey,downloadCalendarFile,openDirections} from '../lib/appointments'
 
 type Props={
   weekStart:Date
@@ -54,6 +54,7 @@ export function AppointmentWeek({weekStart,appointments,onShiftWeek,onToday,onCr
                     {appointment.notes&&<span>{appointment.notes}</span>}
                   </button>
                   <div className="week-appointment-actions">
+                    {appointment.address&&<button type="button" className="appointment-directions-action" onClick={()=>openDirections(appointment.address!)} title={`Wegbeschreibung zu ${appointment.address}`}><MapPinned size={14}/><span>Wegbeschreibung</span></button>}
                     <button type="button" onClick={()=>downloadCalendarFile(appointment)} title="Mit Erinnerung im Handy-Kalender speichern"><CalendarPlus size={14}/><span>Kalender</span></button>
                     <button type="button" onClick={()=>onEdit(appointment)} title="Termin bearbeiten"><Pencil size={14}/><span>Bearbeiten</span></button>
                     <button type="button" className="complete-action" onClick={()=>onToggleCompleted(appointment)} title={appointment.status==='completed'?'Wieder als geplant markieren':'Als erledigt markieren'}>{appointment.status==='completed'?<RotateCcw size={14}/>:<Check size={14}/>}<span>{appointment.status==='completed'?'Öffnen':'Erledigt'}</span></button>

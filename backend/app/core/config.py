@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     frontend_origin: str = "http://localhost:5173"
     openai_api_key: str | None = None
-    openai_model: str = "gpt-5.5"
+    openai_model: str = "gpt-5.6-terra"
+    openai_max_output_tokens: int = 1600
+    openai_timeout_seconds: float = 45.0
     ai_enabled: bool = True
     seed_default_password: str | None = None
     seed_allow_demo_business_data: bool = False
