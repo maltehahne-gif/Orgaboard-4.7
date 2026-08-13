@@ -6458,3 +6458,93 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
   }
 
 }
+
+/* ===== PHASE 3 KUNDEN DASHBOARD ===== */
+
+.customer-contact-link{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+
+  color:#70e79d;
+  text-decoration:none;
+
+  font-weight:600;
+  transition:
+    color .15s ease,
+    opacity .15s ease;
+}
+
+.customer-contact-link svg{
+  flex:0 0 auto;
+  opacity:.8;
+}
+
+.customer-contact-link:hover{
+  color:#9af0ba;
+  text-decoration:underline;
+}
+
+.dashboard-link-card{
+  position:relative;
+  display:block;
+
+  color:inherit;
+  text-decoration:none;
+
+  cursor:pointer;
+
+  transition:
+    transform .16s ease,
+    border-color .16s ease,
+    background .16s ease,
+    box-shadow .16s ease;
+}
+
+.dashboard-link-card:hover{
+  transform:translateY(-2px);
+
+  border-color:rgba(32,198,107,.30);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(32,198,107,.07),
+      rgba(255,255,255,.025)
+    );
+
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.18);
+}
+
+.dashboard-link-card:focus-visible{
+  outline:2px solid rgba(63,220,125,.65);
+  outline-offset:3px;
+}
+
+.dashboard-link-card .section-title svg{
+  transition:transform .16s ease;
+}
+
+.dashboard-link-card:hover .section-title svg{
+  transform:scale(1.08);
+}
+
+.dashboard-link-hint{
+  display:inline-block;
+  margin-top:8px;
+
+  color:#67e798;
+  font-size:11px;
+  font-weight:700;
+}
+
+@media(max-width:700px){
+  .customer-contact-link{
+    min-height:38px;
+  }
+
+  .dashboard-link-card{
+    -webkit-tap-highlight-color:transparent;
+  }
+}

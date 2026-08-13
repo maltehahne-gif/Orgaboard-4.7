@@ -1,5 +1,6 @@
 import {BadgeEuro,CalendarClock,CalendarDays,CalendarRange,Clock3,Info,Mail,MapPinned,PackageCheck,Target} from 'lucide-react'
 import {useCallback,useEffect,useState} from 'react'
+import {Link} from 'react-router-dom'
 import {api,formatDateTime,money} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
 import {StatCard} from '../components/StatCard'
@@ -102,8 +103,8 @@ export function DashboardPage(){
       <section className="card big"><div className="section-title"><Target size={20}/><h2>Monatsziel</h2></div><div className="units-line"><strong>{dashboard.units_month}</strong><span>/ {dashboard.units_target} Einheiten</span></div><div className="progress"><span style={{width:`${Math.min(dashboard.units_percent,100)}%`}}/></div><p>{dashboard.units_percent}% erreicht · {dashboard.units_missing} Einheiten fehlen</p></section>
       <section className="card"><div className="section-title"><CalendarClock size={20}/><h2>Nächster Termin</h2></div>{dashboard.next_appointment?<><h3>{dashboard.next_appointment.customer_name}</h3><p>{formatDateTime(dashboard.next_appointment.start_at)}</p><small>{dashboard.next_appointment.address||'Keine Adresse hinterlegt'}</small>{dashboard.next_appointment.address&&<button type="button" className="dashboard-directions-action" onClick={()=>openDirections(dashboard.next_appointment!.address!)}><MapPinned size={16}/> Wegbeschreibung</button>}</>:<p>Kein kommender Termin.</p>}</section>
       <section className="card"><div className="section-title"><CalendarClock size={20}/><h2>Heute</h2></div>{dashboard.today_appointments.length?dashboard.today_appointments.map(appointment=><div className="list-row dashboard-today-appointment" key={appointment.id}><strong>{new Date(appointment.start_at).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</strong><span>{appointment.customer_name}</span>{appointment.address&&<button type="button" className="appointment-route-icon" onClick={()=>openDirections(appointment.address!)} aria-label={`Wegbeschreibung zu ${appointment.customer_name||appointment.address}`} title="Wegbeschreibung"><MapPinned size={15}/></button>}</div>):<p>Heute keine Termine.</p>}</section>
-      <section className="card"><div className="section-title"><PackageCheck size={20}/><h2>Verleihgeräte</h2></div><div className="hero-number">{dashboard.active_rentals}</div><p>aktive Geräte im Verleih</p></section>
-      <section className="card"><div className="section-title"><Mail size={20}/><h2>Nachrichten</h2></div><div className="hero-number">{dashboard.unread_messages}</div><p>ungelesene Nachrichten</p></section>
+      <Link to="/verleih" className="card dashboard-link-card" aria-label="Verleihgeräte öffnen"><div className="section-title"><PackageCheck size={20}/><h2>Verleihgeräte</h2></div><div className="hero-number">{dashboard.active_rentals}</div><p>aktive Geräte im Verleih</p><span className="dashboard-link-hint">Verleih öffnen →</span></Link>
+      <Link to="/nachrichten" className="card dashboard-link-card" aria-label="Nachrichten öffnen"><div className="section-title"><Mail size={20}/><h2>Nachrichten</h2></div><div className="hero-number">{dashboard.unread_messages}</div><p>ungelesene Nachrichten</p><span className="dashboard-link-hint">Chat öffnen →</span></Link>
     </div>
     {editor&&<AppointmentModal
       appointment={editor.appointment}
