@@ -7,7 +7,7 @@ import {useAuth} from '../lib/auth'
 import type {Appointment,Customer,Product} from '../types'
 import {AppointmentWeek} from '../components/AppointmentWeek'
 import {AppointmentModal} from '../components/AppointmentModal'
-import {addDays,appointmentPayload,startOfWorkWeek,type AppointmentDraft} from '../lib/appointments'
+import {addDays,appointmentPayload,downloadCalendarFile,startOfWorkWeek,type AppointmentDraft} from '../lib/appointments'
 import {useToast} from '../components/Toast'
 
 type Dash={revenue_today_cents:number;revenue_week_cents:number;revenue_month_cents:number;units_week:number;units_month:number;units_target:number;units_missing:number;units_percent:number;next_appointment:Appointment|null;today_appointments:Appointment[];active_rentals:number;unread_messages:number}
@@ -28,7 +28,7 @@ export function DashboardPage(){
   const isTeamLeader=me?.role==='TEAM_LEADER'
 
   const load=useCallback(async()=>{
-    const end=addDays(weekStart,5)
+    const end=addDays(weekStart,7)
     const query=`?start=${encodeURIComponent(weekStart.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
     try{
       const [dash,appointmentRows,customerRows,productRows,employeeRows]=await Promise.all([
@@ -48,8 +48,9 @@ export function DashboardPage(){
     setSaving(true)
     try{
       const appointment=editor?.appointment
-      await api(appointment?`/appointments/${appointment.id}`:'/appointments',{method:appointment?'PUT':'POST',body:JSON.stringify(appointmentPayload(form))})
+      const saved=await api<Appointment>(appointment?`/appointments/${appointment.id}`:'/appointments',{method:appointment?'PUT':'POST',body:JSON.stringify(appointmentPayload(form))})
       setEditor(null);await load();toast(appointment?'Termin aktualisiert':'Termin gespeichert')
+      if(form.add_to_calendar)downloadCalendarFile(saved,form.reminder_minutes)
     }catch(error){toast(error instanceof Error?error.message:'Termin konnte nicht gespeichert werden','error')}
     finally{setSaving(false)}
   }

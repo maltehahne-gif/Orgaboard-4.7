@@ -9,6 +9,8 @@ export type AppointmentDraft = {
   status:string
   notes:string
   product_ids:string[]
+  add_to_calendar:boolean
+  reminder_minutes:number
 }
 
 export const appointmentStatuses = [
@@ -19,15 +21,21 @@ export const appointmentStatuses = [
   ['cancelled','abgesagt'],
 ] as const
 
-export const appointmentTypes = [
-  ['customer','Kundentermin'],
-  ['promotion','Promotion / Messe'],
-  ['recommendation','Empfehlung'],
-  ['premium_checkin','Premium Check-in'],
-  ['team','Team'],
-  ['telephone','Telefonie'],
-  ['other','Sonstiges'],
+export const appointmentTypeOptions = [
+  {value:'promotion',label:'Promotion',color:'#ffc400'},
+  {value:'recommendation',label:'Empfehlung',color:'#c77dff'},
+  {value:'premium_checkin',label:'Premium Check-in',color:'#ffb7c8'},
+  {value:'customer',label:'Termin Kundendaten',color:'#e8f51c'},
+  {value:'team',label:'Termin Vorwerk ADM',color:'#28c7e8'},
+  {value:'telephone',label:'Telefonie und Büro',color:'#ffcf23'},
+  {value:'other',label:'Zeit privat',color:'#ff4545'},
 ] as const
+
+export const appointmentTypes = appointmentTypeOptions.map(option=>[option.value,option.label] as const)
+
+export function appointmentTypeOption(value:string){
+  return appointmentTypeOptions.find(option=>option.value===value) || appointmentTypeOptions[3]
+}
 
 export function toDateTimeLocal(value:Date|string) {
   const date = value instanceof Date ? value : new Date(value)
@@ -70,6 +78,8 @@ export function newAppointmentDraft(day = new Date(), employeeId = ''):Appointme
     status:'planned',
     notes:'',
     product_ids:[],
+    add_to_calendar:true,
+    reminder_minutes:1440,
   }
 }
 
@@ -83,12 +93,15 @@ export function appointmentDraft(appointment:Appointment):AppointmentDraft {
     status:appointment.status,
     notes:appointment.notes || '',
     product_ids:appointment.products.map(product => product.id),
+    add_to_calendar:false,
+    reminder_minutes:1440,
   }
 }
 
 export function appointmentPayload(form:AppointmentDraft) {
+  const {add_to_calendar:_addToCalendar,reminder_minutes:_reminderMinutes,...appointment}=form
   return {
-    ...form,
+    ...appointment,
     customer_id:form.customer_id || null,
     employee_id:form.employee_id || null,
     start_at:new Date(form.start_at).toISOString(),
@@ -105,7 +118,14 @@ function calendarDate(value:string) {
   return new Date(value).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'')
 }
 
-export function downloadCalendarFile(appointment:Appointment) {
+function calendarTrigger(minutes:number) {
+  const safeMinutes=Math.max(0,Math.round(minutes))
+  if(safeMinutes>0&&safeMinutes%1440===0)return `-P${safeMinutes/1440}D`
+  if(safeMinutes>0&&safeMinutes%60===0)return `-PT${safeMinutes/60}H`
+  return `-PT${safeMinutes}M`
+}
+
+export function downloadCalendarFile(appointment:Appointment,reminderMinutes=1440) {
   const fallbackEnd = new Date(new Date(appointment.start_at).getTime() + 60 * 60_000).toISOString()
   const title = appointment.customer_name ? `Termin mit ${appointment.customer_name}` : 'Termin'
   const description = [appointment.notes, appointment.products.length ? `Produkte: ${appointment.products.map(p => p.name).join(', ')}` : ''].filter(Boolean).join('\n')
@@ -114,6 +134,7 @@ export function downloadCalendarFile(appointment:Appointment) {
     'VERSION:2.0',
     'PRODID:-//OrgaBoard//Termine//DE',
     'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
     'BEGIN:VEVENT',
     `UID:${appointment.id}@orgaboard`,
     `DTSTAMP:${calendarDate(new Date().toISOString())}`,
@@ -122,6 +143,13 @@ export function downloadCalendarFile(appointment:Appointment) {
     `SUMMARY:${escapeCalendarText(title)}`,
     `LOCATION:${escapeCalendarText(appointment.address || '')}`,
     `DESCRIPTION:${escapeCalendarText(description)}`,
+    'STATUS:CONFIRMED',
+    'TRANSP:OPAQUE',
+    'BEGIN:VALARM',
+    'ACTION:DISPLAY',
+    `TRIGGER:${calendarTrigger(reminderMinutes)}`,
+    `DESCRIPTION:${escapeCalendarText(`Erinnerung: ${title}`)}`,
+    'END:VALARM',
     'END:VEVENT',
     'END:VCALENDAR',
   ].join('\r\n')

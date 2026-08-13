@@ -1,7 +1,7 @@
-import {FormEvent,useEffect,useMemo,useState} from 'react'
+import {FormEvent,useEffect,useMemo,useState,type CSSProperties} from 'react'
 import type {Appointment,Customer,Product} from '../types'
 import {Modal} from './Modal'
-import {appointmentDraft,appointmentStatuses,appointmentTypes,newAppointmentDraft,type AppointmentDraft} from '../lib/appointments'
+import {appointmentDraft,appointmentStatuses,appointmentTypeOptions,newAppointmentDraft,type AppointmentDraft} from '../lib/appointments'
 
 type TeamEmployee={id:string;display_name:string}
 
@@ -32,6 +32,7 @@ export function AppointmentModal({appointment,initialDay,ownEmployeeId='',isTeam
     if(!isTeamLeader || !form.employee_id)return customers
     return customers.filter(customer=>customer.employee_id===form.employee_id)
   },[customers,form.employee_id,isTeamLeader])
+  const selectedCustomer=customers.find(customer=>customer.id===form.customer_id)
 
   function changeCustomer(customerId:string){
     const customer=customers.find(item=>item.id===customerId)
@@ -51,8 +52,8 @@ export function AppointmentModal({appointment,initialDay,ownEmployeeId='',isTeam
     await onDelete()
   }
 
-  return <Modal title={appointment?'Termin bearbeiten':'Termin anlegen'} onClose={onClose}>
-    <form className="form-grid" onSubmit={submit}>
+  return <Modal title={appointment?'Termin bearbeiten':'Neuer Termin'} onClose={onClose}>
+    <form className="form-grid appointment-editor" onSubmit={submit}>
       {isTeamLeader&&<label className="span-2">Mitarbeiter
         <select required value={form.employee_id} onChange={event=>setForm({...form,employee_id:event.target.value,customer_id:''})}>
           <option value="">Mitarbeiter auswählen</option>
@@ -65,18 +66,43 @@ export function AppointmentModal({appointment,initialDay,ownEmployeeId='',isTeam
           {visibleCustomers.map(customer=><option key={customer.id} value={customer.id}>{customer.full_name}</option>)}
         </select>
       </label>
+      {selectedCustomer&&<div className="appointment-customer-preview span-2">
+        <div><small>Anschrift</small><strong>{selectedCustomer.address||'Nicht hinterlegt'}</strong></div>
+        <div><small>Telefon / Handynummer</small><strong>{selectedCustomer.phone||'Nicht hinterlegt'}</strong></div>
+        <div><small>E-Mail-Adresse</small><strong>{selectedCustomer.email||'Nicht hinterlegt'}</strong></div>
+      </div>}
       <label>Start<input type="datetime-local" required value={form.start_at} onChange={event=>setForm({...form,start_at:event.target.value})}/></label>
       <label>Ende<input type="datetime-local" value={form.end_at} onChange={event=>setForm({...form,end_at:event.target.value})}/></label>
-      <label>Terminart
-        <select value={form.appointment_type} onChange={event=>setForm({...form,appointment_type:event.target.value})}>
-          {appointmentTypes.map(([value,label])=><option key={value} value={value}>{label}</option>)}
-        </select>
-      </label>
+      <fieldset className="appointment-type-field span-2">
+        <legend>Terminart und Farbe</legend>
+        <div className="appointment-type-options">
+          {appointmentTypeOptions.map(option=><label className={`appointment-type-option${form.appointment_type===option.value?' selected':''}`} style={{'--type-color':option.color} as CSSProperties} key={option.value}>
+            <input type="radio" name="appointment_type" value={option.value} checked={form.appointment_type===option.value} onChange={event=>setForm({...form,appointment_type:event.target.value})}/>
+            <span className="appointment-type-swatch"/>
+            <span>{option.label}</span>
+          </label>)}
+        </div>
+      </fieldset>
       <label>Status
         <select value={form.status} onChange={event=>setForm({...form,status:event.target.value})}>
           {appointmentStatuses.map(([value,label])=><option key={value} value={value}>{label}</option>)}
         </select>
       </label>
+      <label className="appointment-calendar-toggle span-2">
+        <input type="checkbox" checked={form.add_to_calendar} onChange={event=>setForm({...form,add_to_calendar:event.target.checked})}/>
+        <span><strong>Im Handy-Kalender speichern</strong><small>Nach dem Speichern wird eine Kalenderdatei geöffnet.</small></span>
+      </label>
+      {form.add_to_calendar&&<label className="span-2">Erinnerung
+        <select value={form.reminder_minutes} onChange={event=>setForm({...form,reminder_minutes:Number(event.target.value)})}>
+          <option value={15}>15 Minuten vorher</option>
+          <option value={30}>30 Minuten vorher</option>
+          <option value={60}>1 Stunde vorher</option>
+          <option value={120}>2 Stunden vorher</option>
+          <option value={1440}>1 Tag vorher</option>
+          <option value={2880}>2 Tage vorher</option>
+          <option value={10080}>1 Woche vorher</option>
+        </select>
+      </label>}
       <label className="span-2">Geplante Produkte
         <select multiple value={form.product_ids} onChange={event=>setForm({...form,product_ids:Array.from(event.target.selectedOptions).map(option=>option.value)})}>
           {products.map(product=><option key={product.id} value={product.id}>{product.name}</option>)}

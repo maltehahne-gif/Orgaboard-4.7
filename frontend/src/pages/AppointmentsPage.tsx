@@ -4,7 +4,7 @@ import {api,formatDateTime} from '../lib/api'
 import type {Appointment,Customer,Product} from '../types'
 import {useToast} from '../components/Toast'
 import {AppointmentModal} from '../components/AppointmentModal'
-import {appointmentPayload,appointmentStatuses,type AppointmentDraft} from '../lib/appointments'
+import {appointmentPayload,appointmentStatuses,appointmentTypeOption,downloadCalendarFile,type AppointmentDraft} from '../lib/appointments'
 import {connectRealtime} from '../lib/realtime'
 import {useAuth} from '../lib/auth'
 
@@ -41,8 +41,9 @@ export function AppointmentsPage(){
     setSaving(true)
     try{
       const appointment=editor?.appointment
-      await api(appointment?`/appointments/${appointment.id}`:'/appointments',{method:appointment?'PUT':'POST',body:JSON.stringify(appointmentPayload(form))})
+      const saved=await api<Appointment>(appointment?`/appointments/${appointment.id}`:'/appointments',{method:appointment?'PUT':'POST',body:JSON.stringify(appointmentPayload(form))})
       setEditor(null);await load();toast(appointment?'Termin aktualisiert':'Termin gespeichert')
+      if(form.add_to_calendar)downloadCalendarFile(saved,form.reminder_minutes)
     }catch(error){toast(error instanceof Error?error.message:'Termin konnte nicht gespeichert werden','error')}
     finally{setSaving(false)}
   }
@@ -64,9 +65,9 @@ export function AppointmentsPage(){
     <div className="page-head"><div><h1>Termine</h1><p>Planen, bestätigen, verschieben und sauber dokumentieren.</p></div><button className="primary" onClick={()=>setEditor({initialDay:new Date()})}><CalendarPlus size={18}/> Termin anlegen</button></div>
     <div className="cards-list">
       {rows.length===0&&<div className="card empty">Noch keine Termine vorhanden.</div>}
-      {rows.map(appointment=><div className={`card appointment-card appointment-list-status-${appointment.status}`} key={appointment.id}>
+      {rows.map(appointment=>{const type=appointmentTypeOption(appointment.appointment_type);return <div className={`card appointment-card appointment-list-status-${appointment.status}`} key={appointment.id}>
         <div className="appointment-list-copy">
-          <span className={`dot ${appointment.appointment_type}`}/><strong>{appointment.customer_name||'Termin'}</strong>
+          <span className="dot" style={{background:type.color}}/><strong>{appointment.customer_name||'Termin'}</strong><small>{type.label}</small>
           <p>{formatDateTime(appointment.start_at)}{appointment.end_at?` – ${new Date(appointment.end_at).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`:''} · {appointment.address||'Adresse nicht hinterlegt'}</p>
           {appointment.notes&&<small>{appointment.notes}</small>}
           {appointment.products.length>0&&<small>Geplant: {appointment.products.map(product=>product.name).join(', ')}</small>}
@@ -76,7 +77,7 @@ export function AppointmentsPage(){
           <button type="button" onClick={()=>setEditor({appointment})}><Pencil size={16}/> Bearbeiten</button>
           <button type="button" className="icon-danger" onClick={()=>remove(appointment)} aria-label="Termin löschen" title="Termin löschen"><Trash2 size={16}/></button>
         </div>
-      </div>)}
+      </div>})}
     </div>
     {editor&&<AppointmentModal
       appointment={editor.appointment}

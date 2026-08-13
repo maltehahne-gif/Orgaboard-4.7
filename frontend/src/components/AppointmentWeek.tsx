@@ -1,6 +1,7 @@
 import {CalendarPlus,Check,ChevronLeft,ChevronRight,Pencil,RotateCcw,Trash2} from 'lucide-react'
+import type {CSSProperties} from 'react'
 import type {Appointment} from '../types'
-import {addDays,dateKey,downloadCalendarFile} from '../lib/appointments'
+import {addDays,appointmentTypeOption,appointmentTypeOptions,dateKey,downloadCalendarFile} from '../lib/appointments'
 
 type Props={
   weekStart:Date
@@ -19,7 +20,7 @@ const rangeFormatter=new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-dig
 const timeFormatter=new Intl.DateTimeFormat('de-DE',{hour:'2-digit',minute:'2-digit'})
 
 export function AppointmentWeek({weekStart,appointments,onShiftWeek,onToday,onCreate,onEdit,onToggleCompleted,onDelete}:Props){
-  const days=Array.from({length:5},(_,index)=>addDays(weekStart,index))
+  const days=Array.from({length:7},(_,index)=>addDays(weekStart,index))
   const end=days[days.length-1]
   return <section className="card appointment-week-shell" aria-label="Termine dieser Woche">
     <div className="appointment-week-toolbar">
@@ -35,30 +36,38 @@ export function AppointmentWeek({weekStart,appointments,onShiftWeek,onToday,onCr
         {days.map(day=>{
           const rows=appointments.filter(appointment=>dateKey(appointment.start_at)===dateKey(day))
           const today=dateKey(day)===dateKey(new Date())
-          return <div className={`appointment-day${today?' today':''}`} key={dateKey(day)}>
+          const weekend=[0,6].includes(day.getDay())
+          return <div className={`appointment-day${today?' today':''}${weekend?' weekend':''}`} key={dateKey(day)}>
             <div className="appointment-day-head">
               <strong>{dayFormatter.format(day)}</strong>
               <span>{dateFormatter.format(day)}</span>
               <button type="button" onClick={()=>onCreate(day)}>+ Termin</button>
             </div>
             <div className="appointment-day-body">
-              {rows.length===0?<div className="appointment-day-empty">Keine Termine</div>:rows.map(appointment=><article className={`week-appointment status-${appointment.status}`} key={appointment.id}>
-                <button type="button" className="week-appointment-main" onClick={()=>onEdit(appointment)} aria-label={`${appointment.customer_name||'Termin'} bearbeiten`}>
-                  <strong>{timeFormatter.format(new Date(appointment.start_at))}{appointment.end_at?` – ${timeFormatter.format(new Date(appointment.end_at))}`:''}</strong>
-                  <b>{appointment.customer_name||'Termin'}</b>
-                  {appointment.notes&&<span>{appointment.notes}</span>}
-                </button>
-                <div className="week-appointment-actions">
-                  <button type="button" onClick={()=>downloadCalendarFile(appointment)} title="Zum Kalender hinzufügen"><CalendarPlus size={14}/><span>Kalender</span></button>
-                  <button type="button" onClick={()=>onEdit(appointment)} title="Termin bearbeiten" aria-label="Termin bearbeiten"><Pencil size={14}/></button>
-                  <button type="button" onClick={()=>onToggleCompleted(appointment)} title={appointment.status==='completed'?'Wieder als geplant markieren':'Als erledigt markieren'} aria-label={appointment.status==='completed'?'Wieder öffnen':'Als erledigt markieren'}>{appointment.status==='completed'?<RotateCcw size={14}/>:<Check size={14}/>}</button>
-                  <button type="button" onClick={()=>onDelete(appointment)} title="Termin löschen" aria-label="Termin löschen"><Trash2 size={14}/></button>
-                </div>
-              </article>)}
+              {rows.length===0?<div className="appointment-day-empty">Keine Termine</div>:rows.map(appointment=>{
+                const type=appointmentTypeOption(appointment.appointment_type)
+                return <article className={`week-appointment status-${appointment.status}`} style={{'--appointment-color':type.color} as CSSProperties} key={appointment.id}>
+                  <button type="button" className="week-appointment-main" onClick={()=>onEdit(appointment)} aria-label={`${appointment.customer_name||'Termin'} bearbeiten`}>
+                    <strong>{timeFormatter.format(new Date(appointment.start_at))}{appointment.end_at?` – ${timeFormatter.format(new Date(appointment.end_at))}`:''}</strong>
+                    <b>{appointment.customer_name||'Termin'}</b>
+                    <span className="week-appointment-type">{type.label}</span>
+                    {appointment.notes&&<span>{appointment.notes}</span>}
+                  </button>
+                  <div className="week-appointment-actions">
+                    <button type="button" onClick={()=>downloadCalendarFile(appointment)} title="Mit Erinnerung im Handy-Kalender speichern"><CalendarPlus size={14}/><span>Kalender</span></button>
+                    <button type="button" onClick={()=>onEdit(appointment)} title="Termin bearbeiten"><Pencil size={14}/><span>Bearbeiten</span></button>
+                    <button type="button" className="complete-action" onClick={()=>onToggleCompleted(appointment)} title={appointment.status==='completed'?'Wieder als geplant markieren':'Als erledigt markieren'}>{appointment.status==='completed'?<RotateCcw size={14}/>:<Check size={14}/>}<span>{appointment.status==='completed'?'Öffnen':'Erledigt'}</span></button>
+                    <button type="button" className="delete-action" onClick={()=>onDelete(appointment)} title="Termin löschen"><Trash2 size={14}/><span>Löschen</span></button>
+                  </div>
+                </article>
+              })}
             </div>
           </div>
         })}
       </div>
+    </div>
+    <div className="appointment-type-legend" aria-label="Farben der Terminarten">
+      {appointmentTypeOptions.map(option=><span key={option.value}><i style={{background:option.color}}/>{option.label}</span>)}
     </div>
     <button type="button" className="appointment-week-add" onClick={()=>onCreate(new Date())}><CalendarPlus size={17}/> Termin eintragen</button>
   </section>
