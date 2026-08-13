@@ -1,29 +1,95 @@
-import {FormEvent,useEffect,useState} from 'react'
-import {CalendarPlus} from 'lucide-react'
+import {useCallback,useEffect,useState} from 'react'
+import {CalendarPlus,Pencil,Trash2} from 'lucide-react'
 import {api,formatDateTime} from '../lib/api'
 import type {Appointment,Customer,Product} from '../types'
-import {Modal} from '../components/Modal'
 import {useToast} from '../components/Toast'
+import {AppointmentModal} from '../components/AppointmentModal'
+import {appointmentPayload,appointmentStatuses,type AppointmentDraft} from '../lib/appointments'
+import {connectRealtime} from '../lib/realtime'
+import {useAuth} from '../lib/auth'
 
-const nowLocal=()=>{const d=new Date(Date.now()+3600000);return d.toISOString().slice(0,16)}
-export function AppointmentsPage(){const [rows,setRows]=useState<Appointment[]>([]);const [customers,setCustomers]=useState<Customer[]>([]);const [products,setProducts]=useState<Product[]>([]);const [open,setOpen]=useState(false);const [form,setForm]=useState({customer_id:'',start_at:nowLocal(),end_at:'',appointment_type:'customer',status:'planned',notes:'',product_ids:[] as string[]});const toast=useToast();const load=()=>Promise.all([api<Appointment[]>('/appointments'),api<Customer[]>('/customers'),api<Product[]>('/products')]).then(([a,c,p])=>{setRows(a);setCustomers(c);setProducts(p)});useEffect(()=>{load()},[]);async function save(e:FormEvent){e.preventDefault();try{await api('/appointments',{method:'POST',body:JSON.stringify({...form,customer_id:form.customer_id||null,start_at:new Date(form.start_at).toISOString(),end_at:form.end_at?new Date(form.end_at).toISOString():null})});setOpen(false);load();toast('Termin gespeichert')}catch(err){toast(err instanceof Error?err.message:'Fehler','error')}}async function status(id:string,status:string){await api(`/appointments/${id}/status`,{method:'PATCH',body:JSON.stringify({status})});load()}async function removeAppointment(id:string){
-if(!window.confirm(
-"Termin wirklich löschen?\n\n"
-+"Der Termin wird dauerhaft entfernt.\n\n"
-+"Diese Aktion kann nicht rückgängig gemacht werden."
-))return;
+type TeamEmployee={id:string;display_name:string}
+type Editor={appointment?:Appointment;initialDay?:Date}
 
-try{
-await api(`/appointments/${id}`,{method:"DELETE"});
-toast("Termin wurde gelöscht.");
-await load();
-}catch(error){
-toast(
-error instanceof Error
-? error.message
-: "Der Termin konnte nicht gelöscht werden.",
-"error"
-);
+export function AppointmentsPage(){
+  const {me}=useAuth()
+  const [rows,setRows]=useState<Appointment[]>([])
+  const [customers,setCustomers]=useState<Customer[]>([])
+  const [products,setProducts]=useState<Product[]>([])
+  const [employees,setEmployees]=useState<TeamEmployee[]>([])
+  const [editor,setEditor]=useState<Editor|null>(null)
+  const [saving,setSaving]=useState(false)
+  const toast=useToast()
+  const isTeamLeader=me?.role==='TEAM_LEADER'
+
+  const load=useCallback(async()=>{
+    try{
+      const requests:[Promise<Appointment[]>,Promise<Customer[]>,Promise<Product[]>,Promise<TeamEmployee[]>]=[
+        api<Appointment[]>('/appointments'),
+        api<Customer[]>('/customers'),
+        api<Product[]>('/products'),
+        isTeamLeader?api<TeamEmployee[]>('/team/employees'):Promise.resolve([]),
+      ]
+      const [appointments,customerRows,productRows,employeeRows]=await Promise.all(requests)
+      setRows(appointments);setCustomers(customerRows);setProducts(productRows);setEmployees(employeeRows)
+    }catch(error){toast(error instanceof Error?error.message:'Termine konnten nicht geladen werden','error')}
+  },[isTeamLeader,toast])
+
+  useEffect(()=>{load();return connectRealtime(event=>{if(!event?.entity || event.entity==='appointment')load()})},[load])
+
+  async function save(form:AppointmentDraft){
+    setSaving(true)
+    try{
+      const appointment=editor?.appointment
+      await api(appointment?`/appointments/${appointment.id}`:'/appointments',{method:appointment?'PUT':'POST',body:JSON.stringify(appointmentPayload(form))})
+      setEditor(null);await load();toast(appointment?'Termin aktualisiert':'Termin gespeichert')
+    }catch(error){toast(error instanceof Error?error.message:'Termin konnte nicht gespeichert werden','error')}
+    finally{setSaving(false)}
+  }
+
+  async function changeStatus(id:string,status:string){
+    try{await api(`/appointments/${id}/status`,{method:'PATCH',body:JSON.stringify({status})});await load();toast('Status aktualisiert')}
+    catch(error){toast(error instanceof Error?error.message:'Status konnte nicht geändert werden','error')}
+  }
+
+  async function remove(appointment:Appointment,confirmed=false){
+    if(!confirmed&&!window.confirm(`Termin „${appointment.customer_name||'Termin'}“ wirklich löschen?`))return
+    setSaving(true)
+    try{await api(`/appointments/${appointment.id}`,{method:'DELETE'});setEditor(null);await load();toast('Termin gelöscht')}
+    catch(error){toast(error instanceof Error?error.message:'Termin konnte nicht gelöscht werden','error')}
+    finally{setSaving(false)}
+  }
+
+  return <div className="page">
+    <div className="page-head"><div><h1>Termine</h1><p>Planen, bestätigen, verschieben und sauber dokumentieren.</p></div><button className="primary" onClick={()=>setEditor({initialDay:new Date()})}><CalendarPlus size={18}/> Termin anlegen</button></div>
+    <div className="cards-list">
+      {rows.length===0&&<div className="card empty">Noch keine Termine vorhanden.</div>}
+      {rows.map(appointment=><div className={`card appointment-card appointment-list-status-${appointment.status}`} key={appointment.id}>
+        <div className="appointment-list-copy">
+          <span className={`dot ${appointment.appointment_type}`}/><strong>{appointment.customer_name||'Termin'}</strong>
+          <p>{formatDateTime(appointment.start_at)}{appointment.end_at?` – ${new Date(appointment.end_at).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`:''} · {appointment.address||'Adresse nicht hinterlegt'}</p>
+          {appointment.notes&&<small>{appointment.notes}</small>}
+          {appointment.products.length>0&&<small>Geplant: {appointment.products.map(product=>product.name).join(', ')}</small>}
+        </div>
+        <div className="appointment-list-actions">
+          <select aria-label="Terminstatus" value={appointment.status} onChange={event=>changeStatus(appointment.id,event.target.value)}>{appointmentStatuses.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select>
+          <button type="button" onClick={()=>setEditor({appointment})}><Pencil size={16}/> Bearbeiten</button>
+          <button type="button" className="icon-danger" onClick={()=>remove(appointment)} aria-label="Termin löschen" title="Termin löschen"><Trash2 size={16}/></button>
+        </div>
+      </div>)}
+    </div>
+    {editor&&<AppointmentModal
+      appointment={editor.appointment}
+      initialDay={editor.initialDay}
+      ownEmployeeId={me?.employee?.id}
+      isTeamLeader={isTeamLeader}
+      customers={customers}
+      products={products}
+      employees={employees}
+      saving={saving}
+      onClose={()=>setEditor(null)}
+      onSave={save}
+      onDelete={editor.appointment?()=>remove(editor.appointment!,true):undefined}
+    />}
+  </div>
 }
-}
-return <div className="page"><div className="page-head"><div><h1>Termine</h1><p>Planen, bestätigen und sauber dokumentieren.</p></div><button className="primary" onClick={()=>setOpen(true)}><CalendarPlus size={18}/> Termin anlegen</button></div><div className="cards-list">{rows.map(a=><div className="card appointment-card" key={a.id}><div><span className={`dot ${a.appointment_type}`}/><strong>{a.customer_name||'Termin'}</strong><p>{formatDateTime(a.start_at)} · {a.address||'Adresse nicht hinterlegt'}</p>{a.products.length>0&&<small>Geplant: {a.products.map(p=>p.name).join(', ')}</small>}</div><button type="button" className="danger-button appointment-delete-button" onClick={()=>removeAppointment(a.id)}>Löschen</button><select value={a.status} onChange={e=>status(a.id,e.target.value)}><option value="planned">geplant</option><option value="confirmed">bestätigt</option><option value="completed">durchgeführt</option><option value="cancelled">abgesagt</option><option value="rescheduled">verschoben</option></select></div>)}</div>{open&&<Modal title="Termin anlegen" onClose={()=>setOpen(false)}><form className="form-grid" onSubmit={save}><label className="span-2">Kunde<select value={form.customer_id} onChange={e=>setForm({...form,customer_id:e.target.value})}><option value="">Ohne Kundenbezug</option>{customers.map(c=><option key={c.id} value={c.id}>{c.full_name}</option>)}</select></label><label>Start<input type="datetime-local" required value={form.start_at} onChange={e=>setForm({...form,start_at:e.target.value})}/></label><label>Ende<input type="datetime-local" value={form.end_at} onChange={e=>setForm({...form,end_at:e.target.value})}/></label><label>Terminart<select value={form.appointment_type} onChange={e=>setForm({...form,appointment_type:e.target.value})}><option value="customer">Kundendaten</option><option value="promotion">Promotion / Messe</option><option value="recommendation">Empfehlung</option><option value="premium_checkin">Premium Check-in</option><option value="team">Team</option><option value="telephone">Telefonie</option><option value="other">Sonstiges</option></select></label><label>Status<select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option value="planned">geplant</option><option value="confirmed">bestätigt</option></select></label><label className="span-2">Geplante Produkte<select multiple value={form.product_ids} onChange={e=>setForm({...form,product_ids:Array.from(e.target.selectedOptions).map(o=>o.value)})}>{products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label className="span-2">Notizen<textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label><div className="form-actions span-2"><button type="button" onClick={()=>setOpen(false)}>Abbrechen</button><button className="primary">Termin speichern</button></div></form></Modal>}</div>}
