@@ -159,6 +159,12 @@ export function SalesPage(){
   const [busy,setBusy]=
     useState(false)
 
+  const [customerSearch,setCustomerSearch]=
+    useState('')
+
+  const [customerSearchOpen,setCustomerSearchOpen]=
+    useState(false)
+
 
   const emptyItem=():SaleItemForm=>({
     product_id:'',
@@ -221,6 +227,9 @@ export function SalesPage(){
         emptyItem(),
       ],
     })
+
+    setCustomerSearch('')
+    setCustomerSearchOpen(false)
   }
 
 
@@ -306,6 +315,58 @@ export function SalesPage(){
               ).toFixed(2),
       }
     )
+  }
+
+
+  function customerMatches(
+    search:string
+  ){
+
+    const query=
+      search
+        .trim()
+        .toLowerCase()
+
+    const list=
+      customers.filter(customer=>{
+
+        const c:any=customer
+
+        const text=[
+          customerName(customer),
+          c.phone,
+          c.email,
+          c.street,
+          c.house_number,
+          c.postal_code,
+          c.city,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+
+        return !query
+          ||text.includes(query)
+      })
+
+    return list.slice(0,8)
+  }
+
+
+  function chooseCustomer(
+    customer:Customer
+  ){
+
+    setForm(current=>({
+      ...current,
+      customer_id:customer.id,
+    }))
+
+    setCustomerSearch(
+      customerName(customer)
+    )
+
+    setCustomerSearchOpen(false)
   }
 
 
@@ -688,38 +749,129 @@ export function SalesPage(){
 
           <div className="sale-base-grid">
 
-            <label>
+            <label className="sale-customer-label">
               Kunde
 
-              <select
-                value={
-                  form.customer_id
-                }
-                onChange={event=>
-                  setForm({
-                    ...form,
-                    customer_id:
-                      event.target.value,
-                  })
-                }
-              >
-                <option value="">
-                  Kein Kunde ausgewählt
-                </option>
+              <div className="sale-customer-search">
 
-                {customers.map(
-                  customer=>(
-                    <option
-                      key={customer.id}
-                      value={customer.id}
-                    >
-                      {customerName(
-                        customer
-                      )}
-                    </option>
-                  )
+                <Search size={17}/>
+
+                <input
+                  type="text"
+                  value={customerSearch}
+                  placeholder="Kunde suchen ..."
+                  autoComplete="off"
+
+                  onFocus={()=>
+                    setCustomerSearchOpen(true)
+                  }
+
+                  onChange={event=>{
+
+                    setCustomerSearch(
+                      event.target.value
+                    )
+
+                    setCustomerSearchOpen(true)
+
+                    setForm(current=>({
+                      ...current,
+                      customer_id:'',
+                    }))
+                  }}
+                />
+
+                {customerSearch&&(
+                  <button
+                    type="button"
+                    className="sale-customer-clear"
+                    title="Kundenauswahl löschen"
+                    onClick={()=>{
+
+                      setCustomerSearch('')
+
+                      setCustomerSearchOpen(true)
+
+                      setForm(current=>({
+                        ...current,
+                        customer_id:'',
+                      }))
+                    }}
+                  >
+                    <X size={15}/>
+                  </button>
                 )}
-              </select>
+
+                {customerSearchOpen&&(
+                  <div className="sale-customer-results">
+
+                    {customerMatches(
+                      customerSearch
+                    ).length===0 ? (
+
+                      <div className="sale-customer-empty">
+                        Kein Kunde gefunden
+                      </div>
+
+                    ) : (
+
+                      customerMatches(
+                        customerSearch
+                      ).map(customer=>{
+
+                        const c:any=customer
+
+                        return(
+                          <button
+                            type="button"
+                            key={customer.id}
+                            className={
+                              form.customer_id
+                                ===customer.id
+                                ?'selected'
+                                :''
+                            }
+                            onClick={()=>
+                              chooseCustomer(
+                                customer
+                              )
+                            }
+                          >
+                            <span className="sale-customer-result-icon">
+                              {form.customer_id===customer.id
+                                ?<Check size={15}/>
+                                :<Search size={14}/>
+                              }
+                            </span>
+
+                            <span className="sale-customer-result-text">
+                              <strong>
+                                {customerName(
+                                  customer
+                                )}
+                              </strong>
+
+                              <small>
+                                {[
+                                  c.city,
+                                  c.phone,
+                                  c.email,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')
+                                }
+                              </small>
+                            </span>
+                          </button>
+                        )
+                      })
+
+                    )}
+
+                  </div>
+                )}
+
+              </div>
             </label>
 
 

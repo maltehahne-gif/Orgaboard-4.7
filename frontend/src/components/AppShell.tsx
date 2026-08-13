@@ -13,6 +13,7 @@ import {
   Route as RouteIcon,
   Settings,
   ShoppingCart,
+  Table2,
   Users,
 } from 'lucide-react'
 import {
@@ -38,6 +39,7 @@ const base=[
   ['/verlauf','Verlauf',History],
   ['/produkte','Produkte',Package],
   ['/verkaeufe','Verkäufe',ShoppingCart],
+  ['/verkaufstabelle','Verkaufstabelle',Table2],
   ['/verleih','Verleih',PackageCheck],
   ['/buntewoche','Buntewoche',Gauge],
   ['/nachrichten','Nachrichten',Mail],

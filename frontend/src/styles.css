@@ -7101,3 +7101,1096 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
     align-self:flex-start;
   }
 }
+
+/* ===== VERKAUFSTABELLE PAPIERVORLAGE V1 ===== */
+
+.sales-report-page{
+  padding-bottom:32px;
+}
+
+.sales-report-page-head{
+  align-items:center;
+}
+
+.sales-report-page-head .primary{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+}
+
+.sales-report-spin{
+  animation:sales-report-spin .8s linear infinite;
+}
+
+@keyframes sales-report-spin{
+  to{
+    transform:rotate(360deg);
+  }
+}
+
+.sales-report-toolbar{
+  margin-bottom:12px;
+  padding:10px 12px;
+
+  border:
+    1px solid rgba(255,255,255,.08);
+
+  border-radius:12px;
+
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+
+  background:
+    rgba(255,255,255,.025);
+}
+
+.sales-report-toolbar label{
+  min-width:260px;
+
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+
+  color:
+    rgba(255,255,255,.48);
+
+  font-size:10px;
+}
+
+.sales-report-toolbar select{
+  min-height:39px;
+  padding:0 10px;
+
+  border:
+    1px solid rgba(255,255,255,.10);
+
+  border-radius:9px;
+
+  background:#0d181c;
+  color:#f3f7f5;
+}
+
+.sales-report-week-nav{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.sales-report-week-nav button{
+  width:39px;
+  height:39px;
+  padding:0;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.sales-report-week-nav>div{
+  min-width:220px;
+  padding:0 10px;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.sales-report-week-nav small{
+  color:
+    rgba(255,255,255,.38);
+
+  font-size:9px;
+}
+
+.sales-report-week-nav strong{
+  font-size:12px;
+}
+
+.sales-report-loading{
+  min-height:50px;
+  margin-bottom:10px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+
+  color:
+    rgba(255,255,255,.55);
+}
+
+.sales-report-scroll{
+  width:100%;
+  overflow:auto;
+
+  border-radius:11px;
+
+  background:#d6d8d7;
+}
+
+.sales-week-sheet{
+  width:1465px;
+  min-width:1465px;
+
+  padding:10px 10px 7px;
+
+  box-sizing:border-box;
+
+  background:#f8f8f5;
+  color:#171b19;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+.sales-week-sheet-meta{
+  height:22px;
+  padding:0 3px 5px;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  color:#303633;
+  font-size:9px;
+  font-weight:700;
+}
+
+.sales-week-table{
+  width:100%;
+
+  border-collapse:collapse;
+  table-layout:fixed;
+
+  background:#fff;
+
+  color:#111;
+
+  font-size:9px;
+}
+
+.sales-week-table col.col-day{
+  width:74px;
+}
+
+.sales-week-table col.col-time{
+  width:63px;
+}
+
+.sales-week-table col.col-customer{
+  width:255px;
+}
+
+.sales-week-table col.col-mark{
+  width:35px;
+}
+
+.sales-week-table col.col-product{
+  width:44px;
+}
+
+.sales-week-table col.col-units{
+  width:55px;
+}
+
+.sales-week-table col.col-revenue{
+  width:77px;
+}
+
+.sales-week-table th,
+.sales-week-table td{
+  height:21px;
+  padding:1px 3px;
+
+  box-sizing:border-box;
+
+  border:
+    1px solid #4c514e;
+
+  text-align:center;
+  vertical-align:middle;
+}
+
+.sales-sheet-group-row th{
+  height:25px;
+
+  background:#e9ebe9;
+
+  font-size:10px;
+  font-weight:700;
+}
+
+.sales-sheet-logo-cell{
+  background:#f7f7f4!important;
+}
+
+.sales-sheet-main-head{
+  background:#f7f7f4!important;
+
+  font-size:12px!important;
+}
+
+.sales-sheet-logo{
+  position:relative;
+
+  width:50px;
+  height:42px;
+
+  margin:auto;
+}
+
+.sales-sheet-logo i{
+  position:absolute;
+
+  width:25px;
+  height:25px;
+
+  border-radius:
+    60% 45% 55% 50%;
+
+  opacity:.95;
+}
+
+.sales-sheet-logo i:nth-child(1){
+  left:4px;
+  top:2px;
+
+  background:#ee3f36;
+
+  transform:rotate(-18deg);
+}
+
+.sales-sheet-logo i:nth-child(2){
+  right:3px;
+  top:5px;
+
+  background:#efb623;
+
+  transform:rotate(20deg);
+}
+
+.sales-sheet-logo i:nth-child(3){
+  left:2px;
+  bottom:2px;
+
+  background:#63b34d;
+
+  transform:rotate(15deg);
+}
+
+.sales-sheet-logo i:nth-child(4){
+  right:6px;
+  bottom:0;
+
+  background:#2a94c8;
+
+  transform:rotate(-20deg);
+}
+
+.sales-sheet-label-row th{
+  height:78px;
+
+  background:#f2f3f1;
+
+  font-size:8px;
+  font-weight:600;
+
+  overflow:hidden;
+}
+
+.sales-sheet-label-row .vertical{
+  position:relative;
+  padding:0;
+}
+
+.sales-sheet-label-row .vertical>span{
+  position:absolute;
+
+  left:50%;
+  bottom:5px;
+
+  white-space:nowrap;
+
+  transform:
+    translateX(-50%)
+    rotate(-90deg);
+
+  transform-origin:center;
+}
+
+.sales-sheet-day{
+  padding:0 7px!important;
+
+  background:#f2f3f1;
+
+  text-align:left!important;
+
+  font-size:10px;
+  font-weight:700;
+}
+
+.sales-sheet-day-end td{
+  border-bottom-width:2px;
+}
+
+.sales-sheet-time{
+  font-size:9px;
+  font-weight:600;
+}
+
+.sales-sheet-customer{
+  padding:2px 5px!important;
+
+  text-align:left!important;
+}
+
+.sales-sheet-customer strong{
+  display:block;
+
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+
+  font-size:8px;
+}
+
+.sales-sheet-customer small{
+  display:block;
+
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+
+  color:#4b504d;
+
+  font-size:7px;
+}
+
+.sheet-contact-promotion{
+  background:#e2a027!important;
+}
+
+.sheet-contact-recommendation{
+  background:#7774b8!important;
+}
+
+.sheet-contact-premium{
+  background:#c5a0c5!important;
+}
+
+.sheet-contact-ko{
+  background:#8abb67!important;
+}
+
+.sheet-contact-aom{
+  background:#3898c4!important;
+}
+
+.sheet-profi-recommendation{
+  background:#7774b8!important;
+}
+
+.sheet-profi-premium{
+  background:#c5a0c5!important;
+}
+
+.sales-week-table tbody
+.sheet-contact-promotion,
+.sales-week-table tbody
+.sheet-contact-recommendation,
+.sales-week-table tbody
+.sheet-contact-premium,
+.sales-week-table tbody
+.sheet-contact-ko,
+.sales-week-table tbody
+.sheet-contact-aom,
+.sales-week-table tbody
+.sheet-profi-recommendation,
+.sales-week-table tbody
+.sheet-profi-premium{
+  color:#111;
+
+  font-weight:800;
+}
+
+.sales-sheet-product-cell{
+  font-weight:800;
+}
+
+.sales-sheet-number{
+  font-weight:800;
+}
+
+.sales-sheet-money{
+  white-space:nowrap;
+
+  font-size:7px;
+  font-weight:700;
+}
+
+.sales-sheet-total-row th,
+.sales-sheet-total-row td{
+  height:25px;
+
+  border-top-width:2px;
+
+  font-weight:800;
+}
+
+.sales-sheet-total-row th{
+  padding-right:10px;
+
+  background:#f1f2ef;
+
+  text-align:right;
+  font-size:10px;
+}
+
+.sales-sheet-alt-total{
+  background:
+    repeating-linear-gradient(
+      135deg,
+      #d8dbd9 0,
+      #d8dbd9 3px,
+      #6d7470 3px,
+      #6d7470 4px
+    )!important;
+}
+
+.sales-sheet-footnote{
+  padding:5px 3px 0;
+
+  color:#555b57;
+
+  text-align:right;
+  font-size:7px;
+}
+
+@media(max-width:700px){
+
+  .sales-report-page-head{
+    align-items:stretch;
+  }
+
+  .sales-report-page-head .primary{
+    width:100%;
+    justify-content:center;
+  }
+
+  .sales-report-toolbar{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .sales-report-toolbar label{
+    width:100%;
+    min-width:0;
+  }
+
+  .sales-report-week-nav{
+    width:100%;
+  }
+
+  .sales-report-week-nav>div{
+    min-width:0;
+    flex:1;
+  }
+}
+
+
+/* PDF / Druckansicht */
+@media print{
+
+  body{
+    background:#fff!important;
+  }
+
+  .sidebar,
+  .mobile-nav,
+  .topbar,
+  .sales-report-page-head,
+  .sales-report-toolbar{
+    display:none!important;
+  }
+
+  .main,
+  .content,
+  .page,
+  .sales-report-page,
+  .sales-report-scroll{
+    width:auto!important;
+    max-width:none!important;
+
+    margin:0!important;
+    padding:0!important;
+
+    overflow:visible!important;
+
+    background:#fff!important;
+  }
+
+  .sales-week-sheet{
+    transform-origin:top left;
+
+    box-shadow:none!important;
+  }
+}
+
+/* ===== VERKAUFSTABELLE SCHRIFT FIX V2 ===== */
+
+/* Oberste Gruppenüberschriften sauber mittig */
+.sales-sheet-group-row th{
+  height:30px !important;
+  padding:3px 2px !important;
+
+  text-align:center !important;
+  vertical-align:middle !important;
+
+  white-space:nowrap;
+  overflow:visible;
+
+  font-size:8px !important;
+  line-height:1.1;
+}
+
+/* Uhrzeit / Kunde, Anschrift */
+.sales-sheet-main-head{
+  padding:4px !important;
+
+  text-align:center !important;
+  vertical-align:middle !important;
+
+  font-size:10px !important;
+  line-height:1.1 !important;
+
+  white-space:normal !important;
+  overflow:visible !important;
+}
+
+
+/* Mehr Platz für die senkrechten Spaltenüberschriften */
+.sales-sheet-label-row th{
+  height:108px !important;
+  min-height:108px !important;
+
+  padding:0 !important;
+
+  overflow:visible !important;
+
+  vertical-align:middle !important;
+
+  font-size:7px !important;
+  line-height:1 !important;
+}
+
+
+/*
+  Senkrechte Schrift nicht mehr über absolute Positionierung drehen.
+  writing-mode verhindert das Abschneiden deutlich zuverlässiger,
+  auch beim PDF-Export.
+*/
+.sales-sheet-label-row .vertical{
+  position:relative !important;
+
+  overflow:visible !important;
+
+  text-align:center !important;
+  vertical-align:middle !important;
+}
+
+.sales-sheet-label-row .vertical>span{
+  position:static !important;
+
+  width:100%;
+  height:100%;
+
+  padding:5px 0 !important;
+
+  box-sizing:border-box;
+
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+
+  white-space:nowrap !important;
+
+  writing-mode:vertical-rl;
+  text-orientation:mixed;
+
+  transform:rotate(180deg) !important;
+  transform-origin:center !important;
+
+  font-size:7px !important;
+  font-weight:600 !important;
+  line-height:1 !important;
+
+  overflow:visible !important;
+}
+
+
+/* Besonders lange Begriffe etwas kleiner */
+.sales-sheet-label-row
+.sheet-contact-recommendation>span,
+.sales-sheet-label-row
+.sheet-contact-premium>span,
+.sales-sheet-label-row
+.sheet-profi-recommendation>span,
+.sales-sheet-label-row
+.sheet-profi-premium>span{
+  font-size:6.5px !important;
+}
+
+
+/* Produktüberschriften sauber und vollständig */
+.sales-sheet-label-row th:nth-last-child(n+4)
+>span{
+  letter-spacing:0 !important;
+}
+
+
+/* Logo etwas besser zentrieren */
+.sales-sheet-logo-cell{
+  padding:3px !important;
+  vertical-align:middle !important;
+}
+
+.sales-sheet-logo{
+  margin:0 auto !important;
+}
+
+
+/* Tagesnamen sauber mittig */
+.sales-sheet-day{
+  padding:0 5px !important;
+
+  text-align:center !important;
+  vertical-align:middle !important;
+
+  font-size:8px !important;
+  line-height:1.1 !important;
+
+  white-space:nowrap;
+}
+
+
+/* Uhrzeiten */
+.sales-sheet-time{
+  padding:1px 2px !important;
+
+  text-align:center !important;
+
+  font-size:7.5px !important;
+  line-height:1 !important;
+}
+
+
+/* Kundenname und Adresse etwas besser lesbar */
+.sales-sheet-customer{
+  padding:2px 4px !important;
+}
+
+.sales-sheet-customer strong{
+  font-size:7.5px !important;
+  line-height:1.15 !important;
+}
+
+.sales-sheet-customer small{
+  margin-top:1px;
+
+  font-size:6.5px !important;
+  line-height:1.1 !important;
+}
+
+
+/* Die Zahlen/X exakt mittig */
+.sales-week-table tbody td{
+  vertical-align:middle !important;
+}
+
+.sales-sheet-product-cell,
+.sales-sheet-number{
+  padding:0 2px !important;
+
+  text-align:center !important;
+
+  font-size:8px !important;
+  line-height:1 !important;
+}
+
+
+/* PDF bekommt exakt dieselbe Ausrichtung */
+@media print{
+
+  .sales-sheet-label-row th{
+    height:108px !important;
+  }
+
+  .sales-sheet-label-row .vertical>span{
+    writing-mode:vertical-rl !important;
+    transform:rotate(180deg) !important;
+  }
+}
+
+/* ===== VERKAUFSTABELLE SCHWARZE SCHRIFT ===== */
+
+.sales-week-sheet,
+.sales-week-sheet *,
+.sales-week-table,
+.sales-week-table *,
+.sales-week-table th,
+.sales-week-table td,
+.sales-week-sheet-meta,
+.sales-sheet-footnote,
+.sales-sheet-customer strong,
+.sales-sheet-customer small,
+.sales-sheet-day,
+.sales-sheet-time,
+.sales-sheet-number,
+.sales-sheet-money,
+.sales-sheet-product-cell{
+  color:#000 !important;
+}
+
+.sales-sheet-label-row th,
+.sales-sheet-label-row th span,
+.sales-sheet-group-row th,
+.sales-sheet-main-head{
+  color:#000 !important;
+}
+
+
+/* ===== VERKAUFSMODAL – DARK DESIGN + KUNDENSUCHE ===== */
+
+/* Alle Formularfelder im Verkaufsfenster */
+.sale-fast-form input,
+.sale-fast-form select,
+.sale-fast-form textarea{
+  box-sizing:border-box;
+
+  border:
+    1px solid rgba(117, 222, 166, .18) !important;
+
+  border-radius:9px !important;
+
+  background:#0b1718 !important;
+  color:#edf7f1 !important;
+
+  font-family:inherit;
+  font-size:13px;
+
+  outline:none;
+
+  transition:
+    border-color .16s ease,
+    box-shadow .16s ease,
+    background .16s ease;
+
+  color-scheme:dark;
+}
+
+.sale-fast-form input,
+.sale-fast-form select{
+  min-height:38px;
+  padding:7px 10px;
+}
+
+.sale-fast-form textarea{
+  min-height:72px;
+  padding:10px 11px;
+
+  resize:vertical;
+}
+
+
+/* Placeholder */
+.sale-fast-form input::placeholder,
+.sale-fast-form textarea::placeholder{
+  color:rgba(222,239,230,.38) !important;
+}
+
+
+/* Fokus */
+.sale-fast-form input:focus,
+.sale-fast-form select:focus,
+.sale-fast-form textarea:focus{
+  border-color:#31c978 !important;
+
+  background:#0c1c19 !important;
+
+  box-shadow:
+    0 0 0 3px rgba(49,201,120,.10) !important;
+}
+
+
+/* Select Optionen ebenfalls dunkel */
+.sale-fast-form select option{
+  background:#0b1718;
+  color:#edf7f1;
+}
+
+
+/* Datum-Icon bei Safari/Chrome */
+.sale-fast-form
+input[type="datetime-local"]
+::-webkit-calendar-picker-indicator{
+  opacity:.75;
+  filter:invert(1);
+  cursor:pointer;
+}
+
+
+/* Number-Steuerung lesbarer */
+.sale-fast-form
+input[type="number"]{
+  color:#edf7f1 !important;
+}
+
+
+/* Labels */
+.sale-fast-form label{
+  color:#eef6f2;
+}
+
+
+/* ------------------------------------------------
+   KUNDENSUCHE
+   ------------------------------------------------ */
+
+.sale-customer-label{
+  position:relative;
+  z-index:30;
+}
+
+.sale-customer-search{
+  position:relative;
+
+  margin-top:5px;
+}
+
+.sale-customer-search>svg{
+  position:absolute;
+
+  left:11px;
+  top:50%;
+
+  z-index:2;
+
+  color:#6b9180;
+
+  pointer-events:none;
+
+  transform:translateY(-50%);
+}
+
+.sale-customer-search>input{
+  width:100%;
+
+  padding-left:36px !important;
+  padding-right:35px !important;
+}
+
+.sale-customer-clear{
+  position:absolute;
+
+  top:50%;
+  right:7px;
+
+  width:26px;
+  height:26px;
+
+  z-index:3;
+
+  padding:0 !important;
+
+  border:0 !important;
+  border-radius:7px !important;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:transparent !important;
+  color:#789487 !important;
+
+  transform:translateY(-50%);
+
+  cursor:pointer;
+}
+
+.sale-customer-clear:hover{
+  background:rgba(255,255,255,.06) !important;
+  color:#fff !important;
+}
+
+
+/* Trefferliste */
+.sale-customer-results{
+  position:absolute;
+
+  left:0;
+  right:0;
+  top:calc(100% + 5px);
+
+  z-index:100;
+
+  max-height:270px;
+
+  padding:5px;
+
+  overflow:auto;
+
+  border:
+    1px solid rgba(77,198,132,.25);
+
+  border-radius:10px;
+
+  background:#0a1517;
+
+  box-shadow:
+    0 16px 35px rgba(0,0,0,.55);
+}
+
+.sale-customer-results>button{
+  width:100%;
+  min-height:50px;
+
+  padding:7px 9px !important;
+
+  border:1px solid transparent !important;
+  border-radius:8px !important;
+
+  display:flex;
+  align-items:center;
+  gap:9px;
+
+  background:transparent !important;
+  color:#eef7f2 !important;
+
+  text-align:left;
+
+  cursor:pointer;
+}
+
+.sale-customer-results>button:hover{
+  border-color:
+    rgba(52,208,122,.20) !important;
+
+  background:
+    rgba(39,185,105,.09) !important;
+}
+
+.sale-customer-results>button.selected{
+  border-color:
+    rgba(52,208,122,.35) !important;
+
+  background:
+    rgba(39,185,105,.13) !important;
+}
+
+.sale-customer-result-icon{
+  width:28px;
+  height:28px;
+
+  flex:0 0 28px;
+
+  border-radius:8px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:
+    rgba(43,201,114,.10);
+
+  color:#4ee28e;
+}
+
+.sale-customer-result-text{
+  min-width:0;
+
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.sale-customer-result-text strong{
+  overflow:hidden;
+
+  color:#eef8f2;
+
+  font-size:12px;
+
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.sale-customer-result-text small{
+  overflow:hidden;
+
+  color:rgba(224,239,231,.43);
+
+  font-size:10px;
+
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.sale-customer-empty{
+  padding:14px 10px;
+
+  color:rgba(228,241,234,.48);
+
+  font-size:11px;
+  text-align:center;
+}
+
+
+/* ------------------------------------------------
+   PRODUKTFELDER / MENGE / PREIS
+   ------------------------------------------------ */
+
+.sale-product-entry input,
+.sale-product-entry select{
+  background:#0a1716 !important;
+  color:#eff8f3 !important;
+}
+
+.sale-product-entry
+input[type="number"]{
+  text-align:center;
+}
+
+
+/* Notizen komplett dunkel */
+.sale-fast-form textarea{
+  background:#0a1716 !important;
+  color:#eff8f3 !important;
+}
+
+
+/* Autofill von Safari/Chrome */
+.sale-fast-form input:-webkit-autofill,
+.sale-fast-form input:-webkit-autofill:hover,
+.sale-fast-form input:-webkit-autofill:focus{
+  -webkit-text-fill-color:#edf7f1 !important;
+
+  -webkit-box-shadow:
+    0 0 0 1000px #0b1718 inset !important;
+
+  transition:
+    background-color 9999s ease-in-out 0s;
+}
+
+
+/* Mobile */
+@media(max-width:700px){
+
+  .sale-customer-results{
+    max-height:220px;
+  }
+
+}
