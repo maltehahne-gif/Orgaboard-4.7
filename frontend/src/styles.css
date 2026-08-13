@@ -5907,3 +5907,554 @@ body:has(.v7-login-scene) form {
     grid-template-columns:1fr 1fr;
   }
 }
+
+/* ===== TERMIN DURCHGEFÜHRT V2 ===== */
+
+.appointment-complete-action{
+  border-color:rgba(32,198,107,.25)!important;
+  background:rgba(32,198,107,.08)!important;
+  color:#68e79a!important;
+}
+
+.appointment-completion{
+  width:min(760px,100%);
+}
+
+.completion-appointment{
+  padding:12px 14px;
+  margin-bottom:14px;
+  border:1px solid rgba(32,198,107,.18);
+  border-radius:13px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#65e899;
+  background:rgba(32,198,107,.06);
+}
+
+.completion-appointment div{
+  display:flex;
+  flex-direction:column;
+}
+
+.completion-appointment strong{
+  color:rgba(255,255,255,.94);
+}
+
+.completion-appointment small{
+  color:rgba(255,255,255,.48);
+}
+
+.completion-warning{
+  padding:10px 12px;
+  margin-bottom:13px;
+  border:1px solid rgba(255,190,70,.22);
+  border-radius:11px;
+  background:rgba(255,190,70,.07);
+  color:#e7c277;
+  font-size:12px;
+}
+
+.completion-options{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:9px;
+  margin-bottom:16px;
+}
+
+.completion-options>button{
+  min-height:118px;
+  padding:13px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:14px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+  text-align:left;
+  background:rgba(255,255,255,.035);
+  color:inherit;
+  cursor:pointer;
+}
+
+.completion-options>button:hover{
+  background:rgba(255,255,255,.055);
+}
+
+.completion-options>button:disabled{
+  opacity:.35;
+  cursor:not-allowed;
+}
+
+.completion-options>button.active{
+  border-color:rgba(32,198,107,.4);
+  background:rgba(32,198,107,.09);
+}
+
+.completion-options>button>span{
+  width:40px;
+  height:40px;
+  border-radius:11px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.completion-options .sale>span{
+  color:#5ee996;
+  background:rgba(32,198,107,.11);
+}
+
+.completion-options .rental>span{
+  color:#6db9ff;
+  background:rgba(65,145,220,.11);
+}
+
+.completion-options .none>span{
+  color:#b9bec2;
+  background:rgba(255,255,255,.06);
+}
+
+.completion-options strong{
+  font-size:13px;
+}
+
+.completion-options small{
+  color:rgba(255,255,255,.45);
+  font-size:10px;
+}
+
+.completion-form{
+  padding-top:5px;
+  display:flex;
+  flex-direction:column;
+  gap:13px;
+}
+
+.completion-section-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.completion-section-head h3{
+  margin:0;
+}
+
+.completion-section-head p{
+  margin:3px 0 0;
+  color:rgba(255,255,255,.48);
+  font-size:11px;
+}
+
+.completion-section-head>button{
+  min-height:36px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.completion-sale-meta,
+.completion-product-meta,
+.completion-rental-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+
+.completion-rental-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+
+.completion-products{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.completion-product{
+  padding:12px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:13px;
+  background:rgba(255,255,255,.025);
+}
+
+.completion-product-top{
+  margin-bottom:9px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.completion-search{
+  height:43px;
+  padding:0 11px;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:rgba(255,255,255,.035);
+}
+
+.completion-search input{
+  width:100%;
+  min-width:0;
+  border:0!important;
+  padding:0!important;
+  background:transparent!important;
+  outline:0;
+}
+
+.completion-search-results{
+  max-height:230px;
+  margin-top:5px;
+  overflow:auto;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:11px;
+  background:#10191d;
+}
+
+.completion-search-results>button{
+  width:100%;
+  min-height:51px;
+  padding:8px 10px;
+  border:0;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  text-align:left;
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+}
+
+.completion-search-results>button:hover{
+  background:rgba(32,198,107,.07);
+}
+
+.completion-search-results>button span{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+}
+
+.completion-search-results strong{
+  font-size:12px;
+}
+
+.completion-search-results small{
+  color:rgba(255,255,255,.43);
+  font-size:10px;
+}
+
+.completion-search-results b{
+  white-space:nowrap;
+  color:#67e797;
+  font-size:11px;
+}
+
+.completion-no-result{
+  padding:13px;
+  text-align:center;
+  color:rgba(255,255,255,.45);
+  font-size:11px;
+}
+
+.completion-none{
+  padding:22px 10px 5px;
+  text-align:center;
+}
+
+.completion-none>svg{
+  color:#65e899;
+}
+
+.completion-none h3{
+  margin:9px 0 4px;
+}
+
+.completion-none p{
+  margin:0 0 18px;
+  color:rgba(255,255,255,.5);
+}
+
+.completion-none .form-actions{
+  justify-content:center;
+}
+
+@media(max-width:700px){
+  .completion-options{
+    grid-template-columns:1fr;
+  }
+
+  .completion-options>button{
+    min-height:80px;
+  }
+
+  .completion-sale-meta,
+  .completion-product-meta,
+  .completion-rental-grid{
+    grid-template-columns:1fr;
+  }
+
+  .completion-section-head{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}
+
+/* ===== TERMIN FORMULAR CLEAN V3 ===== */
+
+/* Einheitliche Beschriftungen */
+.appointment-completion label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  color:rgba(255,255,255,.72);
+  font-size:11px;
+  font-weight:600;
+}
+
+/* ALLE Eingabefelder im Durchgeführt-Fenster */
+.appointment-completion input,
+.appointment-completion select,
+.appointment-completion textarea{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid rgba(255,255,255,.11) !important;
+  border-radius:10px !important;
+
+  background:#0d181c !important;
+  color:#f3f7f5 !important;
+  -webkit-text-fill-color:#f3f7f5 !important;
+
+  font-family:inherit;
+  font-size:13px;
+  font-weight:500;
+
+  outline:none !important;
+  box-shadow:none !important;
+
+  transition:
+    border-color .16s ease,
+    background .16s ease,
+    box-shadow .16s ease;
+
+  color-scheme:dark;
+}
+
+/* normale Inputs und Selects */
+.appointment-completion input,
+.appointment-completion select{
+  min-height:42px;
+  padding:0 11px !important;
+}
+
+/* Textfelder / Notizen */
+.appointment-completion textarea{
+  min-height:78px;
+  padding:10px 11px !important;
+  resize:vertical;
+  line-height:1.45;
+}
+
+/* Placeholder immer hell genug */
+.appointment-completion input::placeholder,
+.appointment-completion textarea::placeholder{
+  color:rgba(230,240,235,.38) !important;
+  -webkit-text-fill-color:rgba(230,240,235,.38) !important;
+}
+
+/* Fokus wie OrgaBoard */
+.appointment-completion input:focus,
+.appointment-completion select:focus,
+.appointment-completion textarea:focus{
+  border-color:rgba(53,210,118,.58) !important;
+  background:#101e22 !important;
+
+  box-shadow:
+    0 0 0 3px rgba(32,198,107,.08)
+    !important;
+}
+
+/* Produktsuche: schwarze Schrift endgültig verhindern */
+.appointment-completion .completion-search{
+  min-height:43px;
+  padding:0 11px;
+
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:10px;
+
+  background:#0d181c;
+
+  transition:
+    border-color .16s ease,
+    background .16s ease,
+    box-shadow .16s ease;
+}
+
+.appointment-completion .completion-search:focus-within{
+  border-color:rgba(53,210,118,.58);
+  background:#101e22;
+
+  box-shadow:
+    0 0 0 3px rgba(32,198,107,.08);
+}
+
+.appointment-completion .completion-search svg{
+  flex:0 0 auto;
+  color:rgba(255,255,255,.43);
+}
+
+.appointment-completion .completion-search input{
+  min-height:40px !important;
+  padding:0 !important;
+
+  border:0 !important;
+  border-radius:0 !important;
+
+  background:transparent !important;
+
+  color:#f4f7f5 !important;
+  -webkit-text-fill-color:#f4f7f5 !important;
+
+  box-shadow:none !important;
+  caret-color:#66e99b;
+}
+
+/* Chrome/Safari Autofill ebenfalls dunkel halten */
+.appointment-completion input:-webkit-autofill,
+.appointment-completion input:-webkit-autofill:hover,
+.appointment-completion input:-webkit-autofill:focus{
+  -webkit-text-fill-color:#f4f7f5 !important;
+
+  -webkit-box-shadow:
+    0 0 0 1000px #0d181c inset !important;
+
+  transition:
+    background-color 9999s ease-out 0s;
+}
+
+/* Verkaufskanal */
+.appointment-completion select{
+  cursor:pointer;
+  padding-right:34px !important;
+}
+
+/* Auswahlmöglichkeiten im Dropdown */
+.appointment-completion select option{
+  background:#101a1e;
+  color:#f3f7f5;
+}
+
+/* Datum-/Uhrzeit-Symbol sichtbar */
+.appointment-completion
+input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  opacity:.72;
+  cursor:pointer;
+}
+
+/* Menge */
+.appointment-completion input[type="number"]{
+  min-width:0;
+}
+
+/* Verkaufsdatum + Kanal */
+.completion-sale-meta{
+  gap:12px;
+  align-items:end;
+}
+
+/* Menge + Preis */
+.completion-product-meta{
+  gap:12px;
+  margin-top:10px;
+}
+
+/* Geräteverleih */
+.completion-rental-grid{
+  gap:12px;
+}
+
+/* Produktbox ruhiger */
+.completion-product{
+  padding:14px;
+
+  border:
+    1px solid rgba(255,255,255,.075);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.027),
+      rgba(255,255,255,.015)
+    );
+}
+
+/* Suchergebnisse moderner */
+.completion-search-results{
+  margin-top:6px;
+
+  border:
+    1px solid rgba(255,255,255,.09);
+
+  border-radius:11px;
+
+  background:#0d171b;
+
+  box-shadow:
+    0 15px 35px rgba(0,0,0,.24);
+}
+
+.completion-search-results>button{
+  color:#edf5f0 !important;
+}
+
+.completion-search-results>button strong{
+  color:#f1f6f3 !important;
+}
+
+.completion-search-results>button small{
+  color:rgba(255,255,255,.45) !important;
+}
+
+.completion-search-results>button b{
+  color:#65e898 !important;
+}
+
+/* Notizen bekommen mehr Abstand */
+.completion-form>label{
+  margin-top:2px;
+}
+
+/* Buttons unten sauber absetzen */
+.appointment-completion .form-actions{
+  margin-top:4px;
+  padding-top:12px;
+
+  border-top:
+    1px solid rgba(255,255,255,.065);
+}
+
+/* Mobile */
+@media(max-width:700px){
+
+  .appointment-completion input,
+  .appointment-completion select{
+    min-height:46px;
+    font-size:16px;
+  }
+
+  .appointment-completion textarea{
+    font-size:16px;
+  }
+
+  .appointment-completion .completion-search input{
+    font-size:16px;
+  }
+
+}

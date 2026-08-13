@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -8,8 +9,9 @@ from app.core.database import get_db
 from app.core.rbac import scoped_employee_id
 from app.core.security import get_current_user, require_csrf
 from app.core.timeutils import utc_aware
-from app.models import Appointment, AppointmentProduct, AppointmentStatus, AppointmentType, Customer, Employee, Product, ProductPresentation, Sale, User
+from app.models import Appointment, AppointmentProduct, AppointmentStatus, AppointmentType, Customer, Employee, Product, ProductPresentation, Rental, RentalStatus, Sale, SaleChannel, SaleItem, User
 from app.services.realtime import manager
+from app.services.stats import refresh_weekly_stat
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
@@ -33,6 +35,27 @@ class AppointmentIn(BaseModel):
 
 class StatusIn(BaseModel):
     status: AppointmentStatus
+
+
+class CompletionSaleItemIn(BaseModel):
+    product_id: str
+    quantity: int = Field(ge=1, le=999)
+    unit_price_cents: int = Field(ge=0)
+
+
+class CompleteAppointmentIn(BaseModel):
+    outcome: Literal["sale", "rental", "none"]
+
+    sale_sold_at: datetime | None = None
+    sale_channel: SaleChannel = SaleChannel.FIELD
+    sale_notes: str | None = None
+    sale_items: list[CompletionSaleItemIn] = Field(default_factory=list)
+
+    rental_product_id: str | None = None
+    rental_serial_number: str | None = None
+    rental_issued_at: datetime | None = None
+    rental_due_at: datetime | None = None
+    rental_notes: str | None = None
 
 
 def serialize(db: Session, a: Appointment):
@@ -169,6 +192,238 @@ async def set_status(appointment_id: str, data: StatusIn, user: User = Depends(g
     audit(db, user, "appointment.status_changed", "appointment", a.id, before=before, after={"status": a.status.value})
     db.commit()
     await manager.publish({"type":"data.changed","entity":"appointment"}, employee_id=a.employee_id)
+    return serialize(db, a)
+
+
+
+@router.post(
+    "/{appointment_id}/complete",
+    dependencies=[Depends(require_csrf)],
+)
+async def complete_appointment(
+    appointment_id: str,
+    data: CompleteAppointmentIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    a = db.get(Appointment, appointment_id)
+
+    if not a:
+        raise HTTPException(
+            status_code=404,
+            detail="Termin nicht gefunden",
+        )
+
+    scoped_employee_id(db, user, a.employee_id)
+
+    if a.status == AppointmentStatus.COMPLETED:
+        raise HTTPException(
+            status_code=409,
+            detail="Dieser Termin wurde bereits durchgeführt",
+        )
+
+    customer = (
+        db.get(Customer, a.customer_id)
+        if a.customer_id
+        else None
+    )
+
+    sale_id = None
+    rental_id = None
+
+    if data.outcome in {"sale", "rental"}:
+        if not customer or customer.deleted_at:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Für Verkauf oder Verleih muss dem Termin "
+                    "ein Kunde zugeordnet sein"
+                ),
+            )
+
+        if customer.employee_id != a.employee_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Kunde gehört nicht zum Termin-Mitarbeiter",
+            )
+
+    if data.outcome == "sale":
+        if not data.sale_items:
+            raise HTTPException(
+                status_code=400,
+                detail="Bitte mindestens ein verkauftes Produkt auswählen",
+            )
+
+        existing_sale = db.scalar(
+            select(Sale.id).where(
+                Sale.appointment_id == a.id
+            )
+        )
+
+        if existing_sale:
+            raise HTTPException(
+                status_code=409,
+                detail="Für diesen Termin existiert bereits ein Verkauf",
+            )
+
+        resolved = []
+
+        for item in data.sale_items:
+            product = db.get(Product, item.product_id)
+
+            if not product or not product.verified or not product.active:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Nur aktive verifizierte Produkte dürfen verkauft werden",
+                )
+
+            resolved.append((product, item))
+
+        sold_at = (
+            data.sale_sold_at
+            or datetime.now().astimezone()
+        )
+
+        sale = Sale(
+            customer_id=customer.id,
+            employee_id=a.employee_id,
+            appointment_id=a.id,
+            sold_at=sold_at,
+            channel=data.sale_channel,
+            notes=data.sale_notes,
+        )
+
+        db.add(sale)
+        db.flush()
+
+        for product, item in resolved:
+            db.add(
+                SaleItem(
+                    sale_id=sale.id,
+                    product_id=product.id,
+                    product_name_snapshot=product.name,
+                    quantity=item.quantity,
+                    unit_price_cents=item.unit_price_cents,
+                )
+            )
+
+        db.flush()
+
+        refresh_weekly_stat(
+            db,
+            a.employee_id,
+            sold_at.date(),
+        )
+
+        sale_id = sale.id
+
+    elif data.outcome == "rental":
+        if not data.rental_product_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Bitte ein Gerät auswählen",
+            )
+
+        product = db.get(
+            Product,
+            data.rental_product_id,
+        )
+
+        if not product or not product.verified or not product.active:
+            raise HTTPException(
+                status_code=400,
+                detail="Verleihgerät nicht gefunden",
+            )
+
+        issued_at = (
+            data.rental_issued_at
+            or datetime.now().astimezone()
+        )
+
+        if not data.rental_due_at:
+            raise HTTPException(
+                status_code=400,
+                detail="Bitte das geplante Rückgabedatum angeben",
+            )
+
+        if data.rental_due_at <= issued_at:
+            raise HTTPException(
+                status_code=400,
+                detail="Die Rückgabe muss nach der Ausgabe liegen",
+            )
+
+        rental = Rental(
+            product_id=product.id,
+            customer_id=customer.id,
+            employee_id=a.employee_id,
+            serial_number=(
+                data.rental_serial_number.strip()
+                if data.rental_serial_number
+                else None
+            ),
+            issued_at=issued_at,
+            due_at=data.rental_due_at,
+            returned_at=None,
+            status=RentalStatus.RENTED,
+            notes=data.rental_notes,
+        )
+
+        db.add(rental)
+        db.flush()
+
+        rental_id = rental.id
+
+    before_status = a.status.value
+    a.status = AppointmentStatus.COMPLETED
+
+    audit(
+        db,
+        user,
+        "appointment.completed",
+        "appointment",
+        a.id,
+        before={
+            "status": before_status,
+        },
+        after={
+            "status": AppointmentStatus.COMPLETED.value,
+            "outcome": data.outcome,
+            "sale_id": sale_id,
+            "rental_id": rental_id,
+        },
+    )
+
+    db.commit()
+
+    await manager.publish(
+        {
+            "type": "data.changed",
+            "entity": "appointment",
+            "action": "completed",
+        },
+        employee_id=a.employee_id,
+    )
+
+    if sale_id:
+        await manager.publish(
+            {
+                "type": "data.changed",
+                "entity": "sale",
+                "action": "created",
+            },
+            employee_id=a.employee_id,
+        )
+
+    if rental_id:
+        await manager.publish(
+            {
+                "type": "data.changed",
+                "entity": "rental",
+                "action": "created",
+            },
+            employee_id=a.employee_id,
+        )
+
     return serialize(db, a)
 
 

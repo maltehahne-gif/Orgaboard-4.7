@@ -217,7 +217,7 @@ export function ProductsPage(){
               source_url:
                 'manual-entry',
 
-              verified:false,
+              verified:true,
             },
           }),
         }

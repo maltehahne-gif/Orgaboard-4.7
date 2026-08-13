@@ -1,9 +1,10 @@
 import {useCallback,useEffect,useState} from 'react'
-import {CalendarPlus,MapPinned,Pencil,Trash2} from 'lucide-react'
+import {CalendarPlus,CheckCircle2,MapPinned,Pencil,Trash2} from 'lucide-react'
 import {api,formatDateTime} from '../lib/api'
 import type {Appointment,Customer,Product} from '../types'
 import {useToast} from '../components/Toast'
 import {AppointmentModal} from '../components/AppointmentModal'
+import {AppointmentCompletionModal} from '../components/AppointmentCompletionModal'
 import {appointmentPayload,appointmentStatuses,appointmentTypeOption,downloadCalendarFile,openDirections,type AppointmentDraft} from '../lib/appointments'
 import {connectRealtime} from '../lib/realtime'
 import {useAuth} from '../lib/auth'
@@ -18,6 +19,7 @@ export function AppointmentsPage(){
   const [products,setProducts]=useState<Product[]>([])
   const [employees,setEmployees]=useState<TeamEmployee[]>([])
   const [editor,setEditor]=useState<Editor|null>(null)
+  const [completion,setCompletion]=useState<Appointment|null>(null)
   const [saving,setSaving]=useState(false)
   const toast=useToast()
   const isTeamLeader=me?.role==='TEAM_LEADER'
@@ -48,9 +50,27 @@ export function AppointmentsPage(){
     finally{setSaving(false)}
   }
 
-  async function changeStatus(id:string,status:string){
-    try{await api(`/appointments/${id}/status`,{method:'PATCH',body:JSON.stringify({status})});await load();toast('Status aktualisiert')}
-    catch(error){toast(error instanceof Error?error.message:'Status konnte nicht geändert werden','error')}
+  async function changeStatus(appointment:Appointment,status:string){
+    if(status==='completed'&&appointment.status!=='completed'){
+      setCompletion(appointment)
+      return
+    }
+
+    try{
+      await api(`/appointments/${appointment.id}/status`,{
+        method:'PATCH',
+        body:JSON.stringify({status}),
+      })
+      await load()
+      toast('Status aktualisiert')
+    }catch(error){
+      toast(
+        error instanceof Error
+          ?error.message
+          :'Status konnte nicht geändert werden',
+        'error',
+      )
+    }
   }
 
   async function remove(appointment:Appointment,confirmed=false){
@@ -73,13 +93,23 @@ export function AppointmentsPage(){
           {appointment.products.length>0&&<small>Geplant: {appointment.products.map(product=>product.name).join(', ')}</small>}
         </div>
         <div className="appointment-list-actions">
-          <select aria-label="Terminstatus" value={appointment.status} onChange={event=>changeStatus(appointment.id,event.target.value)}>{appointmentStatuses.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select>
+          <select aria-label="Terminstatus" value={appointment.status} onChange={event=>changeStatus(appointment,event.target.value)}>{appointmentStatuses.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select>
           {appointment.address&&<button type="button" className="appointment-directions-action" onClick={()=>openDirections(appointment.address!)} title={`Wegbeschreibung zu ${appointment.address}`}><MapPinned size={16}/> Wegbeschreibung</button>}
+          {appointment.status!=='completed'&&appointment.status!=='cancelled'&&<button type="button" className="appointment-complete-action" onClick={()=>setCompletion(appointment)}><CheckCircle2 size={16}/> Durchgeführt</button>}
           <button type="button" onClick={()=>setEditor({appointment})}><Pencil size={16}/> Bearbeiten</button>
           <button type="button" className="icon-danger" onClick={()=>remove(appointment)} aria-label="Termin löschen" title="Termin löschen"><Trash2 size={16}/></button>
         </div>
       </div>})}
     </div>
+    {completion&&<AppointmentCompletionModal
+      appointment={completion}
+      products={products}
+      onClose={()=>setCompletion(null)}
+      onDone={async()=>{
+        setCompletion(null)
+        await load()
+      }}
+    />}
     {editor&&<AppointmentModal
       appointment={editor.appointment}
       initialDay={editor.initialDay}
