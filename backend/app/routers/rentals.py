@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -89,7 +89,7 @@ async def update_rental_status(rental_id: str, data: RentalStatusIn, user: User 
     before = {"status": r.status.value, "returned_at": r.returned_at.isoformat() if r.returned_at else None}
     r.status = data.status
     if data.status == RentalStatus.RETURNED:
-        r.returned_at = data.returned_at or datetime.now().astimezone()
+        r.returned_at = data.returned_at or datetime.now(timezone.utc)
     elif data.returned_at is not None:
         r.returned_at = data.returned_at
     audit(db, user, "rental.status_changed", "rental", r.id, before=before, after={"status": r.status.value, "returned_at": r.returned_at.isoformat() if r.returned_at else None})

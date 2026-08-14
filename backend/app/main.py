@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
@@ -9,16 +10,20 @@ from app.routers import appointments, assistant, auth, buntewoche, customers, da
 from app.services.realtime import SocketClient, manager
 
 settings=get_settings()
-app=FastAPI(title="OrgaBoard API",version="1.0.0")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if settings.auto_create_schema:
+        Base.metadata.create_all(bind=engine)
+    yield
+
+
+app=FastAPI(title="OrgaBoard API",version="1.0.0",lifespan=lifespan)
 app.add_middleware(CORSMiddleware,allow_origins=[settings.frontend_origin],allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
 
 for router in [auth.router,dashboard.router,customers.router,appointments.router,sales.router,presentations.router,products.router,rentals.router,buntewoche.router,messages.router,assistant.router,search.router,history.router,team.router,profile.router,directory.router,notifications.router]:
     app.include_router(router,prefix=settings.api_prefix)
-
-@app.on_event("startup")
-def startup():
-    if settings.auto_create_schema:
-        Base.metadata.create_all(bind=engine)
 
 @app.get("/health")
 def health():

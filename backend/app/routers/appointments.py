@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -131,7 +131,7 @@ def list_appointments(
 @router.get("/next")
 def next_appointment(employee_id: str | None = None, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     scope = scoped_employee_id(db, user, employee_id)
-    stmt = select(Appointment).where(Appointment.start_at >= datetime.now().astimezone(), Appointment.status.notin_([AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED])).order_by(Appointment.start_at)
+    stmt = select(Appointment).where(Appointment.start_at >= datetime.now(timezone.utc), Appointment.status.notin_([AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED])).order_by(Appointment.start_at)
     if scope:
         stmt = stmt.where(Appointment.employee_id == scope)
     a = db.scalar(stmt)
@@ -281,7 +281,7 @@ async def complete_appointment(
 
         sold_at = (
             data.sale_sold_at
-            or datetime.now().astimezone()
+            or datetime.now(timezone.utc)
         )
 
         sale = Sale(
@@ -337,7 +337,7 @@ async def complete_appointment(
 
         issued_at = (
             data.rental_issued_at
-            or datetime.now().astimezone()
+            or datetime.now(timezone.utc)
         )
 
         if not data.rental_due_at:
