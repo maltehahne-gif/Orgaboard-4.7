@@ -1,30 +1,33 @@
 # OrgaBoard – KI-gestützte Vorwerk Team- und Vertriebsplattform
 
-Dieses Repository ist so vorbereitet, dass du es **entpacken, in GitHub hochladen und direkt starten** kannst. Für den ersten privaten Test ist **keine `.env`-Datei** nötig.
-
-> **Schnellster Weg:** GitHub-Repository öffnen → **Code → Codespaces → Create codespace on main**. Die App, Datenbank, Migrationen und Benutzer werden automatisch gestartet. Siehe [`START-HIER.md`](START-HIER.md).
+> **Schnellster Weg:** GitHub-Repository öffnen → **Code → Codespaces → Create codespace on main**. App, Datenbank, Migrationen und Benutzer starten automatisch. Siehe [`START-HIER.md`](START-HIER.md).
 
 ## Sofort starten
 
 ### GitHub Codespaces
 
-1. Inhalt dieses ZIPs in ein GitHub-Repository hochladen.
-2. **Code → Codespaces → Create codespace on main**.
+1. **Code → Codespaces → Create codespace on main**.
+2. Warten, bis der Container fertig ist – `.devcontainer/post-create.sh` legt eine `.env` mit zufälligen Secrets an und startet die Container.
 3. Port **8080 / OrgaBoard** öffnen.
 
 ### Lokal mit Docker
 
 ```bash
-docker compose up --build -d
+./start.sh          # macOS/Linux
+start.bat           # Windows
 ```
 
-Danach: `http://localhost:8080`
+Beim ersten Aufruf wird eine `.env` mit zufällig erzeugten Secrets angelegt. Danach läuft die App unter `http://localhost:8080`.
 
-Unter Windows kann alternativ `start.bat`, unter macOS/Linux `./start.sh` verwendet werden.
+`docker compose up` direkt funktioniert ebenfalls, setzt aber eine vorhandene `.env` voraus – siehe [`.env.example`](.env.example). Ein fest eingetragenes Standard-Secret gibt es bewusst nicht: Wer es kennt, kann beliebige Sitzungen fälschen, inklusive der Teamleiter-Rolle.
 
 ## Vorbereitete Logins
 
-Temporäres Erstpasswort für alle Konten: **`OrgaBoard-Start-2026!`**
+Das Startpasswort steht nach dem ersten Start als `SEED_DEFAULT_PASSWORD` in deiner `.env`.
+
+Die Konten werden **nur auf einer leeren Datenbank** angelegt. Läuft die App bereits mit echten Benutzern, ändert der Seed nichts mehr.
+
+Die folgenden Adressen sind Platzhalter. Echte E-Mail-Adressen gehören nicht ins Repository – eine eigene Namensliste lässt sich über `SEED_USERS_FILE` als JSON hinterlegen (Format in [`backend/app/seed.py`](backend/app/seed.py)).
 
 | Name | Login-E-Mail | Rolle |
 |---|---|---|
@@ -37,7 +40,7 @@ Temporäres Erstpasswort für alle Konten: **`OrgaBoard-Start-2026!`**
 | Britta Baumhof | `britta.baumhof@example.com` | Mitarbeiter |
 | Carsten Böhrensen | `carsten.boehrensen@example.com` | **Teamleiter** |
 
-Die Benutzer werden beim ersten Start automatisch angelegt. Der Seed ist idempotent; weitere Starts erzeugen keine doppelten Benutzer.
+Alle Konten müssen das Passwort beim ersten Login ändern.
 
 ## Was enthalten ist
 
@@ -75,7 +78,11 @@ Der KI-Dienst erhält keinen direkten Datenbankzugriff. Er darf nur die serverse
 
 ## Vor öffentlichem Produktivbetrieb
 
-Die eingebauten Standardwerte sind nur für einen schnellen privaten Start gedacht. Für eine echte öffentliche Bereitstellung müssen mindestens sichere Secrets, HTTPS, `COOKIE_SECURE=true`, Backups, Monitoring, Datenschutz-/Löschkonzept und echte Benutzerpasswörter eingerichtet werden. GitHub allein hostet keine PostgreSQL-/FastAPI-Anwendung dauerhaft; Codespaces dient zum direkten Start/Test. Für eine öffentliche URL ist zusätzlich ein Hosting-Ziel für die Full-Stack-App nötig.
+Mit `ENV=production` erzwingt die Anwendung selbst ein eigenes `JWT_SECRET` mit mindestens 32 Zeichen und `COOKIE_SECURE=true`; ein im Repository nachlesbares Secret wird ab `ENV=staging` abgelehnt. Der Start bricht sonst mit einer Fehlermeldung ab.
+
+Organisatorisch bleiben offen: HTTPS-Terminierung, Backups, Monitoring, Datenschutz- und Löschkonzept sowie AV-Verträge – insbesondere für die Adressauflösung in der Routenplanung, die derzeit öffentliche OSM-Dienste nutzt (siehe [`docs/SECURITY.md`](docs/SECURITY.md)).
+
+GitHub allein hostet keine PostgreSQL-/FastAPI-Anwendung dauerhaft; Codespaces dient zum direkten Start/Test. Für eine öffentliche URL ist zusätzlich ein Hosting-Ziel für die Full-Stack-App nötig.
 
 ## Dokumentation
 
