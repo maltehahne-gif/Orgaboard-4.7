@@ -35,6 +35,16 @@ export function AppointmentModal({appointment,initialDay,ownEmployeeId='',isTeam
   },[customers,form.employee_id,isTeamLeader])
   const selectedCustomer=customers.find(customer=>customer.id===form.customer_id)
 
+  const [customerSearch,setCustomerSearch]=useState(
+    selectedCustomer?.full_name || ''
+  )
+
+  const filteredCustomerResults = visibleCustomers.filter(customer =>
+    customer.full_name
+      .toLowerCase()
+      .includes(customerSearch.toLowerCase())
+  )
+
   function changeCustomer(customerId:string){
     const customer=customers.find(item=>item.id===customerId)
     setForm({...form,customer_id:customerId,employee_id:customer?.employee_id || form.employee_id})
@@ -62,10 +72,46 @@ export function AppointmentModal({appointment,initialDay,ownEmployeeId='',isTeam
         </select>
       </label>}
       <label className="span-2">Kunde
-        <select value={form.customer_id} onChange={event=>changeCustomer(event.target.value)}>
-          <option value="">Ohne Kundenbezug</option>
-          {visibleCustomers.map(customer=><option key={customer.id} value={customer.id}>{customer.full_name}</option>)}
-        </select>
+        <input
+          value={customerSearch}
+          placeholder="Kunde suchen..."
+          onChange={event=>{
+            setCustomerSearch(event.target.value)
+            if(!event.target.value){
+              changeCustomer('')
+            }
+          }}
+        />
+
+        {customerSearch && filteredCustomerResults.length > 0 && (
+          <div className="customer-search-results">
+            {filteredCustomerResults.slice(0,10).map(customer=>(
+              <button
+                type="button"
+                key={customer.id}
+                className="customer-search-item"
+                onClick={()=>{
+                  changeCustomer(customer.id)
+                  setCustomerSearch(customer.full_name)
+                }}
+              >
+                {customer.full_name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!customerSearch && (
+          <button
+            type="button"
+            className="customer-search-clear"
+            onClick={()=>{
+              changeCustomer('')
+            }}
+          >
+            Ohne Kundenbezug
+          </button>
+        )}
       </label>
       {selectedCustomer&&<div className="appointment-customer-preview span-2">
         <div><small>Anschrift</small><strong>{selectedCustomer.address||'Nicht hinterlegt'}</strong>{selectedCustomer.address&&<button type="button" className="appointment-preview-directions" onClick={()=>openDirections(selectedCustomer.address)}><MapPinned size={15}/> Wegbeschreibung</button>}</div>

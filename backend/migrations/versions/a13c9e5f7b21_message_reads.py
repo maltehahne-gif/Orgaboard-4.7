@@ -54,27 +54,26 @@ def upgrade() -> None:
         ["user_id"],
     )
 
+
     # Bereits gelesene private Nachrichten übernehmen.
+    # SQLite-kompatible Version ohne md5/random/clock_timestamp.
     op.execute("""
         INSERT INTO message_reads (id, message_id, user_id, read_at)
         SELECT
-            md5(random()::text || clock_timestamp()::text || m.id),
+            lower(hex(randomblob(16))),
             m.id,
             m.recipient_user_id,
             m.read_at
         FROM messages m
         WHERE m.recipient_user_id IS NOT NULL
           AND m.read_at IS NOT NULL
-        ON CONFLICT (message_id, user_id) DO NOTHING
     """)
 
-    # Alte Team-Nachrichten werden für bestehende Benutzer als bereits
-    # gelesen behandelt, damit nicht plötzlich alte Nachrichten als neu
-    # erscheinen.
+    # Alte Team-Nachrichten als gelesen markieren.
     op.execute("""
         INSERT INTO message_reads (id, message_id, user_id, read_at)
         SELECT
-            md5(random()::text || clock_timestamp()::text || m.id || u.id),
+            lower(hex(randomblob(16))),
             m.id,
             u.id,
             m.created_at
@@ -82,8 +81,8 @@ def upgrade() -> None:
         CROSS JOIN users u
         WHERE m.recipient_user_id IS NULL
           AND u.id <> m.sender_user_id
-        ON CONFLICT (message_id, user_id) DO NOTHING
     """)
+
 
 
 def downgrade() -> None:

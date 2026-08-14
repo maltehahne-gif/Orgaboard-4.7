@@ -96,7 +96,7 @@ def make_payload(db: Session, employee_id: str, week_start: date) -> dict:
         "days": days,
         "week_revenue_cents": week_revenue,
         "week_units": week_units,
-        "units_target": employee.weekly_units_target,
+        "monthly_units_target": employee.monthly_units_target,
         "slots": [{"label": s, "hour": h} for s, h in SLOTS],
         "legend": APPT_COLORS,
     }

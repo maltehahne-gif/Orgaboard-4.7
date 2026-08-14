@@ -28,7 +28,7 @@ def main():
             if existing:continue
             u=User(email=email,full_name=full_name,password_hash=hash_password(settings.seed_default_password),role=role,must_change_password=True)
             db.add(u);db.flush()
-            db.add(Employee(user_id=u.id,display_name=full_name,position="Teamleiter" if role==Role.TEAM_LEADER else "Vertriebspartner",weekly_units_target=30))
+            db.add(Employee(user_id=u.id,display_name=full_name,position="Teamleiter" if role==Role.TEAM_LEADER else "Vertriebspartner",monthly_units_target=30))
         db.commit()
         print("Benutzer angelegt. Alle müssen beim ersten Login das Passwort ändern.")
     finally:

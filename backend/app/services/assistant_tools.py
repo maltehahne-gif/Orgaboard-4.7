@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from app.core.rbac import current_employee, resolve_employee_by_name
-from app.core.timeutils import day_bounds, week_bounds
+from app.core.timeutils import day_bounds, month_bounds, week_bounds
 from app.models import Appointment, AppointmentProduct, AppointmentStatus, AppointmentType, Customer, Employee, Message, Product, ProductPresentation, Rental, RentalStatus, Role, Sale, SaleChannel, SaleItem, User
 from app.services.serializers import current_price, product_out, sale_units
 from app.services.stats import revenue_between, units_between
@@ -54,7 +54,13 @@ TOOL_SPECS = [
     },
     {
         "type": "function", "name": "get_weekly_units",
-        "description": "Berechnet Einheiten und Zielerreichung der aktuellen Woche.",
+        "description": "Berechnet die Einheiten der aktuellen Woche.",
+        "parameters": {"type":"object","properties":{"employee_name":{"type":["string","null"]}},"required":["employee_name"],"additionalProperties":False},
+        "strict": True,
+    },
+    {
+        "type": "function", "name": "get_monthly_units",
+        "description": "Berechnet die Einheiten des aktuellen Monats sowie Monatsziel und Zielerreichung.",
         "parameters": {"type":"object","properties":{"employee_name":{"type":["string","null"]}},"required":["employee_name"],"additionalProperties":False},
         "strict": True,
     },
@@ -157,8 +163,38 @@ def execute_tool(db: Session, user: User, name: str, args: dict) -> dict:
         return {"employee":e.display_name,"revenue_cents":revenue_between(db,ws,we,e.id),"week_start":ws.date().isoformat()}
 
     if name == "get_weekly_units":
-        e = resolve_employee_by_name(db, user, args.get("employee_name")); ws, we = week_bounds(); units = units_between(db,ws,we,e.id); target=e.weekly_units_target
-        return {"employee":e.display_name,"units":units,"target":target,"missing":max(target-units,0),"percent":round(units/target*100,1) if target else 0}
+        e = resolve_employee_by_name(
+            db,
+            user,
+            args.get("employee_name"),
+        )
+        ws, we = week_bounds()
+        units = units_between(db, ws, we, e.id)
+        return {
+            "employee": e.display_name,
+            "units": units,
+            "week_start": ws.date().isoformat(),
+        }
+
+    if name == "get_monthly_units":
+        e = resolve_employee_by_name(
+            db,
+            user,
+            args.get("employee_name"),
+        )
+        ms, me = month_bounds()
+        units = units_between(db, ms, me, e.id)
+        target = e.monthly_units_target
+        return {
+            "employee": e.display_name,
+            "units": units,
+            "target": target,
+            "missing": max(target - units, 0),
+            "percent": round(units / target * 100, 1)
+            if target
+            else 0,
+            "month_start": ms.date().isoformat(),
+        }
 
     if name == "get_rentals":
         e = resolve_employee_by_name(db, user, args.get("employee_name")); stmt=select(Rental).where(Rental.employee_id==e.id,Rental.status.in_([RentalStatus.RENTED,RentalStatus.DUE]))

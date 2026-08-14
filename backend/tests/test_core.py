@@ -22,7 +22,7 @@ def db():
 
 def make_employee(db,name='Test User',role=Role.EMPLOYEE):
     u=User(email=f'{name.replace(" ",".").lower()}@test.local',full_name=name,password_hash='hash',role=role,must_change_password=False)
-    db.add(u);db.flush();e=Employee(user_id=u.id,display_name=name,weekly_units_target=30);db.add(e);db.flush();return u,e
+    db.add(u);db.flush();e=Employee(user_id=u.id,display_name=name,monthly_units_target=30);db.add(e);db.flush();return u,e
 
 
 def test_revenue_and_units_derive_from_sale_items(db):

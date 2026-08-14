@@ -46,7 +46,7 @@ Die Benutzer werden beim ersten Start automatisch angelegt. Der Seed ist idempot
 - PostgreSQL + SQLAlchemy + Alembic
 - serverseitige Rollenrechte für Mitarbeiter und Teamleiter
 - Kunden, Termine, Verkäufe mit mehreren Artikeln, Produktvorstellungen und Verleih
-- automatische Umsatz- und Einheitenberechnung mit Wochenziel 30
+- automatische Umsatz- und Einheitenberechnung mit Monatsziel 30
 - Teamleiter-Dashboard
 - digitale Buntewoche und PDF-Export
 - interne Nachrichten und WebSocket-Aktualisierung

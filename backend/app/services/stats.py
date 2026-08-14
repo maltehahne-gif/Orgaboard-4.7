@@ -141,7 +141,7 @@ def dashboard_stats(db: Session, employee_id: str | None = None) -> dict:
     if employee_id:
         employee = db.get(Employee, employee_id)
         if employee:
-            target = employee.weekly_units_target
+            target = employee.monthly_units_target
     missing = max(target - units_month, 0)
     pct = round((units_month / target * 100), 1) if target else 0
     return {

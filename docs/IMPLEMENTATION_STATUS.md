@@ -11,7 +11,7 @@
 | 7 | Verkauf mit mehreren Produkten | ✅ `sale_items` |
 | 8 | Umsatz automatisch | ✅ aus SaleItems berechnet |
 | 9 | Einheiten automatisch | ✅ Menge der SaleItems |
-| 10 | Wochenziel 30 | ✅ pro Profil konfigurierbar, Standard 30 |
+| 10 | Monatsziel 30 | ✅ pro Profil konfigurierbar, Standard 30 |
 | 11 | Produktvorstellungen speichern | ✅ API + Produktaktion |
 | 12 | Verleih verwalten | ✅ inkl. Rückgabestatus |
 | 13 | Buntewoche zeigt Termine | ✅ |

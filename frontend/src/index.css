@@ -1,0 +1,121 @@
+
+/* Apple inspired Sidebar */
+.apple-sidebar{
+  background:
+    linear-gradient(
+      180deg,
+      rgba(18,18,20,.96),
+      rgba(8,10,14,.98)
+    );
+  backdrop-filter: blur(24px);
+  border-right:1px solid rgba(255,255,255,.08);
+  padding:24px 18px;
+}
+
+
+.apple-sidebar nav a{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  margin-bottom:6px;
+  border-radius:18px;
+
+  color:rgba(255,255,255,.72);
+
+  transition:
+    transform .25s ease,
+    background .25s ease,
+    color .25s ease,
+    box-shadow .25s ease;
+}
+
+
+.apple-sidebar nav a:hover{
+
+  background:
+    rgba(255,255,255,.08);
+
+  color:white;
+
+  transform:
+    translateX(4px);
+
+}
+
+
+.apple-sidebar nav a.apple-active{
+
+  background:
+    linear-gradient(
+      135deg,
+      #30d158,
+      #20c05c
+    );
+
+  color:#061006;
+
+  font-weight:600;
+
+  box-shadow:
+    0 10px 30px
+    rgba(48,209,88,.25);
+
+}
+
+
+.apple-sidebar nav a.apple-active svg{
+
+  transform:
+    scale(1.08);
+
+}
+
+
+.profile-mini{
+
+  background:
+    rgba(255,255,255,.06);
+
+  border:
+    1px solid rgba(255,255,255,.08);
+
+  border-radius:24px;
+
+  padding:14px;
+
+  margin-bottom:24px;
+
+  transition:.3s ease;
+
+}
+
+
+.profile-mini:hover{
+
+  background:
+    rgba(255,255,255,.1);
+
+  transform:
+    translateY(-2px);
+
+}
+
+
+.logout{
+
+  border-radius:18px!important;
+
+  transition:.25s ease;
+
+}
+
+
+.logout:hover{
+
+  background:
+    rgba(255,255,255,.08);
+
+}
+

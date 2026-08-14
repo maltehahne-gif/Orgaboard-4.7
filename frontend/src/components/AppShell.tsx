@@ -95,7 +95,7 @@ export function AppShell(){
     : String(unreadMessages)
 
   return <div className="app-shell">
-    <aside className="sidebar">
+    <aside className="sidebar apple-sidebar">
       <Logo/>
 
       <div className="profile-mini">
@@ -117,14 +117,14 @@ export function AppShell(){
         </div>
       </div>
 
-      <nav>
+      <nav className="apple-nav">
         {links.map(([to,label,Icon])=>
           <NavLink
             key={to}
             to={to}
             end={to==='/'}
             className={({isActive})=>
-              isActive?'active':''
+              isActive?'active apple-active':''
             }
           >
             <Icon size={18}/>

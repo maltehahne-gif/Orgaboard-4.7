@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.rbac import current_employee
-from app.core.timeutils import day_bounds, local_today, to_business_tz, week_bounds
+from app.core.timeutils import day_bounds, local_today, month_bounds, to_business_tz, week_bounds
 from app.models import Appointment, AppointmentProduct, AppointmentStatus, Conversation, ConversationMessage, Customer, Product, Rental, RentalStatus, Role, User
 from app.services.assistant_tools import TOOL_SPECS, execute_tool
 from app.services.serializers import current_price
@@ -80,8 +80,22 @@ def _local_answer(db: Session, user: User, c: Conversation, text: str) -> str:
         ws,we=week_bounds();revenue=revenue_between(db,ws,we,e.id);return f"Dein Umsatz in dieser Woche beträgt {_format_money(revenue)}."
 
     if "einheit" in lower or "ziel" in lower:
-        ws,we=week_bounds();units=units_between(db,ws,we,e.id);missing=max(e.weekly_units_target-units,0);pct=round(units/e.weekly_units_target*100,1) if e.weekly_units_target else 0
-        return f"Du hast diese Woche {units} Einheiten. Ziel: {e.weekly_units_target}. Es fehlen {missing} Einheiten; Zielerreichung {pct} %."
+        if "woche" in lower:
+            ws, we = week_bounds()
+            units = units_between(db, ws, we, e.id)
+            return f"Du hast diese Woche {units} Einheiten."
+
+        ms, me = month_bounds()
+        units = units_between(db, ms, me, e.id)
+        target = e.monthly_units_target
+        missing = max(target - units, 0)
+        pct = round(units / target * 100, 1) if target else 0
+        return (
+            f"Du hast diesen Monat {units} Einheiten. "
+            f"Monatsziel: {target}. "
+            f"Es fehlen {missing} Einheiten; "
+            f"Zielerreichung {pct} %."
+        )
 
     if "verleih" in lower or "rückgabe" in lower or "rueckgabe" in lower:
         rows=db.scalars(select(Rental).where(Rental.employee_id==e.id,Rental.status.in_([RentalStatus.RENTED,RentalStatus.DUE])).order_by(Rental.due_at.asc().nullslast())).all()

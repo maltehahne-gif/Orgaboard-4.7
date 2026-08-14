@@ -44,7 +44,7 @@ def user_payload(db: Session, user: User) -> dict:
             "id": employee.id,
             "display_name": employee.display_name,
             "position": employee.position,
-            "weekly_units_target": employee.weekly_units_target,
+            "monthly_units_target": employee.monthly_units_target,
             "weekly_revenue_target_cents": employee.weekly_revenue_target_cents,
         },
     }

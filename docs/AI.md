@@ -14,6 +14,7 @@ Die KI darf keine Datenbankabfragen frei formulieren. `assistant_tools.py` defin
 - `get_product_details`
 - `get_weekly_revenue`
 - `get_weekly_units`
+- `get_monthly_units`
 - `get_rentals`
 - `create_appointment`
 - `update_appointment_status`

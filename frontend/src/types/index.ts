@@ -1,5 +1,5 @@
 export type Role = 'EMPLOYEE' | 'TEAM_LEADER'
-export interface Employee { id:string; display_name:string; position:string; weekly_units_target:number; weekly_revenue_target_cents:number|null }
+export interface Employee { id:string; display_name:string; position:string; monthly_units_target:number; weekly_revenue_target_cents:number|null }
 export interface Me { id:string; email:string; full_name:string; role:Role; must_change_password:boolean; employee:Employee|null }
 export interface Customer { id:string; employee_id:string; first_name:string; last_name:string; full_name:string; street:string; house_number:string; postal_code:string; city:string; phone:string|null; email:string|null; notes:string|null; address:string }
 export interface Product { id:string; name:string; category:string; description:string|null; functions:string[]; technical:Record<string,unknown>; variants:unknown[]; accessories:unknown[]; official_url:string|null; source_url:string|null; source_kind:string|null; source_updated_at:string|null; verified:boolean; price:{amount_cents:number;currency:string;source_url:string;fetched_at:string}|null; image:{url:string;alt_text:string|null;source_url:string;usage_note:string|null}|null }

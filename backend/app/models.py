@@ -71,7 +71,7 @@ class Employee(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(255), index=True)
     position: Mapped[str] = mapped_column(String(120), default="Vertriebspartner")
-    weekly_units_target: Mapped[int] = mapped_column(Integer, default=30)
+    monthly_units_target: Mapped[int] = mapped_column(Integer, default=30)
     weekly_revenue_target_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     daily_area_target_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     daily_total_target_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)

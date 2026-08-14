@@ -17,6 +17,8 @@ type Editor={appointment?:Appointment;initialDay?:Date}
 
 export function DashboardPage(){
   const {me}=useAuth()
+
+  const [current,setCurrent]=useState(new Date())
   const toast=useToast()
   const [dashboard,setDashboard]=useState<Dash|null>(null)
   const [appointments,setAppointments]=useState<Appointment[]>([])
@@ -71,53 +73,212 @@ export function DashboardPage(){
   }
 
   if(!dashboard)return <div className="loading">Dashboard wird geladen…</div>
-  return <div className="page">
-    <div className="page-head dashboard-welcome"><div><h1>Willkommen zurück, {me?.full_name.split(' ')[0]}! <span aria-hidden="true">👋</span></h1><p>Hier ist dein Überblick für diese Woche.</p></div></div>
-    <AppointmentWeek
-      weekStart={weekStart}
-      appointments={appointments}
-      onShiftWeek={days=>setWeekStart(current=>addDays(current,days))}
-      onToday={()=>setWeekStart(startOfWorkWeek())}
-      onCreate={day=>setEditor({initialDay:day})}
-      onEdit={appointment=>setEditor({appointment})}
-      onToggleCompleted={toggleCompleted}
-      onDelete={appointment=>remove(appointment)}
-    />
-    <div className="stat-grid"><StatCard label="Umsatz heute" value={money(dashboard.revenue_today_cents)} accent="green"/><StatCard label="Umsatz Woche" value={money(dashboard.revenue_week_cents)} accent="green"/><StatCard label="Umsatz Monat" value={money(dashboard.revenue_month_cents)}/><StatCard label="Noch bis 30 Einheiten" value={`${dashboard.units_missing}`} accent={dashboard.units_missing===0?'green':'orange'}/></div>
-    <section className="card k70-revenue-overview">
-      <div className="k70-revenue-head">
-        <div className="k70-revenue-title">
-          <span className="k70-revenue-logo"><BadgeEuro size={23}/></span>
-          <div><small>K70-MATERIAL</small><h2>K70-Umsatz</h2></div>
+
+  return <div className="apple-dashboard">
+
+    <section className="apple-main-column">
+
+      <div className="apple-welcome">
+        <h1>
+          Willkommen zurück, {me?.full_name?.split(' ')[0]}! 👋
+        </h1>
+        <p>
+          Hier ist dein Überblick für diese Woche.
+        </p>
+      </div>
+
+
+      <AppointmentWeek
+        weekStart={current}
+        appointments={appointments}
+        onShiftWeek={(days)=>setCurrent(addDays(current,days))}
+        onToday={()=>setCurrent(new Date())}
+        onCreate={(day)=>setEditor({initialDay:day})}
+        onEdit={(appointment)=>setEditor({appointment})}
+        onToggleCompleted={toggleCompleted}
+        onDelete={(appointment)=>remove(appointment,true)}
+      />
+
+
+      <div className="apple-stat-grid">
+
+        <div className="apple-stat">
+          <small>Umsatz heute</small>
+          <strong>
+            {money(dashboard.revenue_today_cents)}
+          </strong>
         </div>
-        <span className="k70-revenue-badge">Separat ausgewertet</span>
+
+
+        <div className="apple-stat">
+          <small>Umsatz Woche</small>
+          <strong>
+            {money(dashboard.revenue_week_cents)}
+          </strong>
+        </div>
+
+
+        <div className="apple-stat">
+          <small>Umsatz Monat</small>
+          <strong>
+            {money(dashboard.revenue_month_cents)}
+          </strong>
+        </div>
+
+
+        <div className="apple-stat">
+          <small>Noch bis Monatsziel</small>
+          <strong className="orange">
+            {dashboard.units_missing}
+          </strong>
+        </div>
+
       </div>
-      <div className="k70-revenue-grid">
-        <article><div className="k70-revenue-label"><Clock3 size={17}/><span>Heute</span></div><strong>{money(dashboard.k70_revenue_today_cents)}</strong><small>Tagesumsatz</small></article>
-        <article><div className="k70-revenue-label"><CalendarDays size={17}/><span>Diese Woche</span></div><strong>{money(dashboard.k70_revenue_week_cents)}</strong><small>Wochenumsatz</small></article>
-        <article><div className="k70-revenue-label"><CalendarRange size={17}/><span>Dieser Monat</span></div><strong>{money(dashboard.k70_revenue_month_cents)}</strong><small>Monatsumsatz</small></article>
-      </div>
-      <div className="k70-revenue-note"><Info size={16}/><span>K70-Produkte fließen vollständig in den Umsatz ein, werden aber nicht als Einheit gezählt.</span></div>
+
+
+      <section className="apple-k70">
+
+        <div>
+          <small>K70-MATERIAL</small>
+          <h2>K70-Umsatz</h2>
+        </div>
+
+        <div className="apple-k70-grid">
+
+          <article>
+            <span>Heute</span>
+            <strong>
+              {money(dashboard.k70_revenue_today_cents)}
+            </strong>
+          </article>
+
+
+          <article>
+            <span>Diese Woche</span>
+            <strong>
+              {money(dashboard.k70_revenue_week_cents)}
+            </strong>
+          </article>
+
+
+          <article>
+            <span>Dieser Monat</span>
+            <strong>
+              {money(dashboard.k70_revenue_month_cents)}
+            </strong>
+          </article>
+
+        </div>
+
+      </section>
+
     </section>
-    <div className="dashboard-grid">
-      <section className="card big"><div className="section-title"><Target size={20}/><h2>Monatsziel</h2></div><div className="units-line"><strong>{dashboard.units_month}</strong><span>/ {dashboard.units_target} Einheiten</span></div><div className="progress"><span style={{width:`${Math.min(dashboard.units_percent,100)}%`}}/></div><p>{dashboard.units_percent}% erreicht · {dashboard.units_missing} Einheiten fehlen</p></section>
-      <section className="card"><div className="section-title"><CalendarClock size={20}/><h2>Nächster Termin</h2></div>{dashboard.next_appointment?<><h3>{dashboard.next_appointment.customer_name}</h3><p>{formatDateTime(dashboard.next_appointment.start_at)}</p><small>{dashboard.next_appointment.address||'Keine Adresse hinterlegt'}</small>{dashboard.next_appointment.address&&<button type="button" className="dashboard-directions-action" onClick={()=>openDirections(dashboard.next_appointment!.address!)}><MapPinned size={16}/> Wegbeschreibung</button>}</>:<p>Kein kommender Termin.</p>}</section>
-      <section className="card"><div className="section-title"><CalendarClock size={20}/><h2>Heute</h2></div>{dashboard.today_appointments.length?dashboard.today_appointments.map(appointment=><div className="list-row dashboard-today-appointment" key={appointment.id}><strong>{new Date(appointment.start_at).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</strong><span>{appointment.customer_name}</span>{appointment.address&&<button type="button" className="appointment-route-icon" onClick={()=>openDirections(appointment.address!)} aria-label={`Wegbeschreibung zu ${appointment.customer_name||appointment.address}`} title="Wegbeschreibung"><MapPinned size={15}/></button>}</div>):<p>Heute keine Termine.</p>}</section>
-      <Link to="/verleih" className="card dashboard-link-card" aria-label="Verleihgeräte öffnen"><div className="section-title"><PackageCheck size={20}/><h2>Verleihgeräte</h2></div><div className="hero-number">{dashboard.active_rentals}</div><p>aktive Geräte im Verleih</p><span className="dashboard-link-hint">Verleih öffnen →</span></Link>
-      <Link to="/nachrichten" className="card dashboard-link-card" aria-label="Nachrichten öffnen"><div className="section-title"><Mail size={20}/><h2>Nachrichten</h2></div><div className="hero-number">{dashboard.unread_messages}</div><p>ungelesene Nachrichten</p><span className="dashboard-link-hint">Chat öffnen →</span></Link>
-    </div>
-    {editor&&<AppointmentModal
-      appointment={editor.appointment}
-      initialDay={editor.initialDay}
-      ownEmployeeId={me?.employee?.id}
-      isTeamLeader={isTeamLeader}
-      customers={customers}
-      products={products}
-      employees={employees}
-      saving={saving}
-      onClose={()=>setEditor(null)}
-      onSave={save}
-      onDelete={editor.appointment?()=>remove(editor.appointment!,true):undefined}
-    />}
+
+
+
+    <aside className="apple-right-panel">
+
+
+      <div className="apple-brand-card">
+
+        <h2>
+          Willkommen,
+          <br/>
+          {me?.full_name}
+        </h2>
+
+        <p>
+          Vertriebspartner
+        </p>
+
+        <span>
+          Mehr Zeit für Menschen.
+          <br/>
+          Mehr Möglichkeiten im Vertrieb.
+        </span>
+
+      </div>
+
+
+
+      <div className="apple-card">
+
+        <h3>
+          Umsatz heute
+        </h3>
+
+        <strong>
+          {money(dashboard.revenue_today_cents)}
+        </strong>
+
+        <span className="green">
+          ↗ +12%
+        </span>
+
+      </div>
+
+
+
+      <div className="apple-card">
+
+        <h3>
+          Deine nächsten Termine
+        </h3>
+
+        {appointments.slice(0,3).map(a=>
+          <div className="apple-next" key={a.id}>
+
+            <b>
+              {new Date(a.start_at)
+              .toLocaleTimeString("de-DE",
+              {hour:"2-digit",minute:"2-digit"})}
+            </b>
+
+            <span>
+              {a.customer_name}
+            </span>
+
+          </div>
+        )}
+
+      </div>
+
+
+
+      <div className="apple-card">
+
+        <h3>
+          Schnellzugriff
+        </h3>
+
+
+        <div className="apple-actions">
+
+          <button>
+            Neuer Kunde
+          </button>
+
+          <button>
+            Termin planen
+          </button>
+
+          <button>
+            Neuer Verkauf
+          </button>
+
+          <button>
+            Route erstellen
+          </button>
+
+        </div>
+
+
+      </div>
+
+
+    </aside>
+
+
   </div>
+
 }

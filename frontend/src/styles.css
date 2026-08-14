@@ -8518,3 +8518,3177 @@ input[type="number"]{
 
 /* ORGABOARD OPEN BLOCK1 END */
 
+
+
+/* ORGABOARD VERBESSERUNGEN BLOCK 1 */
+
+
+.card,
+.table-card,
+.page-section {
+
+ transition:
+ transform .15s ease,
+ box-shadow .15s ease;
+
+}
+
+
+.card:hover {
+
+ transform:translateY(-1px);
+
+}
+
+
+button,
+.btn {
+
+ min-height:42px;
+
+}
+
+
+input,
+select,
+textarea {
+
+ color:#eef7f2;
+
+ background:#091516;
+
+ border-color:#294039;
+
+}
+
+
+.loading-state {
+
+ display:flex;
+
+ justify-content:center;
+
+ align-items:center;
+
+ padding:20px;
+
+ color:#8fa19b;
+
+}
+
+
+.error-state {
+
+ padding:15px;
+
+ border-radius:10px;
+
+ background:#301313;
+
+ color:#ffaaaa;
+
+}
+
+
+@media(max-width:760px){
+
+ .table-card{
+
+   overflow-x:auto;
+
+ }
+
+
+ button{
+
+   width:100%;
+
+ }
+
+
+ .card{
+
+   border-radius:14px;
+
+ }
+
+
+}
+
+
+
+
+/* ===============================
+   APPLE STYLE SIDEBAR REDESIGN
+   =============================== */
+
+.app-shell{
+  background:
+    radial-gradient(circle at top left,#1d3b35 0%,transparent 35%),
+    linear-gradient(135deg,#050b10,#071d18);
+}
+
+
+/* Sidebar Glas Effekt */
+
+.sidebar{
+  position:relative;
+  width:260px;
+  padding:24px 18px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(20,30,35,.88),
+      rgba(5,15,18,.96)
+    );
+  backdrop-filter:blur(30px);
+  -webkit-backdrop-filter:blur(30px);
+  border-right:1px solid rgba(255,255,255,.08);
+  box-shadow:
+    20px 0 60px rgba(0,0,0,.35);
+}
+
+
+/* Profil */
+
+.profile-mini{
+  padding:18px;
+  margin-bottom:25px;
+  border-radius:22px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+  transition:.3s ease;
+}
+
+.profile-mini:hover{
+  transform:translateY(-2px);
+  background:rgba(255,255,255,.08);
+}
+
+
+/* Navigation */
+
+.sidebar nav{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+
+.sidebar nav a{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:14px;
+
+  padding:14px 16px;
+
+  border-radius:18px;
+
+  color:#d7dfdc;
+  text-decoration:none;
+
+  transition:
+    background .25s ease,
+    transform .25s ease,
+    color .25s ease;
+}
+
+
+.sidebar nav a:hover{
+
+  background:
+    rgba(255,255,255,.07);
+
+  transform:
+    translateX(4px);
+
+}
+
+
+/* Aktiver Menüpunkt */
+
+.sidebar nav a.active{
+
+  color:white;
+
+  background:
+    linear-gradient(
+      135deg,
+      #18c873,
+      #0b9f58
+    );
+
+  box-shadow:
+
+    0 10px 30px rgba(0,200,120,.35);
+
+}
+
+
+.sidebar nav a.active::before{
+
+  content:"";
+
+  position:absolute;
+
+  left:-18px;
+
+  width:4px;
+  height:60%;
+
+  border-radius:10px;
+
+  background:#35ff9a;
+
+}
+
+
+
+/* Icons */
+
+.sidebar svg{
+
+  transition:.3s ease;
+
+}
+
+
+.sidebar nav a:hover svg{
+
+  transform:
+    scale(1.15);
+
+}
+
+
+
+/* Logout */
+
+.logout{
+
+  margin-top:auto;
+
+  border-radius:18px;
+
+  background:
+    rgba(255,255,255,.05);
+
+  border:
+    1px solid rgba(255,255,255,.08);
+
+  transition:.3s ease;
+
+}
+
+
+.logout:hover{
+
+  background:
+    rgba(255,50,50,.15);
+
+  transform:
+    translateY(-2px);
+
+}
+
+
+
+/* sanfte Apple Animation */
+
+.sidebar,
+.sidebar nav a,
+.profile-mini{
+
+  animation:
+    fadeSlide .45s ease both;
+
+}
+
+
+@keyframes fadeSlide{
+
+from{
+
+ opacity:0;
+ transform:translateY(10px);
+
+}
+
+to{
+
+ opacity:1;
+ transform:none;
+
+}
+
+}
+
+
+
+
+/* =====================================
+   APPLE STYLE TASKLINE / APPOINTMENTS
+   ===================================== */
+
+
+.appointment-week,
+.appointment-list,
+.dashboard-appointments{
+
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+
+}
+
+
+/* einzelne Termin Karte */
+
+.appointment-card,
+.appointment-row,
+.dashboard-appointment{
+
+  position:relative;
+
+  display:flex;
+  align-items:center;
+  gap:18px;
+
+  padding:18px 20px;
+
+  border-radius:24px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,.08),
+      rgba(255,255,255,.03)
+    );
+
+  border:
+    1px solid rgba(255,255,255,.09);
+
+  backdrop-filter:
+    blur(25px);
+
+  -webkit-backdrop-filter:
+    blur(25px);
+
+  box-shadow:
+
+    0 15px 40px rgba(0,0,0,.18);
+
+
+  transition:
+    transform .25s ease,
+    box-shadow .25s ease,
+    background .25s ease;
+
+}
+
+
+.appointment-card:hover,
+.appointment-row:hover,
+.dashboard-appointment:hover{
+
+  transform:
+    translateY(-4px)
+    scale(1.01);
+
+
+  background:
+    rgba(255,255,255,.12);
+
+
+  box-shadow:
+
+    0 20px 50px rgba(0,0,0,.35);
+
+}
+
+
+
+/* Zeit links */
+
+.appointment-time{
+
+  min-width:75px;
+
+  font-size:18px;
+
+  font-weight:700;
+
+  color:white;
+
+}
+
+
+
+/* Status Punkt */
+
+.appointment-card::before,
+.appointment-row::before,
+.dashboard-appointment::before{
+
+  content:"";
+
+  width:12px;
+  height:12px;
+
+  border-radius:50%;
+
+  background:#27e879;
+
+  box-shadow:
+
+    0 0 15px #27e879;
+
+
+}
+
+
+
+/* Inhalt */
+
+.appointment-content{
+
+  flex:1;
+
+}
+
+
+.appointment-content strong{
+
+  display:block;
+
+  font-size:17px;
+
+  color:white;
+
+  margin-bottom:4px;
+
+}
+
+
+.appointment-content span{
+
+  color:#9ca9a5;
+
+  font-size:14px;
+
+}
+
+
+
+/* nächster Termin */
+
+.appointment-next{
+
+  border:
+
+    1px solid rgba(40,255,150,.5);
+
+
+  background:
+
+    linear-gradient(
+      135deg,
+      rgba(20,200,110,.25),
+      rgba(0,80,50,.2)
+    );
+
+
+}
+
+
+
+/* Buttons */
+
+.appointment-actions button{
+
+  width:38px;
+  height:38px;
+
+  border-radius:50%;
+
+  border:none;
+
+  background:
+
+    rgba(255,255,255,.08);
+
+  color:white;
+
+  cursor:pointer;
+
+  transition:.25s;
+
+}
+
+
+.appointment-actions button:hover{
+
+  background:#20d875;
+
+  transform:
+    scale(1.1);
+
+}
+
+
+
+/* Animation */
+
+.appointment-card,
+.appointment-row,
+.dashboard-appointment{
+
+ animation:
+
+  taskAppear .45s ease both;
+
+}
+
+
+@keyframes taskAppear{
+
+ from{
+
+  opacity:0;
+
+  transform:
+    translateY(15px);
+
+ }
+
+ to{
+
+  opacity:1;
+
+  transform:none;
+
+ }
+
+}
+
+
+
+
+
+/* =====================================
+   APPLE CALENDAR TASKLINE DESIGN
+   ===================================== */
+
+
+.apple-taskline{
+
+  padding:28px;
+
+  border-radius:32px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,.08),
+      rgba(255,255,255,.03)
+    );
+
+  border:
+    1px solid rgba(255,255,255,.1);
+
+  backdrop-filter:
+    blur(35px);
+
+}
+
+
+
+/* Header */
+
+.apple-task-header{
+
+ display:flex;
+
+ justify-content:space-between;
+
+ align-items:center;
+
+ margin-bottom:28px;
+
+}
+
+
+.apple-task-header h2{
+
+ margin:0;
+
+ font-size:28px;
+
+ color:white;
+
+}
+
+
+.apple-task-header p{
+
+ margin-top:6px;
+
+ color:rgba(255,255,255,.55);
+
+}
+
+
+
+/* Navigation */
+
+.apple-calendar-controls{
+
+ display:flex;
+
+ gap:10px;
+
+}
+
+
+.apple-calendar-controls button{
+
+ border:none;
+
+ padding:10px 16px;
+
+ border-radius:16px;
+
+ background:
+ rgba(255,255,255,.08);
+
+ color:white;
+
+ cursor:pointer;
+
+ transition:.25s;
+
+}
+
+
+.apple-calendar-controls button:hover{
+
+ background:
+ rgba(255,255,255,.16);
+
+ transform:
+ translateY(-2px);
+
+}
+
+
+
+/* Timeline */
+
+.apple-timeline{
+
+ display:flex;
+
+ flex-direction:column;
+
+ gap:18px;
+
+}
+
+
+.apple-time-row{
+
+ display:grid;
+
+ grid-template-columns:
+ 90px 1fr;
+
+ gap:20px;
+
+ align-items:center;
+
+}
+
+
+
+.apple-time{
+
+ display:flex;
+
+ flex-direction:column;
+
+ color:white;
+
+}
+
+
+.apple-time strong{
+
+ font-size:20px;
+
+}
+
+
+.apple-time span{
+
+ color:rgba(255,255,255,.45);
+
+}
+
+
+
+/* Karte */
+
+
+.apple-task-card{
+
+ position:relative;
+
+ display:flex;
+
+ align-items:center;
+
+ gap:18px;
+
+ padding:22px;
+
+ border-radius:26px;
+
+
+ background:
+
+ linear-gradient(
+ 135deg,
+ rgba(255,255,255,.12),
+ rgba(255,255,255,.04)
+ );
+
+
+ border:
+
+ 1px solid rgba(255,255,255,.12);
+
+
+ transition:.3s ease;
+
+
+ animation:
+ task-in .45s ease both;
+
+
+}
+
+
+
+.apple-task-card:hover{
+
+ transform:
+ translateY(-5px);
+
+
+ box-shadow:
+
+ 0 25px 60px rgba(0,0,0,.35);
+
+}
+
+
+
+.task-dot{
+
+ width:14px;
+
+ height:14px;
+
+ border-radius:50%;
+
+
+ background:
+ var(--task-color);
+
+
+ box-shadow:
+
+ 0 0 20px var(--task-color);
+
+
+}
+
+
+
+/* Inhalt */
+
+
+.task-main{
+
+ flex:1;
+
+ cursor:pointer;
+
+}
+
+
+.task-main h3{
+
+ margin:0 0 5px;
+
+ color:white;
+
+ font-size:20px;
+
+}
+
+
+.task-main p{
+
+ margin:0;
+
+ color:
+ rgba(255,255,255,.55);
+
+}
+
+
+
+/* Tags */
+
+.task-tags{
+
+ display:flex;
+
+ gap:8px;
+
+ margin-top:12px;
+
+}
+
+
+.task-tags span{
+
+ padding:5px 12px;
+
+ border-radius:999px;
+
+ background:
+ rgba(255,255,255,.08);
+
+ color:white;
+
+ font-size:12px;
+
+}
+
+
+
+/* Aktionen */
+
+.task-actions{
+
+ display:flex;
+
+ gap:8px;
+
+}
+
+
+.task-actions button{
+
+ width:38px;
+
+ height:38px;
+
+ border-radius:50%;
+
+ border:none;
+
+
+ background:
+
+ rgba(255,255,255,.08);
+
+
+ color:white;
+
+ cursor:pointer;
+
+
+ transition:.25s;
+
+}
+
+
+.task-actions button:hover{
+
+ background:#20d875;
+
+ transform:
+ scale(1.12);
+
+}
+
+
+
+/* Footer */
+
+.apple-task-footer{
+
+ margin-top:25px;
+
+ display:flex;
+
+ justify-content:space-between;
+
+ align-items:center;
+
+}
+
+
+
+.apple-task-footer button{
+
+ display:flex;
+
+ align-items:center;
+
+ gap:8px;
+
+
+ border:none;
+
+ border-radius:18px;
+
+ padding:12px 18px;
+
+
+ background:#20d875;
+
+ color:#061006;
+
+ font-weight:600;
+
+}
+
+
+
+/* Legende */
+
+.apple-legend{
+
+ display:flex;
+
+ gap:15px;
+
+}
+
+
+.apple-legend span{
+
+ display:flex;
+
+ align-items:center;
+
+ gap:7px;
+
+ color:white;
+
+ font-size:13px;
+
+}
+
+
+.apple-legend i{
+
+ width:10px;
+
+ height:10px;
+
+ border-radius:50%;
+
+}
+
+
+
+@keyframes task-in{
+
+from{
+
+ opacity:0;
+
+ transform:
+ translateY(15px);
+
+}
+
+to{
+
+ opacity:1;
+
+ transform:none;
+
+}
+
+}
+
+
+
+
+/* ==========================================
+   ORGABOARD APPLE VISION UI REDESIGN
+   ========================================== */
+
+
+body{
+    background:
+    radial-gradient(
+        circle at top left,
+        rgba(0,255,150,.12),
+        transparent 35%
+    ),
+    #05080b;
+}
+
+
+/* Hauptlayout */
+
+.app-shell{
+    background:
+    linear-gradient(
+        135deg,
+        #05090d,
+        #071814
+    );
+}
+
+
+/* Sidebar */
+
+.sidebar{
+
+    width:290px!important;
+
+    background:
+    linear-gradient(
+        180deg,
+        rgba(20,30,35,.92),
+        rgba(5,10,15,.96)
+    )!important;
+
+    backdrop-filter:blur(35px);
+
+    border-right:
+    1px solid rgba(255,255,255,.08);
+
+}
+
+
+.sidebar nav a{
+
+    border-radius:16px;
+
+    padding:13px 16px;
+
+    transition:
+    all .25s ease;
+
+}
+
+
+.sidebar nav a:hover{
+
+    transform:
+    translateX(5px);
+
+    background:
+    rgba(255,255,255,.06);
+
+}
+
+
+.sidebar nav a.active{
+
+    background:
+    linear-gradient(
+        90deg,
+        #00d66b,
+        #008f4c
+    );
+
+    box-shadow:
+    0 10px 35px
+    rgba(0,220,110,.35);
+
+}
+
+
+
+/* =====================================
+   TERMIN CARDS
+===================================== */
+
+
+.apple-taskline{
+
+    max-width:900px;
+
+}
+
+
+
+.apple-task-header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:35px;
+
+}
+
+
+.apple-task-header h2{
+
+    font-size:34px;
+
+    font-weight:700;
+
+    letter-spacing:-1px;
+
+}
+
+
+
+.apple-task-card{
+
+
+    position:relative;
+
+    display:flex;
+
+    align-items:center;
+
+
+    padding:24px;
+
+
+    margin-bottom:14px;
+
+
+    border-radius:24px;
+
+
+    background:
+
+    linear-gradient(
+    145deg,
+    rgba(255,255,255,.09),
+    rgba(255,255,255,.03)
+    );
+
+
+    border:
+
+    1px solid rgba(255,255,255,.08);
+
+
+
+    backdrop-filter:
+
+    blur(30px);
+
+
+
+    transition:
+
+    transform .3s ease,
+    box-shadow .3s ease;
+
+
+
+}
+
+
+.apple-task-card:hover{
+
+    transform:
+    translateY(-4px);
+
+
+    box-shadow:
+
+    0 25px 60px
+    rgba(0,0,0,.45);
+
+
+}
+
+
+
+.apple-time{
+
+    width:90px;
+
+    font-size:20px;
+
+    font-weight:700;
+
+}
+
+
+
+.apple-dot{
+
+    width:12px;
+
+    height:12px;
+
+    border-radius:50%;
+
+    background:#20ff83;
+
+    margin-right:16px;
+
+}
+
+
+
+.apple-content{
+
+    flex:1;
+
+}
+
+
+.apple-content h3{
+
+    font-size:19px;
+
+    margin:0;
+
+}
+
+
+.apple-content p{
+
+    opacity:.65;
+
+    margin:8px 0;
+
+}
+
+
+.apple-tag{
+
+    display:inline-flex;
+
+    padding:6px 12px;
+
+    border-radius:20px;
+
+    background:
+
+    rgba(0,255,120,.15);
+
+    color:#00ff88;
+
+    font-size:13px;
+
+}
+
+
+
+/* Buttons */
+
+.apple-action{
+
+    width:38px;
+
+    height:38px;
+
+    border-radius:12px;
+
+    border:
+
+    1px solid rgba(255,255,255,.1);
+
+
+    background:
+
+    rgba(255,255,255,.05);
+
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+
+    transition:.2s;
+
+}
+
+
+.apple-action:hover{
+
+    background:#00d66b;
+
+}
+
+
+
+/* =====================================
+ RIGHT PANEL
+===================================== */
+
+
+.dashboard-side-card{
+
+
+background:
+
+linear-gradient(
+145deg,
+rgba(0,255,130,.22),
+rgba(0,80,50,.15)
+);
+
+
+border-radius:28px;
+
+
+padding:28px;
+
+
+border:
+
+1px solid rgba(255,255,255,.1);
+
+
+backdrop-filter:
+
+blur(30px);
+
+
+box-shadow:
+
+0 20px 60px rgba(0,0,0,.35);
+
+
+}
+
+
+
+.dashboard-side-card h1{
+
+font-size:34px;
+
+letter-spacing:-1px;
+
+}
+
+
+
+.quick-button{
+
+height:90px;
+
+border-radius:20px;
+
+background:
+
+rgba(255,255,255,.05);
+
+
+border:
+
+1px solid rgba(255,255,255,.1);
+
+
+transition:.25s;
+
+
+}
+
+
+.quick-button:hover{
+
+transform:
+translateY(-5px);
+
+
+background:
+
+rgba(0,255,130,.15);
+
+
+}
+
+
+/* Apple Animation */
+
+*{
+
+scroll-behavior:smooth;
+
+}
+
+
+
+
+
+/* =====================================
+   APPLE VISION DASHBOARD FINAL STYLE
+   ===================================== */
+
+
+.apple-dashboard{
+
+  display:grid;
+  grid-template-columns:
+    minmax(0,1fr)
+    360px;
+
+  gap:24px;
+
+  max-width:1500px;
+
+  margin:auto;
+
+}
+
+
+/* linke Seite */
+
+.apple-main-column{
+
+  display:flex;
+  flex-direction:column;
+  gap:22px;
+
+}
+
+
+
+/* Willkommen */
+
+.apple-welcome{
+
+  padding:28px;
+
+  border-radius:28px;
+
+  background:
+  linear-gradient(
+    145deg,
+    rgba(255,255,255,.08),
+    rgba(255,255,255,.03)
+  );
+
+  border:1px solid rgba(255,255,255,.08);
+
+  backdrop-filter:blur(30px);
+
+}
+
+
+.apple-welcome h1{
+
+ margin:0;
+
+ font-size:32px;
+
+ letter-spacing:-1px;
+
+}
+
+
+.apple-welcome p{
+
+ color:#9aa5ad;
+
+ margin-top:8px;
+
+}
+
+
+
+/* Stat Karten */
+
+.apple-stat-grid{
+
+ display:grid;
+
+ grid-template-columns:repeat(4,1fr);
+
+ gap:14px;
+
+}
+
+
+.apple-stat{
+
+ padding:20px;
+
+ border-radius:22px;
+
+ background:
+ rgba(255,255,255,.04);
+
+ border:
+ 1px solid rgba(255,255,255,.08);
+
+ backdrop-filter:blur(20px);
+
+}
+
+
+.apple-stat small{
+
+ color:#89939a;
+
+}
+
+
+.apple-stat strong{
+
+ display:block;
+
+ margin-top:8px;
+
+ font-size:24px;
+
+ color:#18e980;
+
+}
+
+
+.apple-stat .orange{
+
+ color:#ffb020;
+
+}
+
+
+
+/* K70 */
+
+.apple-k70{
+
+ padding:24px;
+
+ border-radius:28px;
+
+ background:
+ linear-gradient(
+ 145deg,
+ rgba(80,60,0,.25),
+ rgba(0,0,0,.15)
+ );
+
+ border:1px solid rgba(255,190,0,.25);
+
+}
+
+
+.apple-k70-grid{
+
+ display:grid;
+
+ grid-template-columns:repeat(3,1fr);
+
+ gap:15px;
+
+ margin-top:20px;
+
+}
+
+
+.apple-k70-grid article{
+
+ padding:18px;
+
+ border-radius:18px;
+
+ background:
+ rgba(0,0,0,.25);
+
+}
+
+
+.apple-k70-grid strong{
+
+ display:block;
+
+ font-size:24px;
+
+ color:#ffc400;
+
+ margin-top:8px;
+
+}
+
+
+
+/* rechte Seite */
+
+
+.apple-right-panel{
+
+ display:flex;
+
+ flex-direction:column;
+
+ gap:18px;
+
+}
+
+
+
+.apple-brand-card,
+.apple-card{
+
+ padding:24px;
+
+ border-radius:28px;
+
+ background:
+ linear-gradient(
+ 145deg,
+ rgba(255,255,255,.08),
+ rgba(255,255,255,.03)
+ );
+
+ border:1px solid rgba(255,255,255,.08);
+
+ backdrop-filter:blur(30px);
+
+}
+
+
+
+.apple-brand-card{
+
+ background:
+ radial-gradient(
+ circle at top right,
+ rgba(0,255,140,.25),
+ transparent 60%
+ ),
+ rgba(255,255,255,.04);
+
+}
+
+
+
+.apple-brand-card h2{
+
+ font-size:28px;
+
+ margin:0;
+
+}
+
+
+.apple-brand-card span{
+
+ display:block;
+
+ margin-top:25px;
+
+ color:#b8c1c7;
+
+}
+
+
+
+/* nächste Termine */
+
+.apple-next{
+
+ display:flex;
+
+ gap:15px;
+
+ padding:14px 0;
+
+ border-bottom:
+ 1px solid rgba(255,255,255,.08);
+
+}
+
+
+.apple-next b{
+
+ color:#fff;
+
+}
+
+
+
+.apple-next span{
+
+ color:#b4bdc4;
+
+}
+
+
+
+/* Schnellzugriff */
+
+.apple-actions{
+
+ display:grid;
+
+ grid-template-columns:1fr 1fr;
+
+ gap:12px;
+
+}
+
+
+.apple-actions button{
+
+ padding:18px;
+
+ border-radius:18px;
+
+ background:
+ rgba(255,255,255,.05);
+
+ color:white;
+
+ border:
+ 1px solid rgba(255,255,255,.08);
+
+ cursor:pointer;
+
+ transition:.25s;
+
+}
+
+
+.apple-actions button:hover{
+
+ transform:translateY(-3px);
+
+ background:
+ rgba(0,255,150,.15);
+
+}
+
+
+
+@media(max-width:1100px){
+
+.apple-dashboard{
+
+ grid-template-columns:1fr;
+
+}
+
+.apple-stat-grid{
+
+ grid-template-columns:repeat(2,1fr);
+
+}
+
+}
+
+
+
+
+/* =====================================
+   APPLE STYLE APPOINTMENT TIMELINE
+   ===================================== */
+
+
+.appointment-week-shell,
+.apple-taskline{
+
+    padding:32px;
+
+}
+
+
+
+/* Wochenkopf */
+
+.appointment-week-toolbar{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:30px;
+
+}
+
+
+.appointment-week-toolbar h2{
+
+    font-size:32px;
+
+    letter-spacing:-1px;
+
+}
+
+
+.appointment-week-toolbar p{
+
+    color:
+    rgba(255,255,255,.55);
+
+}
+
+
+
+/* Tage */
+
+.appointment-day{
+
+    margin-bottom:28px;
+
+}
+
+
+
+.appointment-day-head{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:15px;
+
+    margin-bottom:14px;
+
+}
+
+
+.appointment-day-head strong{
+
+    font-size:20px;
+
+    color:white;
+
+}
+
+
+.appointment-day-head span{
+
+    color:#8d979f;
+
+}
+
+
+
+.appointment-day-head button{
+
+    margin-left:auto;
+
+    border-radius:14px;
+
+    padding:9px 16px;
+
+    border:none;
+
+    background:#20d875;
+
+    color:#061006;
+
+    font-weight:600;
+
+}
+
+
+
+/* Termin Karte */
+
+
+.week-appointment{
+
+    position:relative;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:20px;
+
+
+    padding:24px;
+
+
+    margin-bottom:14px;
+
+
+    border-radius:28px;
+
+
+    background:
+
+    linear-gradient(
+        145deg,
+        rgba(255,255,255,.11),
+        rgba(255,255,255,.035)
+    );
+
+
+    border:
+
+    1px solid rgba(255,255,255,.1);
+
+
+    backdrop-filter:
+
+    blur(25px);
+
+
+    transition:
+
+    transform .3s ease,
+    box-shadow .3s ease;
+
+}
+
+
+
+.week-appointment:hover{
+
+    transform:
+
+    translateY(-5px);
+
+
+    box-shadow:
+
+    0 25px 70px rgba(0,0,0,.4);
+
+}
+
+
+
+/* Farbpunkt */
+
+
+.week-appointment::before{
+
+    content:"";
+
+    width:14px;
+
+    height:14px;
+
+    flex-shrink:0;
+
+    border-radius:50%;
+
+
+    background:
+
+    var(--appointment-color);
+
+
+    box-shadow:
+
+    0 0 20px
+    var(--appointment-color);
+
+}
+
+
+
+/* Hauptinhalt */
+
+
+.week-appointment-main{
+
+    flex:1;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:8px;
+
+
+    background:none;
+
+    border:none;
+
+    text-align:left;
+
+    color:white;
+
+    cursor:pointer;
+
+}
+
+
+
+.week-appointment-main strong{
+
+    font-size:18px;
+
+    color:#20d875;
+
+}
+
+
+
+.week-appointment-main b{
+
+    font-size:22px;
+
+    letter-spacing:-.3px;
+
+}
+
+
+
+.week-appointment-main span{
+
+    color:#9da7ad;
+
+}
+
+
+
+/* Terminart Chip */
+
+
+.week-appointment-type{
+
+    display:inline-flex;
+
+    width:max-content;
+
+
+    padding:5px 14px;
+
+
+    border-radius:999px;
+
+
+    background:
+
+    rgba(255,255,255,.08);
+
+
+    font-size:13px;
+
+}
+
+
+
+/* Aktionen */
+
+
+.week-appointment-actions{
+
+    display:flex;
+
+    gap:8px;
+
+    opacity:.55;
+
+    transition:.25s;
+
+}
+
+
+
+.week-appointment:hover
+.week-appointment-actions{
+
+    opacity:1;
+
+}
+
+
+
+.week-appointment-actions button{
+
+    width:40px;
+
+    height:40px;
+
+
+    border-radius:14px;
+
+
+    background:
+
+    rgba(255,255,255,.08);
+
+
+    border:
+
+    1px solid rgba(255,255,255,.1);
+
+
+    color:white;
+
+
+}
+
+
+
+.week-appointment-actions button:hover{
+
+    background:#20d875;
+
+    color:#061006;
+
+}
+
+
+
+/* Leerer Tag */
+
+.appointment-day-empty{
+
+    padding:30px;
+
+    border-radius:22px;
+
+    background:
+
+    rgba(255,255,255,.03);
+
+
+    color:#89939a;
+
+    text-align:center;
+
+}
+
+
+
+
+
+/* =====================================
+   RIGHT PANEL - APPLE WIDGET STYLE
+   ===================================== */
+
+
+.apple-right-panel{
+
+    position:sticky;
+
+    top:20px;
+
+}
+
+
+
+/* Hauptkarte */
+
+.apple-brand-card{
+
+    min-height:220px;
+
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:space-between;
+
+
+    overflow:hidden;
+
+
+    position:relative;
+
+
+}
+
+
+.apple-brand-card::after{
+
+    content:"";
+
+
+    position:absolute;
+
+
+    width:220px;
+
+    height:220px;
+
+
+    right:-60px;
+
+    top:-60px;
+
+
+    background:
+
+    radial-gradient(
+        circle,
+        rgba(0,255,130,.35),
+        transparent 70%
+    );
+
+
+    filter:blur(20px);
+
+
+}
+
+
+
+.apple-brand-card h2{
+
+    font-size:36px;
+
+    line-height:1.05;
+
+    letter-spacing:-1.5px;
+
+    z-index:1;
+
+}
+
+
+.apple-brand-card p{
+
+    color:#20d875;
+
+    font-weight:600;
+
+    z-index:1;
+
+}
+
+
+.apple-brand-card span{
+
+    z-index:1;
+
+}
+
+
+
+
+/* Umsatz Widget */
+
+
+.apple-card{
+
+    transition:.35s ease;
+
+}
+
+
+.apple-card:hover{
+
+    transform:
+
+    translateY(-4px);
+
+
+    box-shadow:
+
+    0 25px 60px rgba(0,0,0,.35);
+
+}
+
+
+
+.apple-card h3{
+
+    margin:0;
+
+    color:
+
+    rgba(255,255,255,.65);
+
+
+    font-size:15px;
+
+    font-weight:500;
+
+}
+
+
+
+.apple-card>strong{
+
+    display:block;
+
+    margin-top:15px;
+
+
+    font-size:38px;
+
+
+    letter-spacing:-1px;
+
+
+    color:white;
+
+}
+
+
+
+.green{
+
+    display:inline-flex;
+
+
+    margin-top:12px;
+
+
+    padding:6px 12px;
+
+
+    border-radius:999px;
+
+
+    background:
+
+    rgba(32,216,117,.15);
+
+
+    color:#20d875;
+
+
+    font-weight:600;
+
+}
+
+
+
+/* Nächste Termine */
+
+
+.apple-next{
+
+    padding:16px;
+
+    border-radius:18px;
+
+
+    background:
+
+    rgba(255,255,255,.04);
+
+
+    margin-top:10px;
+
+
+    transition:.25s;
+
+}
+
+
+
+.apple-next:hover{
+
+
+    background:
+
+    rgba(255,255,255,.09);
+
+
+    transform:
+
+    translateX(5px);
+
+
+}
+
+
+
+.apple-next b{
+
+    color:#20d875;
+
+    min-width:60px;
+
+}
+
+
+
+/* Schnellzugriff */
+
+
+.apple-actions button{
+
+
+    position:relative;
+
+
+    overflow:hidden;
+
+
+}
+
+
+
+.apple-actions button::before{
+
+
+    content:"";
+
+
+    position:absolute;
+
+
+    inset:0;
+
+
+    background:
+
+    linear-gradient(
+        120deg,
+        transparent,
+        rgba(255,255,255,.12),
+        transparent
+    );
+
+
+    transform:
+
+    translateX(-100%);
+
+
+    transition:.5s;
+
+
+}
+
+
+
+.apple-actions button:hover::before{
+
+
+    transform:
+
+    translateX(100%);
+
+
+}
+
+
+
+/* Seiten Einblendung */
+
+
+.apple-dashboard{
+
+    animation:
+
+    dashboardEnter .6s ease;
+
+}
+
+
+
+@keyframes dashboardEnter{
+
+
+from{
+
+    opacity:0;
+
+    transform:
+
+    translateY(15px);
+
+}
+
+
+to{
+
+    opacity:1;
+
+    transform:none;
+
+}
+
+
+}
+
+
+
+
+
+/* =====================================
+   RIGHT PANEL - APPLE WIDGET STYLE
+   ===================================== */
+
+
+.apple-right-panel{
+
+    position:sticky;
+
+    top:20px;
+
+}
+
+
+
+/* Hauptkarte */
+
+.apple-brand-card{
+
+    min-height:220px;
+
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:space-between;
+
+
+    overflow:hidden;
+
+
+    position:relative;
+
+
+}
+
+
+.apple-brand-card::after{
+
+    content:"";
+
+
+    position:absolute;
+
+
+    width:220px;
+
+    height:220px;
+
+
+    right:-60px;
+
+    top:-60px;
+
+
+    background:
+
+    radial-gradient(
+        circle,
+        rgba(0,255,130,.35),
+        transparent 70%
+    );
+
+
+    filter:blur(20px);
+
+
+}
+
+
+
+.apple-brand-card h2{
+
+    font-size:36px;
+
+    line-height:1.05;
+
+    letter-spacing:-1.5px;
+
+    z-index:1;
+
+}
+
+
+.apple-brand-card p{
+
+    color:#20d875;
+
+    font-weight:600;
+
+    z-index:1;
+
+}
+
+
+.apple-brand-card span{
+
+    z-index:1;
+
+}
+
+
+
+
+/* Umsatz Widget */
+
+
+.apple-card{
+
+    transition:.35s ease;
+
+}
+
+
+.apple-card:hover{
+
+    transform:
+
+    translateY(-4px);
+
+
+    box-shadow:
+
+    0 25px 60px rgba(0,0,0,.35);
+
+}
+
+
+
+.apple-card h3{
+
+    margin:0;
+
+    color:
+
+    rgba(255,255,255,.65);
+
+
+    font-size:15px;
+
+    font-weight:500;
+
+}
+
+
+
+.apple-card>strong{
+
+    display:block;
+
+    margin-top:15px;
+
+
+    font-size:38px;
+
+
+    letter-spacing:-1px;
+
+
+    color:white;
+
+}
+
+
+
+.green{
+
+    display:inline-flex;
+
+
+    margin-top:12px;
+
+
+    padding:6px 12px;
+
+
+    border-radius:999px;
+
+
+    background:
+
+    rgba(32,216,117,.15);
+
+
+    color:#20d875;
+
+
+    font-weight:600;
+
+}
+
+
+
+/* Nächste Termine */
+
+
+.apple-next{
+
+    padding:16px;
+
+    border-radius:18px;
+
+
+    background:
+
+    rgba(255,255,255,.04);
+
+
+    margin-top:10px;
+
+
+    transition:.25s;
+
+}
+
+
+
+.apple-next:hover{
+
+
+    background:
+
+    rgba(255,255,255,.09);
+
+
+    transform:
+
+    translateX(5px);
+
+
+}
+
+
+
+.apple-next b{
+
+    color:#20d875;
+
+    min-width:60px;
+
+}
+
+
+
+/* Schnellzugriff */
+
+
+.apple-actions button{
+
+
+    position:relative;
+
+
+    overflow:hidden;
+
+
+}
+
+
+
+.apple-actions button::before{
+
+
+    content:"";
+
+
+    position:absolute;
+
+
+    inset:0;
+
+
+    background:
+
+    linear-gradient(
+        120deg,
+        transparent,
+        rgba(255,255,255,.12),
+        transparent
+    );
+
+
+    transform:
+
+    translateX(-100%);
+
+
+    transition:.5s;
+
+
+}
+
+
+
+.apple-actions button:hover::before{
+
+
+    transform:
+
+    translateX(100%);
+
+
+}
+
+
+
+/* Seiten Einblendung */
+
+
+.apple-dashboard{
+
+    animation:
+
+    dashboardEnter .6s ease;
+
+}
+
+
+
+@keyframes dashboardEnter{
+
+
+from{
+
+    opacity:0;
+
+    transform:
+
+    translateY(15px);
+
+}
+
+
+to{
+
+    opacity:1;
+
+    transform:none;
+
+}
+
+
+}
+
+
+
+
+
+/* =====================================
+   PREMIUM APPLE SIDEBAR
+   ===================================== */
+
+
+.app-shell{
+
+    gap:20px;
+
+}
+
+
+/* Sidebar Container */
+
+.sidebar{
+
+
+    margin:18px;
+
+    height:
+
+    calc(100vh - 36px);
+
+
+    border-radius:32px;
+
+
+    padding:24px 18px !important;
+
+
+    box-shadow:
+
+    0 30px 80px rgba(0,0,0,.45);
+
+
+}
+
+
+
+/* Logo Bereich */
+
+.sidebar > :first-child{
+
+
+    margin-bottom:25px;
+
+
+}
+
+
+
+/* Profil */
+
+
+.profile-mini{
+
+
+    padding:18px !important;
+
+
+    border-radius:24px !important;
+
+
+    background:
+
+    linear-gradient(
+        145deg,
+        rgba(255,255,255,.10),
+        rgba(255,255,255,.03)
+    ) !important;
+
+
+    border:
+
+    1px solid rgba(255,255,255,.1);
+
+
+    margin-bottom:28px !important;
+
+
+}
+
+
+
+.profile-mini .avatar{
+
+
+    width:52px;
+
+    height:52px;
+
+
+    border-radius:18px;
+
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+
+    background:
+
+    linear-gradient(
+        135deg,
+        #20d875,
+        #007a45
+    );
+
+
+    box-shadow:
+
+    0 10px 30px
+    rgba(32,216,117,.35);
+
+
+}
+
+
+
+/* Navigation */
+
+.sidebar nav a{
+
+
+    position:relative;
+
+
+    overflow:hidden;
+
+
+    color:
+
+    rgba(255,255,255,.7);
+
+
+}
+
+
+
+.sidebar nav a svg{
+
+
+    transition:.25s ease;
+
+
+}
+
+
+
+.sidebar nav a:hover svg{
+
+
+    transform:
+
+    scale(1.15);
+
+
+}
+
+
+
+.sidebar nav a.active svg{
+
+
+    color:white;
+
+
+}
+
+
+
+/* Aktiver Glow */
+
+
+.sidebar nav a.active::after{
+
+
+    content:"";
+
+
+    position:absolute;
+
+
+    right:12px;
+
+
+    width:7px;
+
+
+    height:7px;
+
+
+    border-radius:50%;
+
+
+    background:white;
+
+
+    box-shadow:
+
+    0 0 15px white;
+
+
+}
+
+
+
+/* Logout */
+
+
+.logout{
+
+
+    margin-top:auto;
+
+
+    border-radius:18px !important;
+
+
+    background:
+
+    rgba(255,255,255,.05) !important;
+
+
+    border:
+
+    1px solid rgba(255,255,255,.08);
+
+
+    transition:.3s;
+
+
+}
+
+
+
+.logout:hover{
+
+
+    background:
+
+    rgba(255,50,50,.15) !important;
+
+
+    transform:
+
+    translateY(-3px);
+
+
+}
+
+
+
+/* Main Bereich */
+
+
+.main{
+
+
+    padding-right:20px;
+
+
+}
+
+
+
+/* Topbar */
+
+
+.topbar{
+
+
+    margin-top:18px;
+
+
+    border-radius:24px;
+
+
+    background:
+
+    rgba(255,255,255,.04);
+
+
+    border:
+
+    1px solid rgba(255,255,255,.08);
+
+
+    backdrop-filter:
+
+    blur(25px);
+
+
+}
+
+
+
+/* Mobile Anpassung */
+
+
+@media(max-width:900px){
+
+
+.sidebar{
+
+    display:none;
+
+}
+
+
+.main{
+
+    padding:12px;
+
+}
+
+
+}
+
+
+
