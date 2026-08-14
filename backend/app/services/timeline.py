@@ -34,6 +34,33 @@ from app.models import (
 )
 
 
+# Die Timeline wird gelesen, nicht ausgewertet - dort gehoeren deutsche
+# Bezeichnungen hin, keine Enum-Werte aus der Datenbank.
+APPOINTMENT_TYPE_LABELS = {
+    "customer": "Kundentermin",
+    "promotion": "Promotion",
+    "recommendation": "Empfehlung",
+    "premium_checkin": "Premium Check-in",
+    "team": "Team",
+    "telephone": "Telefonie",
+    "other": "Sonstiges",
+}
+
+APPOINTMENT_STATUS_LABELS = {
+    "planned": "geplant",
+    "confirmed": "bestätigt",
+    "completed": "durchgeführt",
+    "cancelled": "abgesagt",
+    "rescheduled": "verschoben",
+}
+
+OUTCOME_LABELS = {
+    "sale": "mit Verkauf",
+    "rental": "mit Verleih",
+    "none": "ohne Abschluss",
+}
+
+
 @dataclass
 class TimelineEvent:
     kind: str
@@ -66,14 +93,14 @@ def customer_timeline(db: Session, customer_id: str) -> list[dict]:
         select(Appointment).where(Appointment.customer_id == customer_id)
     ).all()
     for a in appointments:
-        label = {
-            "sale": "Verkauf",
-            "rental": "Verleih",
-            "none": "ohne Abschluss",
-        }.get(a.outcome or "", None)
-        detail = f"{a.appointment_type.value} · {a.status.value}"
-        if label:
-            detail += f" · {label}"
+        parts = [
+            APPOINTMENT_TYPE_LABELS.get(a.appointment_type.value, a.appointment_type.value),
+            APPOINTMENT_STATUS_LABELS.get(a.status.value, a.status.value),
+        ]
+        outcome_label = OUTCOME_LABELS.get(a.outcome or "")
+        if outcome_label:
+            parts.append(outcome_label)
+        detail = " · ".join(parts)
         events.append(
             TimelineEvent(
                 kind="appointment",

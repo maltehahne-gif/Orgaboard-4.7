@@ -28,26 +28,26 @@ Datengrundlage zweimal.
 
 ---
 
-## Phase 1 – CRM-Fundament
+## Phase 1 – CRM-Fundament ✅
 
-Ohne diesen Block hängen Trichter, Dashboard-Kennzahlen und die KI-Fragen in
-der Luft, weil ihnen die Ereignisdaten fehlen.
+Umgesetzt am 14.08.2026.
 
-### 1.1 Kunden-Timeline
-- ❌ Termine chronologisch beim Kunden
-- ❌ Vorführungen in der Timeline
-- ❌ Verkäufe in der Timeline
-- ❌ Verleih in der Timeline
-- ❌ Notizen mit Verlauf statt einem Freitextfeld
-- ❌ komplette Kundenhistorie auf einer Seite
+### 1.1 Kunden-Timeline ✅
+- ✅ Termine chronologisch beim Kunden
+- ✅ Vorführungen in der Timeline
+- ✅ Verkäufe in der Timeline
+- ✅ Verleih in der Timeline (Ausgabe und Rückgabe getrennt)
+- ✅ Notizen mit Verlauf – neue Tabelle `customer_notes`
+- ✅ komplette Kundenhistorie auf einer Seite – `/kunden/:id`
 
-### 1.2 Wiedervorlage / Nachfassen
-- ❌ Nachfassdatum festlegen
-- ❌ „Heute nachfassen"-Liste
-- ❌ überfällige Nachfassaktionen
-- ❌ nach Termin mit Ergebnis „Nichts" automatisch Nachfassen anbieten
-- ❌ Nachbetreuung nach Verkauf
-- ❌ Erinnerung an Nachfassaktionen
+### 1.2 Wiedervorlage / Nachfassen ✅
+- ✅ Nachfassdatum festlegen
+- ✅ „Heute nachfassen"-Liste – `/nachfassen`
+- ✅ überfällige Nachfassaktionen, mit Anzahl der Tage
+- ✅ nach Termin mit Ergebnis „Nichts" Nachfassen anbieten
+- ✅ Nachbetreuung nach Verkauf
+- 🟡 Erinnerung an Nachfassaktionen – Zähler in der Oberfläche vorhanden,
+  Push-Benachrichtigung braucht Phase 5.1
 
 ---
 
@@ -55,17 +55,21 @@ der Luft, weil ihnen die Ereignisdaten fehlen.
 
 Baut vollständig auf Phase 1 auf.
 
-### 2.1 Verkaufstrichter
-- ❌ Stufen: Kontakt → Termin vereinbart → Termin durchgeführt → Vorführung → Angebot → Verkauf → Nachbetreuung
-- ❌ Conversion Kontakt → Termin
-- ❌ Conversion Termin → Verkauf
-- ❌ Abschlussquote
+### 2.1 Verkaufstrichter 🟡
+- ✅ Stufen: Kontakt → Termin vereinbart → Termin durchgeführt → Vorführung → Angebot → Verkauf → Nachbetreuung
+- ✅ Conversion Kontakt → Termin
+- ✅ Conversion Termin → Verkauf
+- ✅ Abschlussquote
+- ❌ Darstellung auf dem Dashboard (Endpunkt `/dashboard/funnel` liefert die Daten)
 
-### 2.2 Dashboard / Management
-- ❌ durchgeführte Termine als Kennzahl
-- ❌ Abschlussquote
-- ❌ Umsatz pro Termin
-- ❌ Vorführungen als Kennzahl
+> Die Stufe „Angebot" ist vorbereitet, aber unbesetzt: dafür fehlt eine
+> Angebotserfassung. Bis dahin springen Kunden von Vorführung auf Verkauf.
+
+### 2.2 Dashboard / Management 🟡
+- 🟡 durchgeführte Termine als Kennzahl – `/dashboard/kpis`, Anzeige fehlt
+- 🟡 Abschlussquote – berechnet, Anzeige fehlt
+- 🟡 Umsatz pro Termin – berechnet, Anzeige fehlt
+- 🟡 Vorführungen als Kennzahl – berechnet, Anzeige fehlt
 - ❌ Verkaufstrichter auf dem Dashboard
 - ❌ Zielerreichung pro Mitarbeiter
 - ❌ Produkt-Ranking

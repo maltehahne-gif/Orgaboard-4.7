@@ -1044,3 +1044,338 @@ body.ob-scroll-locked {
     transition: none;
   }
 }
+
+/* ============================================================================
+   CRM: Kundenakte, Verlauf und Nachfassen
+   ========================================================================== */
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--ob-text-dim);
+  margin-bottom: 6px;
+}
+
+.back-link:hover { color: var(--ob-accent); }
+
+.customer-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  padding: 14px 18px;
+  font-size: 14px;
+}
+
+.customer-contact a,
+.customer-contact span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ob-text-dim);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.customer-contact a:hover { color: var(--ob-accent); }
+
+/* ------------------------------------------------------------- Trichter */
+
+.funnel-strip { padding: 16px 18px; }
+
+.funnel-steps {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 5px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.funnel-steps li span {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: #1c2b2f;
+}
+
+.funnel-steps li.done span { background: #1f7a45; }
+.funnel-steps li.current span { background: var(--ob-accent); }
+
+/* -------------------------------------------------------------- Verlauf */
+
+.note-compose { padding: 16px 18px; }
+
+.note-compose label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: #cbd2d1;
+}
+
+.note-compose textarea {
+  width: 100%;
+  background: #0d181d;
+  border: 1px solid #2b3d42;
+  color: var(--ob-text);
+  border-radius: 9px;
+  padding: 10px 11px;
+  outline: none;
+  resize: vertical;
+}
+
+.note-compose textarea:focus { border-color: #3f9455; }
+
+.timeline-card { padding: 16px 18px 20px; }
+
+.timeline {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 18px;
+  position: relative;
+}
+
+/* Verbindungslinie zwischen den Ereignissen, beim letzten weggelassen. */
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 30px;
+  bottom: 0;
+  width: 1px;
+  background: #1e2f33;
+}
+
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-item:last-child::before { display: none; }
+
+.timeline-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #142226;
+  border: 1px solid #24393e;
+  color: #8fa6a0;
+  z-index: 1;
+}
+
+.timeline-item.sale .timeline-icon { background: #10301d; border-color: #2c7a48; color: #6ee79a; }
+.timeline-item.appointment .timeline-icon { background: #13252e; border-color: #2b5f7a; color: #79c6ea; }
+.timeline-item.presentation .timeline-icon { background: #221a33; border-color: #4d3a7f; color: #b3a0e8; }
+.timeline-item.note .timeline-icon { background: #2a2411; border-color: #6b5a22; color: #e6cf72; }
+
+.timeline-body { min-width: 0; }
+
+.timeline-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+
+.timeline-body p {
+  margin: 4px 0 0;
+  color: var(--ob-text-dim);
+  font-size: 13.5px;
+  overflow-wrap: break-word;
+}
+
+.timeline-body small {
+  display: block;
+  margin-top: 4px;
+  color: #708079;
+  font-size: 12px;
+}
+
+.timeline-kind {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6f827b;
+}
+
+/* ------------------------------------------------------------ Nachfassen */
+
+.followup-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.followup-tabs button {
+  border: 1px solid #26383c !important;
+  background: #101a1e !important;
+  color: #c3cfcb !important;
+  border-radius: 999px !important;
+  padding: 8px 15px !important;
+  font-size: 13.5px;
+}
+
+.followup-tabs button.is-active {
+  background: linear-gradient(180deg, #2bab52, #19883f) !important;
+  border-color: #2eaf57 !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+.followup-list { display: flex; flex-direction: column; gap: 10px; }
+
+.followup-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 14px 0 2px;
+  font-size: 14px;
+  color: var(--ob-text-dim);
+  font-weight: 600;
+}
+
+.followup-group.overdue { color: #ffb26f; }
+
+.followup-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 17px;
+  background: linear-gradient(180deg, rgba(13, 24, 29, .96), rgba(9, 17, 21, .96));
+  border: 1px solid #21353a;
+  border-radius: var(--ob-radius);
+}
+
+.followup-main { min-width: 0; flex: 1; }
+
+.followup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.followup-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 650;
+  font-size: 15.5px;
+}
+
+.followup-name:hover { color: var(--ob-accent); }
+
+.followup-badge {
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #1b2b30;
+  color: #9fb4ad;
+  white-space: nowrap;
+}
+
+.followup-badge.no_result { background: #2d2313; color: #ffd486; }
+.followup-badge.after_sale { background: #163520; color: #72e594; }
+.followup-badge.rental_return { background: #13252e; color: #79c6ea; }
+
+.followup-note {
+  margin: 7px 0 0;
+  color: var(--ob-text-dim);
+  font-size: 13.5px;
+  overflow-wrap: break-word;
+}
+
+.followup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 16px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: #7f918a;
+}
+
+.followup-meta span,
+.followup-meta a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.followup-meta a:hover { color: var(--ob-accent); }
+
+.followup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  flex: none;
+}
+
+/* --------------------------------------------------------------- Handy */
+
+@media (max-width: 767px) {
+  .followup-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .followup-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, .07);
+  }
+
+  /* Erledigt ist die Hauptaktion und bekommt die volle Zeile. */
+  .followup-actions .primary { grid-column: 1 / -1; }
+
+  .followup-actions button { min-height: 44px; }
+
+  .followup-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ohne width:auto erben die Reiter aus styles.css volle Breite und
+     stehen einzeln untereinander, statt als Leiste zu scrollen. */
+  .followup-tabs button {
+    white-space: nowrap;
+    flex: 0 0 auto;
+    width: auto !important;
+  }
+
+  .customer-contact { gap: 8px 14px; padding: 12px 14px; font-size: 13.5px; }
+
+  .timeline-item { grid-template-columns: 26px minmax(0, 1fr); gap: 10px; }
+  .timeline-item::before { left: 12px; top: 26px; }
+  .timeline-icon { width: 26px; height: 26px; }
+  .timeline-card, .note-compose, .funnel-strip { padding: 14px; }
+}
+
+.customer-name-link { display: inline-block; }
+.customer-name-link:hover strong { color: var(--ob-accent); }
+
+/* .stat-card.green wird in styles.css auf display:flex gesetzt - ohne
+   Richtungsangabe stehen Bezeichnung und Zahl dadurch nebeneinander. */
+.stat-card.green,
+.stat-card.orange {
+  flex-direction: column;
+}
