@@ -1682,3 +1682,26 @@ body.ob-scroll-locked {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+
+/* Produktarchiv */
+.archive-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 13px !important;
+  padding: 7px 12px !important;
+}
+
+.product-archive-button {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px !important;
+  padding: 7px 11px !important;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .product-archive-button { width: 100%; justify-content: center; min-height: 44px; }
+}

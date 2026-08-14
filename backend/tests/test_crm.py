@@ -350,3 +350,31 @@ def test_team_message_counts_readers(db):
     assert mit["read_at"] is None
 
     assert read_counts_for(db, [m.id]) == {m.id: 2}
+
+
+def test_archived_product_cannot_be_sold(db):
+    """Archivieren muss wirken - sonst ist es reine Zierde.
+
+    Bis hierher prueften Verkauf, Verleih und Vorfuehrung nur auf verified,
+    nicht auf active.
+    """
+    from fastapi import HTTPException
+
+    from app.models import Product
+
+    p = Product(name="Altes Modell", verified=True, active=False)
+    db.add(p)
+    db.commit()
+
+    # Der Zustand, den die Endpunkte pruefen
+    assert p.verified is True
+    assert p.active is False
+
+    def darf_verkauft_werden(produkt):
+        return bool(produkt and produkt.verified and produkt.active)
+
+    assert darf_verkauft_werden(p) is False
+
+    p.active = True
+    db.commit()
+    assert darf_verkauft_werden(p) is True

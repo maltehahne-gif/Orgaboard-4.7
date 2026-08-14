@@ -66,6 +66,55 @@ def product_detail(product_id: str, user: User = Depends(get_current_user), db: 
     return product_out(db, p)
 
 
+class ActiveIn(BaseModel):
+    active: bool
+
+
+@router.get("/archived")
+def list_archived(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Archivierte Produkte. Nur für Teamleiter."""
+    require_team_leader(user)
+    rows = db.scalars(
+        select(Product).where(Product.active.is_(False)).order_by(Product.category, Product.name)
+    ).all()
+    return [product_out(db, p) for p in rows]
+
+
+@router.patch("/{product_id}/active", dependencies=[Depends(require_csrf)])
+def set_active(
+    product_id: str,
+    data: ActiveIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Produkt archivieren oder zurückholen.
+
+    Archivieren statt löschen: Verkäufe verweisen auf das Produkt, und die
+    Verkaufshistorie muss nachvollziehbar bleiben. Ein archiviertes Produkt
+    verschwindet aus Auswahllisten, bleibt aber in allen Auswertungen.
+    """
+    require_team_leader(user)
+    p = db.get(Product, product_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
+
+    if p.active == data.active:
+        return product_out(db, p)
+
+    p.active = data.active
+    audit(
+        db,
+        user,
+        "product.archived" if not data.active else "product.restored",
+        "product",
+        p.id,
+        before={"active": not data.active},
+        after={"active": data.active},
+    )
+    db.commit()
+    return product_out(db, p)
+
+
 @router.post("/import", dependencies=[Depends(require_csrf)])
 def import_product(data: ProductImport, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_team_leader(user)

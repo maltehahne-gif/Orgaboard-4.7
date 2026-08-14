@@ -58,8 +58,8 @@ async def create_rental(data: RentalIn, user: User = Depends(get_current_user), 
     if employee_id is None:
         raise HTTPException(status_code=400, detail="Mitarbeiter fehlt")
     c = db.get(Customer, data.customer_id); p = db.get(Product, data.product_id)
-    if not c or not p or not p.verified:
-        raise HTTPException(status_code=400, detail="Kunde oder verifiziertes Produkt nicht gefunden")
+    if not c or not p or not p.verified or not p.active:
+        raise HTTPException(status_code=400, detail="Kunde oder aktives, verifiziertes Produkt nicht gefunden")
     r = Rental(employee_id=employee_id, **data.model_dump(exclude={"employee_id"}))
     db.add(r); db.flush(); audit(db, user, "rental.created", "rental", r.id, after=serialize(db, r)); db.commit()
     await manager.publish({"type":"data.changed","entity":"rental"}, employee_id=employee_id)

@@ -69,8 +69,10 @@ async def create_sale(data: SaleIn, user: User = Depends(get_current_user), db: 
     resolved: list[tuple[Product, SaleItemIn]] = []
     for item in data.items:
         p = db.get(Product, item.product_id)
-        if not p or not p.verified:
-            raise HTTPException(status_code=400, detail="Nur verifizierte Produkte dürfen verkauft werden")
+        # Auch auf active pruefen: sonst liesse sich ein archiviertes Produkt
+        # weiter verkaufen und das Archivieren waere reine Zierde.
+        if not p or not p.verified or not p.active:
+            raise HTTPException(status_code=400, detail="Nur aktive, verifizierte Produkte dürfen verkauft werden")
         resolved.append((p, item))
     s = Sale(customer_id=data.customer_id, employee_id=employee_id, appointment_id=data.appointment_id, sold_at=data.sold_at, channel=data.channel, notes=data.notes)
     db.add(s); db.flush()
