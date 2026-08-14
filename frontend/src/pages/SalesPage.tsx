@@ -11,6 +11,7 @@ import {
   Package,
   Plus,
   Search,
+  Ban,
   Trash2,
   X,
 } from 'lucide-react'
@@ -866,35 +867,35 @@ export function SalesPage(){
   }
 
 
-  async function removeSale(
+  async function stornieren(
     sale:Sale
   ){
 
-    if(
-      !window.confirm(
-        'Verkauf wirklich löschen?\n\n'
-        +'Umsatz und Einheiten werden danach '
-        +'automatisch neu berechnet.\n\n'
-        +'Diese Aktion kann nicht rückgängig gemacht werden.'
-      )
-    ){
+    const grund=window.prompt(
+      'Verkauf stornieren?\n\n'
+      +'Der Verkauf bleibt mit allen Angaben erhalten, zählt aber '
+      +'in keiner Auswertung mehr.\n\n'
+      +'Grund (optional):',
+      ''
+    )
+
+    // Abbrechen liefert null; ein leerer Text ist ein bewusstes
+    // "ohne Angabe" und darf durchgehen.
+    if(grund===null){
       return
     }
-
 
     try{
 
       await api(
-        `/sales/${sale.id}`,
+        `/sales/${sale.id}/cancel`,
         {
-          method:'DELETE',
+          method:'POST',
+          body:JSON.stringify({reason:grund||null}),
         }
       )
 
-      toast(
-        'Verkauf wurde gelöscht.'
-      )
-
+      toast('Verkauf wurde storniert.')
       await load()
 
     }catch(error){
@@ -902,7 +903,8 @@ export function SalesPage(){
       toast(
         error instanceof Error
           ? error.message
-          : 'Der Verkauf konnte nicht gelöscht werden.'
+          : 'Der Verkauf konnte nicht storniert werden.',
+        'error'
       )
     }
   }
@@ -1184,17 +1186,29 @@ export function SalesPage(){
                   </td>
 
                   <td>
-                    <button
-                      type="button"
-                      className="danger-button"
-                      onClick={()=>
-                        removeSale(sale)
-                      }
-                      title="Fehleintrag löschen"
-                    >
-                      <Trash2 size={16}/>
-                      Löschen
-                    </button>
+                    {sale.cancelled ? (
+                      <span
+                        className="sale-cancelled-flag"
+                        title={
+                          sale.cancellation_reason
+                          || 'Ohne Angabe eines Grundes'
+                        }
+                      >
+                        <Ban size={14}/> Storniert
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="danger-button"
+                        onClick={()=>
+                          stornieren(sale)
+                        }
+                        title="Verkauf stornieren; er bleibt erhalten, zählt aber nicht mehr"
+                      >
+                        <Ban size={16}/>
+                        Stornieren
+                      </button>
+                    )}
                   </td>
 
                 </tr>

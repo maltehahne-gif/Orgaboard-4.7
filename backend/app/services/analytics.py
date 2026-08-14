@@ -30,6 +30,7 @@ from app.models import (
 )
 from app.services.stats import (
     is_k70_category,
+    not_cancelled,
     product_unit_count_from_name,
     revenue_between,
     units_between,
@@ -106,7 +107,7 @@ def product_ranking(
         .select_from(SaleItem)
         .join(Sale, Sale.id == SaleItem.sale_id)
         .outerjoin(Product, Product.id == SaleItem.product_id)
-        .where(Sale.sold_at >= start, Sale.sold_at < end)
+        .where(Sale.sold_at >= start, Sale.sold_at < end, not_cancelled())
         .group_by(SaleItem.product_name_snapshot)
         .order_by(func.sum(SaleItem.quantity * SaleItem.unit_price_cents).desc())
         .limit(limit)

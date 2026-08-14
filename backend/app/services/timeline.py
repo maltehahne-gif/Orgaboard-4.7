@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.timeutils import utc_aware
+from app.services.stats import not_cancelled
 from app.models import (
     Appointment,
     AppointmentStatus,
@@ -220,7 +221,11 @@ def funnel_stage(db: Session, customer_id: str) -> FunnelStage:
 
     Wird aus den Ereignissen abgeleitet, nicht gespeichert.
     """
-    has_sale = db.scalar(select(Sale.id).where(Sale.customer_id == customer_id)) is not None
+    # Ein stornierter Verkauf darf den Kunden nicht auf der Stufe "Verkauf"
+    # halten - sonst bliebe der Trichter nach einem Storno falsch.
+    has_sale = db.scalar(
+        select(Sale.id).where(Sale.customer_id == customer_id, not_cancelled())
+    ) is not None
 
     if has_sale:
         # Nachbetreuung zaehlt erst, wenn nach dem Verkauf etwas passiert ist.
@@ -345,7 +350,7 @@ def appointment_kpis(db: Session, start: datetime, end: datetime, employee_id: s
     done = [a for a in appointments if a.status == AppointmentStatus.COMPLETED]
     with_sale = [a for a in done if a.outcome == "sale"]
 
-    sale_stmt = select(Sale).where(Sale.sold_at >= start, Sale.sold_at < end)
+    sale_stmt = select(Sale).where(Sale.sold_at >= start, Sale.sold_at < end, not_cancelled())
     if employee_id:
         sale_stmt = sale_stmt.where(Sale.employee_id == employee_id)
     sales = db.scalars(sale_stmt).all()

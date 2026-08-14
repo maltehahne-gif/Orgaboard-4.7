@@ -1753,3 +1753,17 @@ body.ob-scroll-locked {
   .rental-card.is-overdue strong,
   .rental-card.is-due-soon strong { display: block; }
 }
+
+/* Stornierter Verkauf: bleibt sichtbar, ist aber erkennbar ausgenommen. */
+.sale-cancelled-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: #2a1512;
+  color: #ff9b91;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
