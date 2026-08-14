@@ -434,3 +434,17 @@ def test_rental_without_due_date_is_never_overdue(db):
     zustand = due_state(r)
     assert zustand["is_overdue"] is False
     assert zustand["days_until_due"] is None
+
+
+def test_archived_route_is_not_swallowed_by_product_id():
+    """Die Reihenfolge der Routen entscheidet hier ueber Funktion.
+
+    Stand /{product_id} vorher, fing es den Pfad "archived" ab und
+    antwortete mit "Produkt nicht gefunden".
+    """
+    from app.routers.products import router
+
+    pfade = [r.path for r in router.routes]
+    assert "/products/archived" in pfade
+    assert "/products/{product_id}" in pfade
+    assert pfade.index("/products/archived") < pfade.index("/products/{product_id}")

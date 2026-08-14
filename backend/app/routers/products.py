@@ -58,6 +58,16 @@ def list_products(q: str | None = Query(default=None), include_unverified: bool 
     return [product_out(db, p) for p in db.scalars(stmt).all()]
 
 
+@router.get("/archived")
+def list_archived(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Archivierte Produkte. Nur für Teamleiter."""
+    require_team_leader(user)
+    rows = db.scalars(
+        select(Product).where(Product.active.is_(False)).order_by(Product.category, Product.name)
+    ).all()
+    return [product_out(db, p) for p in rows]
+
+
 @router.get("/{product_id}")
 def product_detail(product_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = db.get(Product, product_id)
@@ -68,16 +78,6 @@ def product_detail(product_id: str, user: User = Depends(get_current_user), db: 
 
 class ActiveIn(BaseModel):
     active: bool
-
-
-@router.get("/archived")
-def list_archived(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Archivierte Produkte. Nur für Teamleiter."""
-    require_team_leader(user)
-    rows = db.scalars(
-        select(Product).where(Product.active.is_(False)).order_by(Product.category, Product.name)
-    ).all()
-    return [product_out(db, p) for p in rows]
 
 
 @router.patch("/{product_id}/active", dependencies=[Depends(require_csrf)])
