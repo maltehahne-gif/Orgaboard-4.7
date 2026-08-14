@@ -1,13 +1,14 @@
 from datetime import datetime, timezone
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.database import get_db
-from app.core.rbac import scoped_employee_id
+from app.core.rbac import current_employee, scoped_employee_id
 from app.core.security import get_current_user, require_csrf
-from app.models import Customer, User
+from app.models import Customer, CustomerNote, Employee, User
+from app.services.timeline import FUNNEL_LABELS, customer_timeline, funnel_stage
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 
@@ -82,6 +83,92 @@ def update_customer(customer_id: str, data: CustomerIn, user: User = Depends(get
     audit(db, user, "customer.updated", "customer", c.id, before=before, after=out(c))
     db.commit()
     return out(c)
+
+
+class NoteIn(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+
+
+@router.get("/{customer_id}/timeline")
+def customer_timeline_view(
+    customer_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Komplette Kundenhistorie auf einen Blick.
+
+    Termine, Vorführungen, Verkäufe, Verleih, Notizen und Wiedervorlagen in
+    einer Zeitleiste, dazu die abgeleitete Trichterstufe.
+    """
+    c = db.get(Customer, customer_id)
+    if not c or c.deleted_at:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    scoped_employee_id(db, user, c.employee_id)
+
+    stage = funnel_stage(db, c.id)
+    return {
+        "customer": out(c),
+        "funnel_stage": stage.value,
+        "funnel_label": FUNNEL_LABELS[stage],
+        "events": customer_timeline(db, c.id),
+    }
+
+
+@router.get("/{customer_id}/notes")
+def list_notes(
+    customer_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    c = db.get(Customer, customer_id)
+    if not c or c.deleted_at:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    scoped_employee_id(db, user, c.employee_id)
+
+    rows = db.scalars(
+        select(CustomerNote)
+        .where(CustomerNote.customer_id == c.id)
+        .order_by(CustomerNote.created_at.desc())
+    ).all()
+    return [
+        {
+            "id": n.id,
+            "body": n.body,
+            "created_at": n.created_at,
+            "author": (e.display_name if (e := db.get(Employee, n.employee_id)) else None),
+        }
+        for n in rows
+    ]
+
+
+@router.post("/{customer_id}/notes", dependencies=[Depends(require_csrf)])
+def create_note(
+    customer_id: str,
+    data: NoteIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    c = db.get(Customer, customer_id)
+    if not c or c.deleted_at:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    scoped_employee_id(db, user, c.employee_id)
+
+    # Die Notiz wird dem angemeldeten Mitarbeiter zugeschrieben. Ein Teamleiter,
+    # der bei einem fremden Kunden notiert, erscheint mit seinem eigenen Namen -
+    # das ist gewollt, sonst waere der Verlauf nicht nachvollziehbar.
+    author = current_employee(db, user)
+
+    note = CustomerNote(customer_id=c.id, employee_id=author.id, body=data.body.strip())
+    db.add(note)
+    db.flush()
+    audit(db, user, "customer.note_added", "customer", c.id, after={"note_id": note.id})
+    db.commit()
+    return {
+        "id": note.id,
+        "body": note.body,
+        "created_at": note.created_at,
+        "author": author.display_name,
+    }
 
 
 @router.delete("/{customer_id}", status_code=204, dependencies=[Depends(require_csrf)])

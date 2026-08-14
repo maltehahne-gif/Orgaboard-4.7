@@ -5,11 +5,39 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.rbac import scoped_employee_id
 from app.core.security import get_current_user
-from app.core.timeutils import day_bounds, local_today, utc_aware
+from app.core.timeutils import day_bounds, local_today, month_bounds, week_bounds, utc_aware
 from app.models import Appointment, AppointmentStatus, Customer, Message, MessageHidden, MessageRead, Rental, RentalStatus, User
 from app.services.stats import dashboard_stats
+from app.services.timeline import appointment_kpis, funnel_overview
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+
+@router.get("/funnel")
+def funnel(employee_id: str | None = None, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Verkaufstrichter mit Stufenbesetzung und Umwandlungsquoten."""
+    scope = scoped_employee_id(db, user, employee_id)
+    return funnel_overview(db, scope)
+
+
+@router.get("/kpis")
+def kpis(
+    period: str = "month",
+    employee_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Terminbezogene Kennzahlen: durchgeführte Termine, Abschlussquote,
+    Umsatz pro Termin, Vorführungen."""
+    scope = scoped_employee_id(db, user, employee_id)
+    today = local_today()
+    if period == "week":
+        start, end = week_bounds(today)
+    elif period == "day":
+        start, end = day_bounds(today)
+    else:
+        start, end = month_bounds(today)
+    return {"period": period, **appointment_kpis(db, start, end, scope)}
 
 
 @router.get("")
