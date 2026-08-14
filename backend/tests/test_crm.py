@@ -57,6 +57,7 @@ def make_employee(db, name="Test Mitarbeiter"):
     employee = Employee(user_id=user.id, display_name=name, monthly_units_target=30)
     db.add(employee)
     db.flush()
+    employee.user_id = user.id
     return employee
 
 
@@ -278,3 +279,74 @@ def test_completed_follow_up_is_no_longer_overdue(db):
     out = serialize(db, f)
     assert out["is_overdue"] is False
     assert out["status"] == "done"
+
+
+def test_delivery_state_only_for_own_messages(db):
+    """Beim Empfaenger ist die Angabe sinnlos - er weiss selbst, ob er las."""
+    from app.models import Message
+    from app.routers.messages import delivery_state
+
+    absender = make_employee(db, "Absender")
+    empfaenger = make_employee(db, "Empfaenger")
+    m = Message(sender_user_id=absender.user_id,
+                recipient_user_id=empfaenger.user_id, body="Hallo")
+    db.add(m)
+    db.commit()
+
+    assert delivery_state(db, m, absender.user_id) is not None
+    assert delivery_state(db, m, empfaenger.user_id) is None
+
+
+def test_private_message_read_state_follows_read_at(db):
+    from app.models import Message
+    from app.routers.messages import delivery_state
+
+    absender = make_employee(db, "Absender")
+    empfaenger = make_employee(db, "Empfaenger")
+    m = Message(sender_user_id=absender.user_id,
+                recipient_user_id=empfaenger.user_id, body="Hallo")
+    db.add(m)
+    db.commit()
+
+    ungelesen = delivery_state(db, m, absender.user_id)
+    assert ungelesen["delivered"] is True
+    assert ungelesen["read"] is False
+
+    m.read_at = datetime.now(timezone.utc)
+    db.commit()
+
+    gelesen = delivery_state(db, m, absender.user_id)
+    assert gelesen["read"] is True
+    assert gelesen["read_by"] == 1
+
+
+def test_team_message_counts_readers(db):
+    """Team-Nachrichten haben mehrere Empfaenger - read_at greift dort nicht."""
+    from app.models import Message, MessageRead
+    from app.routers.messages import delivery_state, read_counts_for
+
+    absender = make_employee(db, "Absender")
+    a = make_employee(db, "Leser A")
+    b = make_employee(db, "Leser B")
+    m = Message(sender_user_id=absender.user_id, recipient_user_id=None,
+                body="An alle")
+    db.add(m)
+    db.flush()
+
+    ohne = delivery_state(db, m, absender.user_id)
+    assert ohne["read"] is False
+    assert ohne["read_by"] == 0
+
+    db.add_all([
+        MessageRead(message_id=m.id, user_id=a.user_id),
+        MessageRead(message_id=m.id, user_id=b.user_id),
+    ])
+    db.commit()
+
+    mit = delivery_state(db, m, absender.user_id)
+    assert mit["read"] is True
+    assert mit["read_by"] == 2
+    # read_at bleibt leer, weil es bei mehreren Empfaengern nichts aussagt.
+    assert mit["read_at"] is None
+
+    assert read_counts_for(db, [m.id]) == {m.id: 2}

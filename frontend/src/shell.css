@@ -1664,3 +1664,21 @@ body.ob-scroll-locked {
 
   .goal-head { flex-direction: column; gap: 3px; }
 }
+
+/* Zustellstatus im Chat. Nur bei eigenen Nachrichten sichtbar. */
+.chat-receipt {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  vertical-align: -2px;
+  color: #6f827b;
+}
+
+.chat-receipt.read { color: var(--ob-accent); }
+
+.chat-receipt b {
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
