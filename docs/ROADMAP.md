@@ -95,7 +95,7 @@ Unabhängig voneinander, jeweils in sich abgeschlossen.
 
 ### 3.2 Verkäufe
 - ❌ Verkauf bearbeiten
-- ❌ nach Mitarbeiter filtern
+- ✅ nach Mitarbeiter filtern (war bereits vorhanden, nur für Teamleiter sichtbar)
 - ❌ Storno statt Löschen (Verkauf bleibt mit Stornokennzeichen erhalten)
 
 ### 3.3 Produkte

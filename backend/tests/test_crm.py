@@ -378,3 +378,59 @@ def test_archived_product_cannot_be_sold(db):
     p.active = True
     db.commit()
     assert darf_verkauft_werden(p) is True
+
+
+def test_rental_due_state(db):
+    """Überfällig, bald fällig und zurückgegeben sauber unterscheiden."""
+    from app.routers.rentals import ERINNERUNG_TAGE, due_state
+    from app.models import Rental, RentalStatus
+
+    e = make_employee(db, "Verleiher")
+    c = make_customer(db, e)
+    p = Product(name="VK7", verified=True)
+    db.add(p)
+    db.flush()
+
+    def rental(tage_bis_faellig, status=RentalStatus.RENTED, returned=None):
+        return Rental(
+            product_id=p.id, customer_id=c.id, employee_id=e.id,
+            issued_at=datetime.now(timezone.utc) - timedelta(days=10),
+            due_at=datetime.now(timezone.utc) + timedelta(days=tage_bis_faellig),
+            status=status, returned_at=returned,
+        )
+
+    ueberfaellig = due_state(rental(-4))
+    assert ueberfaellig["is_overdue"] is True
+    assert ueberfaellig["days_overdue"] == 4
+    assert ueberfaellig["due_soon"] is False
+
+    bald = due_state(rental(ERINNERUNG_TAGE - 1))
+    assert bald["due_soon"] is True
+    assert bald["is_overdue"] is False
+
+    spaeter = due_state(rental(ERINNERUNG_TAGE + 5))
+    assert spaeter["due_soon"] is False
+    assert spaeter["is_overdue"] is False
+
+    # Zurueckgegebene Geraete koennen nicht mehr ueberfaellig sein.
+    zurueck = due_state(rental(-30, RentalStatus.RETURNED, datetime.now(timezone.utc)))
+    assert zurueck["is_overdue"] is False
+    assert zurueck["due_soon"] is False
+
+
+def test_rental_without_due_date_is_never_overdue(db):
+    from app.routers.rentals import due_state
+    from app.models import Rental, RentalStatus
+
+    e = make_employee(db, "Ohne Frist")
+    c = make_customer(db, e)
+    p = Product(name="VK7", verified=True)
+    db.add(p)
+    db.flush()
+
+    r = Rental(product_id=p.id, customer_id=c.id, employee_id=e.id,
+               issued_at=datetime.now(timezone.utc) - timedelta(days=100),
+               due_at=None, status=RentalStatus.RENTED)
+    zustand = due_state(r)
+    assert zustand["is_overdue"] is False
+    assert zustand["days_until_due"] is None
