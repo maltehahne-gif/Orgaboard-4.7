@@ -254,6 +254,14 @@ class Sale(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
+    # Storno statt Loeschen. Ein stornierter Verkauf bleibt vollstaendig
+    # erhalten - mit Positionen, Kunde und Datum - zaehlt aber in keiner
+    # Auswertung mehr. Loeschen wuerde die Nachvollziehbarkeit zerstoeren,
+    # gerade wenn Provisionen daran haengen.
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    cancelled_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
 
 class SaleItem(Base):
     __tablename__ = "sale_items"

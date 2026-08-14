@@ -16,7 +16,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
@@ -249,10 +249,64 @@ def serialize_attachment(
     }
 
 
+def read_counts_for(db: Session, message_ids: list[str]) -> dict[str, int]:
+    """Wie viele Personen eine Nachricht gelesen haben.
+
+    In einer Abfrage für die ganze Liste - einzeln je Nachricht waeren das
+    bei 500 Eintraegen 500 Abfragen.
+    """
+    if not message_ids:
+        return {}
+    rows = db.execute(
+        select(MessageRead.message_id, func.count(MessageRead.id))
+        .where(MessageRead.message_id.in_(message_ids))
+        .group_by(MessageRead.message_id)
+    ).all()
+    return {mid: int(anzahl) for mid, anzahl in rows}
+
+
+def delivery_state(
+    db: Session,
+    message: Message,
+    user_id: str,
+    read_count: int | None = None,
+) -> dict | None:
+    """Zustellstatus - nur für eigene Nachrichten.
+
+    Bei fremden Nachrichten ergibt die Angabe keinen Sinn: Der Leser weiss
+    selbst, ob er sie gelesen hat.
+
+    Wichtig: message.read_at wird nur bei privaten Nachrichten gesetzt, weil
+    es dort genau einen Empfaenger gibt. Team-Nachrichten haben mehrere, ihr
+    Stand steckt in message_reads.
+    """
+    if message.sender_user_id != user_id:
+        return None
+
+    if message.recipient_user_id is not None:
+        return {
+            "delivered": True,
+            "read": message.read_at is not None,
+            "read_at": message.read_at,
+            "read_by": 1 if message.read_at else 0,
+        }
+
+    if read_count is None:
+        read_count = read_counts_for(db, [message.id]).get(message.id, 0)
+
+    return {
+        "delivered": True,
+        "read": read_count > 0,
+        "read_at": None,
+        "read_by": read_count,
+    }
+
+
 def serialize(
     db: Session,
     message: Message,
     user_id: str,
+    read_count: int | None = None,
 ):
     sender = db.get(User, message.sender_user_id)
     recipient = (
@@ -290,6 +344,7 @@ def serialize(
         "created_at": message.created_at,
         "read_at": message.read_at,
         "is_read": is_read,
+        "delivery": delivery_state(db, message, user_id, read_count),
         "attachments": [
             serialize_attachment(a)
             for a in attachments
@@ -377,9 +432,12 @@ def list_messages(
         .limit(500)
     )
 
+    nachrichten = db.scalars(stmt).all()
+    zaehler = read_counts_for(db, [m.id for m in nachrichten])
+
     return [
-        serialize(db, message, user.id)
-        for message in db.scalars(stmt).all()
+        serialize(db, message, user.id, zaehler.get(message.id, 0))
+        for message in nachrichten
     ]
 
 

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.database import get_db
 from app.core.rbac import scoped_employee_id
+from app.core.timeutils import local_today, to_business_tz
 from app.core.security import get_current_user, require_csrf
 from app.models import Customer, Product, Rental, RentalStatus, User
 from app.services.realtime import manager
@@ -31,13 +32,64 @@ class RentalIn(BaseModel):
     notes: str | None = None
 
 
+# Ab so vielen Tagen vor der Rueckgabe wird erinnert.
+ERINNERUNG_TAGE = 3
+
+
+def due_state(r: Rental) -> dict:
+    """Faelligkeit eines Verleihs.
+
+    Wird hier berechnet, nicht in der Oberflaeche: sonst muesste jede
+    Darstellung ihre eigene Zeitzonenrechnung machen und sie wuerden
+    auseinanderlaufen.
+    """
+    offen = r.status in {RentalStatus.RENTED, RentalStatus.DUE}
+    if not offen or not r.due_at:
+        return {"is_overdue": False, "due_soon": False, "days_until_due": None, "days_overdue": 0}
+
+    faellig = to_business_tz(r.due_at).date()
+    heute = local_today()
+    tage = (faellig - heute).days
+
+    return {
+        "is_overdue": tage < 0,
+        "due_soon": 0 <= tage <= ERINNERUNG_TAGE,
+        "days_until_due": tage,
+        "days_overdue": -tage if tage < 0 else 0,
+    }
+
+
 def serialize(db: Session, r: Rental):
     c = db.get(Customer, r.customer_id); p = db.get(Product, r.product_id)
     return {
         "id": r.id, "product_id": r.product_id, "product_name": p.name if p else None,
         "customer_id": r.customer_id, "customer_name": f"{c.first_name} {c.last_name}" if c else None,
+        "customer_phone": c.phone if c else None,
         "employee_id": r.employee_id, "serial_number": r.serial_number, "issued_at": r.issued_at,
         "due_at": r.due_at, "returned_at": r.returned_at, "status": r.status.value, "notes": r.notes,
+        **due_state(r),
+    }
+
+
+@router.get("/summary")
+def rental_summary(
+    employee_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Zähler für Dashboard und Warnhinweis."""
+    scope = scoped_employee_id(db, user, employee_id)
+    stmt = select(Rental).where(Rental.status.in_([RentalStatus.RENTED, RentalStatus.DUE]))
+    if scope:
+        stmt = stmt.where(Rental.employee_id == scope)
+    rows = db.scalars(stmt).all()
+    zustaende = [due_state(r) for r in rows]
+
+    return {
+        "active": len(rows),
+        "overdue": len([z for z in zustaende if z["is_overdue"]]),
+        "due_soon": len([z for z in zustaende if z["due_soon"]]),
+        "reminder_days": ERINNERUNG_TAGE,
     }
 
 
@@ -58,8 +110,8 @@ async def create_rental(data: RentalIn, user: User = Depends(get_current_user), 
     if employee_id is None:
         raise HTTPException(status_code=400, detail="Mitarbeiter fehlt")
     c = db.get(Customer, data.customer_id); p = db.get(Product, data.product_id)
-    if not c or not p or not p.verified:
-        raise HTTPException(status_code=400, detail="Kunde oder verifiziertes Produkt nicht gefunden")
+    if not c or not p or not p.verified or not p.active:
+        raise HTTPException(status_code=400, detail="Kunde oder aktives, verifiziertes Produkt nicht gefunden")
     r = Rental(employee_id=employee_id, **data.model_dump(exclude={"employee_id"}))
     db.add(r); db.flush(); audit(db, user, "rental.created", "rental", r.id, after=serialize(db, r)); db.commit()
     await manager.publish({"type":"data.changed","entity":"rental"}, employee_id=employee_id)

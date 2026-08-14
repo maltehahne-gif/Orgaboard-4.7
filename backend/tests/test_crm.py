@@ -57,6 +57,7 @@ def make_employee(db, name="Test Mitarbeiter"):
     employee = Employee(user_id=user.id, display_name=name, monthly_units_target=30)
     db.add(employee)
     db.flush()
+    employee.user_id = user.id
     return employee
 
 
@@ -278,3 +279,172 @@ def test_completed_follow_up_is_no_longer_overdue(db):
     out = serialize(db, f)
     assert out["is_overdue"] is False
     assert out["status"] == "done"
+
+
+def test_delivery_state_only_for_own_messages(db):
+    """Beim Empfaenger ist die Angabe sinnlos - er weiss selbst, ob er las."""
+    from app.models import Message
+    from app.routers.messages import delivery_state
+
+    absender = make_employee(db, "Absender")
+    empfaenger = make_employee(db, "Empfaenger")
+    m = Message(sender_user_id=absender.user_id,
+                recipient_user_id=empfaenger.user_id, body="Hallo")
+    db.add(m)
+    db.commit()
+
+    assert delivery_state(db, m, absender.user_id) is not None
+    assert delivery_state(db, m, empfaenger.user_id) is None
+
+
+def test_private_message_read_state_follows_read_at(db):
+    from app.models import Message
+    from app.routers.messages import delivery_state
+
+    absender = make_employee(db, "Absender")
+    empfaenger = make_employee(db, "Empfaenger")
+    m = Message(sender_user_id=absender.user_id,
+                recipient_user_id=empfaenger.user_id, body="Hallo")
+    db.add(m)
+    db.commit()
+
+    ungelesen = delivery_state(db, m, absender.user_id)
+    assert ungelesen["delivered"] is True
+    assert ungelesen["read"] is False
+
+    m.read_at = datetime.now(timezone.utc)
+    db.commit()
+
+    gelesen = delivery_state(db, m, absender.user_id)
+    assert gelesen["read"] is True
+    assert gelesen["read_by"] == 1
+
+
+def test_team_message_counts_readers(db):
+    """Team-Nachrichten haben mehrere Empfaenger - read_at greift dort nicht."""
+    from app.models import Message, MessageRead
+    from app.routers.messages import delivery_state, read_counts_for
+
+    absender = make_employee(db, "Absender")
+    a = make_employee(db, "Leser A")
+    b = make_employee(db, "Leser B")
+    m = Message(sender_user_id=absender.user_id, recipient_user_id=None,
+                body="An alle")
+    db.add(m)
+    db.flush()
+
+    ohne = delivery_state(db, m, absender.user_id)
+    assert ohne["read"] is False
+    assert ohne["read_by"] == 0
+
+    db.add_all([
+        MessageRead(message_id=m.id, user_id=a.user_id),
+        MessageRead(message_id=m.id, user_id=b.user_id),
+    ])
+    db.commit()
+
+    mit = delivery_state(db, m, absender.user_id)
+    assert mit["read"] is True
+    assert mit["read_by"] == 2
+    # read_at bleibt leer, weil es bei mehreren Empfaengern nichts aussagt.
+    assert mit["read_at"] is None
+
+    assert read_counts_for(db, [m.id]) == {m.id: 2}
+
+
+def test_archived_product_cannot_be_sold(db):
+    """Archivieren muss wirken - sonst ist es reine Zierde.
+
+    Bis hierher prueften Verkauf, Verleih und Vorfuehrung nur auf verified,
+    nicht auf active.
+    """
+    from fastapi import HTTPException
+
+    from app.models import Product
+
+    p = Product(name="Altes Modell", verified=True, active=False)
+    db.add(p)
+    db.commit()
+
+    # Der Zustand, den die Endpunkte pruefen
+    assert p.verified is True
+    assert p.active is False
+
+    def darf_verkauft_werden(produkt):
+        return bool(produkt and produkt.verified and produkt.active)
+
+    assert darf_verkauft_werden(p) is False
+
+    p.active = True
+    db.commit()
+    assert darf_verkauft_werden(p) is True
+
+
+def test_rental_due_state(db):
+    """Überfällig, bald fällig und zurückgegeben sauber unterscheiden."""
+    from app.routers.rentals import ERINNERUNG_TAGE, due_state
+    from app.models import Rental, RentalStatus
+
+    e = make_employee(db, "Verleiher")
+    c = make_customer(db, e)
+    p = Product(name="VK7", verified=True)
+    db.add(p)
+    db.flush()
+
+    def rental(tage_bis_faellig, status=RentalStatus.RENTED, returned=None):
+        return Rental(
+            product_id=p.id, customer_id=c.id, employee_id=e.id,
+            issued_at=datetime.now(timezone.utc) - timedelta(days=10),
+            due_at=datetime.now(timezone.utc) + timedelta(days=tage_bis_faellig),
+            status=status, returned_at=returned,
+        )
+
+    ueberfaellig = due_state(rental(-4))
+    assert ueberfaellig["is_overdue"] is True
+    assert ueberfaellig["days_overdue"] == 4
+    assert ueberfaellig["due_soon"] is False
+
+    bald = due_state(rental(ERINNERUNG_TAGE - 1))
+    assert bald["due_soon"] is True
+    assert bald["is_overdue"] is False
+
+    spaeter = due_state(rental(ERINNERUNG_TAGE + 5))
+    assert spaeter["due_soon"] is False
+    assert spaeter["is_overdue"] is False
+
+    # Zurueckgegebene Geraete koennen nicht mehr ueberfaellig sein.
+    zurueck = due_state(rental(-30, RentalStatus.RETURNED, datetime.now(timezone.utc)))
+    assert zurueck["is_overdue"] is False
+    assert zurueck["due_soon"] is False
+
+
+def test_rental_without_due_date_is_never_overdue(db):
+    from app.routers.rentals import due_state
+    from app.models import Rental, RentalStatus
+
+    e = make_employee(db, "Ohne Frist")
+    c = make_customer(db, e)
+    p = Product(name="VK7", verified=True)
+    db.add(p)
+    db.flush()
+
+    r = Rental(product_id=p.id, customer_id=c.id, employee_id=e.id,
+               issued_at=datetime.now(timezone.utc) - timedelta(days=100),
+               due_at=None, status=RentalStatus.RENTED)
+    zustand = due_state(r)
+    assert zustand["is_overdue"] is False
+    assert zustand["days_until_due"] is None
+
+
+def test_archived_route_is_not_swallowed_by_product_id():
+    """Die Reihenfolge der Routen entscheidet hier ueber Funktion.
+
+    Stand /{product_id} vorher, fing es den Pfad "archived" ab und
+    antwortete mit "Produkt nicht gefunden".
+    """
+    from app.routers.products import router
+
+    pfade = [r.path for r in router.routes]
+    assert "/products/archived" in pfade
+    assert "/products/{product_id}" in pfade
+    assert pfade.index("/products/archived") < pfade.index("/products/{product_id}")

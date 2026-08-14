@@ -58,11 +58,60 @@ def list_products(q: str | None = Query(default=None), include_unverified: bool 
     return [product_out(db, p) for p in db.scalars(stmt).all()]
 
 
+@router.get("/archived")
+def list_archived(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Archivierte Produkte. Nur für Teamleiter."""
+    require_team_leader(user)
+    rows = db.scalars(
+        select(Product).where(Product.active.is_(False)).order_by(Product.category, Product.name)
+    ).all()
+    return [product_out(db, p) for p in rows]
+
+
 @router.get("/{product_id}")
 def product_detail(product_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = db.get(Product, product_id)
     if not p or not p.active or (not p.verified and user.role.value != "TEAM_LEADER"):
         raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
+    return product_out(db, p)
+
+
+class ActiveIn(BaseModel):
+    active: bool
+
+
+@router.patch("/{product_id}/active", dependencies=[Depends(require_csrf)])
+def set_active(
+    product_id: str,
+    data: ActiveIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Produkt archivieren oder zurückholen.
+
+    Archivieren statt löschen: Verkäufe verweisen auf das Produkt, und die
+    Verkaufshistorie muss nachvollziehbar bleiben. Ein archiviertes Produkt
+    verschwindet aus Auswahllisten, bleibt aber in allen Auswertungen.
+    """
+    require_team_leader(user)
+    p = db.get(Product, product_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
+
+    if p.active == data.active:
+        return product_out(db, p)
+
+    p.active = data.active
+    audit(
+        db,
+        user,
+        "product.archived" if not data.active else "product.restored",
+        "product",
+        p.id,
+        before={"active": not data.active},
+        after={"active": data.active},
+    )
+    db.commit()
     return product_out(db, p)
 
 

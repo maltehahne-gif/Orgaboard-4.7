@@ -1664,3 +1664,106 @@ body.ob-scroll-locked {
 
   .goal-head { flex-direction: column; gap: 3px; }
 }
+
+/* Zustellstatus im Chat. Nur bei eigenen Nachrichten sichtbar. */
+.chat-receipt {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  vertical-align: -2px;
+  color: #6f827b;
+}
+
+.chat-receipt.read { color: var(--ob-accent); }
+
+.chat-receipt b {
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Produktarchiv */
+.archive-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 13px !important;
+  padding: 7px 12px !important;
+}
+
+.product-archive-button {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px !important;
+  padding: 7px 11px !important;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .product-archive-button { width: 100%; justify-content: center; min-height: 44px; }
+}
+
+/* Verleih: Faelligkeit. Symbol und Text tragen die Aussage, die Farbe
+   unterstuetzt sie nur. */
+.rental-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px 15px;
+  border-radius: var(--ob-radius);
+  background: #2a2011;
+  border-left: 3px solid #c07d0a;
+  color: #e6cf9a;
+}
+
+.rental-warning.overdue {
+  background: #2a1512;
+  border-left-color: #cf3a40;
+  color: #f0bdbd;
+}
+
+.rental-warning svg { flex: none; margin-top: 1px; }
+.rental-warning div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rental-warning span { font-size: 13px; opacity: .85; }
+
+.rental-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 9px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: 1px;
+}
+
+.rental-flag.overdue { background: #2a1512; color: #ff9b91; }
+.rental-flag.soon { background: #2a2011; color: #e6bc55; }
+
+.rental-card.is-overdue { border-color: #6b2a2d; }
+.rental-card.is-due-soon { border-color: #5c4718; }
+
+@media (max-width: 767px) {
+  .rental-flag { margin-left: 0; margin-top: 6px; display: inline-flex; }
+  .rental-card.is-overdue strong,
+  .rental-card.is-due-soon strong { display: block; }
+}
+
+/* Stornierter Verkauf: bleibt sichtbar, ist aber erkennbar ausgenommen. */
+.sale-cancelled-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: #2a1512;
+  color: #ff9b91;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}

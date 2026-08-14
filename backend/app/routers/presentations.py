@@ -41,8 +41,8 @@ def create_presentation(data: PresentationIn, user: User = Depends(get_current_u
     if employee_id is None:
         raise HTTPException(status_code=400, detail="Mitarbeiter fehlt")
     c = db.get(Customer, data.customer_id); p = db.get(Product, data.product_id)
-    if not c or not p or not p.verified:
-        raise HTTPException(status_code=400, detail="Kunde oder verifiziertes Produkt nicht gefunden")
+    if not c or not p or not p.verified or not p.active:
+        raise HTTPException(status_code=400, detail="Kunde oder aktives, verifiziertes Produkt nicht gefunden")
     row = ProductPresentation(employee_id=employee_id, **data.model_dump(exclude={"employee_id"}))
     db.add(row); db.flush(); audit(db, user, "presentation.created", "product_presentation", row.id); db.commit()
     return {"id": row.id}

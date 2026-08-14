@@ -1,12 +1,12 @@
 import {FormEvent,useEffect,useMemo,useState} from 'react'
-import {Plus} from 'lucide-react'
+import {AlertTriangle,Clock,Plus} from 'lucide-react'
 import {api,formatDateTime} from '../lib/api'
 import type {Customer,Product,Rental} from '../types'
 import {Modal} from '../components/Modal'
 import {useToast} from '../components/Toast'
 
 const dt=()=>new Date().toISOString().slice(0,16)
-export function RentalsPage(){const [rows,setRows]=useState<Rental[]>([]);const [customers,setCustomers]=useState<Customer[]>([]);const [products,setProducts]=useState<Product[]>([]);const [open,setOpen]=useState(false);const [form,setForm]=useState({product_id:'',customer_id:'',serial_number:'',issued_at:dt(),due_at:'',status:'rented',notes:''});const toast=useToast();
+export function RentalsPage(){const [rows,setRows]=useState<Rental[]>([]);const [customers,setCustomers]=useState<Customer[]>([]);const [products,setProducts]=useState<Product[]>([]);const [open,setOpen]=useState(false);const [form,setForm]=useState({product_id:'',customer_id:'',serial_number:'',issued_at:dt(),due_at:'',status:'rented',notes:''});const [summary,setSummary]=useState<{active:number;overdue:number;due_soon:number;reminder_days:number}|null>(null);const toast=useToast();
 
 const [rentalSearch,setRentalSearch]=useState('');
 const [rentalFilter,setRentalFilter]=useState('all');function computedRentalState(r:Rental){
@@ -26,7 +26,7 @@ const [rentalFilter,setRentalFilter]=useState('all');function computedRentalStat
   return 'active'
 }
 
-const load=()=>Promise.all([api<Rental[]>('/rentals'),api<Customer[]>('/customers'),api<Product[]>('/products')]).then(([r,c,p])=>{setRows(r);setCustomers(c);setProducts(p)});useEffect(()=>{load()},[]);
+const load=()=>Promise.all([api<Rental[]>('/rentals'),api<Customer[]>('/customers'),api<Product[]>('/products'),api<{active:number;overdue:number;due_soon:number;reminder_days:number}>('/rentals/summary')]).then(([r,c,p,s])=>{setRows(r);setCustomers(c);setProducts(p);setSummary(s)});useEffect(()=>{load()},[]);
 
 const filteredRentals=useMemo(()=>{
 
@@ -73,7 +73,21 @@ const filteredRentals=useMemo(()=>{
   rentalFilter,
 ]);
 
-async function save(e:FormEvent){e.preventDefault();try{await api('/rentals',{method:'POST',body:JSON.stringify({...form,serial_number:form.serial_number||null,notes:form.notes||null,issued_at:new Date(form.issued_at).toISOString(),due_at:form.due_at?new Date(form.due_at).toISOString():null,returned_at:null})});setOpen(false);load();toast('Verleih gespeichert')}catch(err){toast(err instanceof Error?err.message:'Fehler','error')}}async function changeStatus(id:string,status:string){try{await api(`/rentals/${id}/status`,{method:'PATCH',body:JSON.stringify({status,returned_at:status==='returned'?new Date().toISOString():null})});load();toast('Verleihstatus aktualisiert')}catch(err){toast(err instanceof Error?err.message:'Fehler','error')}}return <div className="page"><div className="page-head"><div><h1>Verleihgeräte</h1><p>Ausgabe, Fälligkeit und Rückgabe im Blick.</p></div><button className="primary" onClick={()=>setOpen(true)}><Plus size={18}/> Gerät ausgeben</button></div><section className="rental-filter-panel card">
+async function save(e:FormEvent){e.preventDefault();try{await api('/rentals',{method:'POST',body:JSON.stringify({...form,serial_number:form.serial_number||null,notes:form.notes||null,issued_at:new Date(form.issued_at).toISOString(),due_at:form.due_at?new Date(form.due_at).toISOString():null,returned_at:null})});setOpen(false);load();toast('Verleih gespeichert')}catch(err){toast(err instanceof Error?err.message:'Fehler','error')}}async function changeStatus(id:string,status:string){try{await api(`/rentals/${id}/status`,{method:'PATCH',body:JSON.stringify({status,returned_at:status==='returned'?new Date().toISOString():null})});load();toast('Verleihstatus aktualisiert')}catch(err){toast(err instanceof Error?err.message:'Fehler','error')}}return <div className="page"><div className="page-head"><div><h1>Verleihgeräte</h1><p>Ausgabe, Fälligkeit und Rückgabe im Blick.</p></div><button className="primary" onClick={()=>setOpen(true)}><Plus size={18}/> Gerät ausgeben</button></div>{summary&&(summary.overdue>0||summary.due_soon>0)&&
+  <div className={summary.overdue>0?'rental-warning overdue':'rental-warning'}>
+    <AlertTriangle size={17}/>
+    <div>
+      <strong>
+        {summary.overdue>0
+          ? `${summary.overdue} Gerät${summary.overdue===1?'':'e'} überfällig`
+          : `${summary.due_soon} Rückgabe${summary.due_soon===1?'':'n'} in den nächsten ${summary.reminder_days} Tagen`}
+      </strong>
+      {summary.overdue>0&&summary.due_soon>0&&
+        <span>Zusätzlich {summary.due_soon} in den nächsten {summary.reminder_days} Tagen fällig.</span>
+      }
+    </div>
+  </div>
+}<section className="rental-filter-panel card">
 
 <div className="rental-filter-search">
 <input
@@ -117,7 +131,10 @@ Filter zurücksetzen
 
 </section>
 
-<div className="cards-list">{filteredRentals.map(r=><div className="card rental-card" key={r.id}><div><strong>{r.product_name||'Gerät'}</strong><p>{r.customer_name} · Seriennummer {r.serial_number||'–'}</p></div><div className="right">
+<div className="cards-list">{filteredRentals.map(r=><div className={r.is_overdue?'card rental-card is-overdue':r.due_soon?'card rental-card is-due-soon':'card rental-card'} key={r.id}><div><strong>{r.product_name||'Gerät'}</strong>
+{r.is_overdue&&<span className="rental-flag overdue"><AlertTriangle size={13}/> {r.days_overdue} {r.days_overdue===1?'Tag':'Tage'} überfällig</span>}
+{!r.is_overdue&&r.due_soon&&<span className="rental-flag soon"><Clock size={13}/> {r.days_until_due===0?'heute fällig':`in ${r.days_until_due} ${r.days_until_due===1?'Tag':'Tagen'}`}</span>}
+<p>{r.customer_name} · Seriennummer {r.serial_number||'–'}</p></div><div className="right">
 <span
 className={`rental-auto-state ${computedRentalState(r)}`}
 >

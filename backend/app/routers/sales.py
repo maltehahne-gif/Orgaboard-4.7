@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.database import get_db
-from app.core.rbac import scoped_employee_id
+from app.core.rbac import require_team_leader, scoped_employee_id
 from app.core.security import get_current_user, require_csrf
 from app.models import Customer, Product, Sale, SaleChannel, SaleItem, User
 from app.services.realtime import manager
@@ -19,6 +19,10 @@ class SaleItemIn(BaseModel):
     product_id: str
     quantity: int = Field(ge=1, le=999)
     unit_price_cents: int = Field(ge=0)
+
+
+class SaleCancelIn(BaseModel):
+    reason: str | None = Field(default=None, max_length=1000)
 
 
 class SaleIn(BaseModel):
@@ -39,9 +43,16 @@ def serialize(db: Session, s: Sale):
         "customer_name": f"{c.first_name} {c.last_name}" if c else "Unbekannt",
         "employee_id": s.employee_id, "appointment_id": s.appointment_id, "sold_at": s.sold_at,
         "channel": s.channel.value, "notes": s.notes,
+        "cancelled": s.cancelled_at is not None,
+        "cancelled_at": s.cancelled_at,
+        "cancellation_reason": s.cancellation_reason,
         "items": [{"id": i.id, "product_id": i.product_id, "name": i.product_name_snapshot, "quantity": i.quantity, "unit_price_cents": i.unit_price_cents, "total_cents": i.quantity*i.unit_price_cents} for i in items],
         "total_cents": sum(i.quantity*i.unit_price_cents for i in items),
         "units": sale_units(db, s.id),
+        # Was der Verkauf zu den Kennzahlen beitraegt. Bei einem Storno null,
+        # ohne dass die urspruenglichen Betraege verschwinden.
+        "counts_total_cents": 0 if s.cancelled_at else sum(i.quantity*i.unit_price_cents for i in items),
+        "counts_units": 0 if s.cancelled_at else sale_units(db, s.id),
     }
 
 
@@ -69,8 +80,10 @@ async def create_sale(data: SaleIn, user: User = Depends(get_current_user), db: 
     resolved: list[tuple[Product, SaleItemIn]] = []
     for item in data.items:
         p = db.get(Product, item.product_id)
-        if not p or not p.verified:
-            raise HTTPException(status_code=400, detail="Nur verifizierte Produkte dürfen verkauft werden")
+        # Auch auf active pruefen: sonst liesse sich ein archiviertes Produkt
+        # weiter verkaufen und das Archivieren waere reine Zierde.
+        if not p or not p.verified or not p.active:
+            raise HTTPException(status_code=400, detail="Nur aktive, verifizierte Produkte dürfen verkauft werden")
         resolved.append((p, item))
     s = Sale(customer_id=data.customer_id, employee_id=employee_id, appointment_id=data.appointment_id, sold_at=data.sold_at, channel=data.channel, notes=data.notes)
     db.add(s); db.flush()
@@ -83,72 +96,82 @@ async def create_sale(data: SaleIn, user: User = Depends(get_current_user), db: 
     await manager.publish({"type":"data.changed","entity":"sale"}, employee_id=employee_id)
     return serialize(db, s)
 
-@router.delete("/{sale_id}", status_code=204, dependencies=[Depends(require_csrf)])
-async def delete_sale(
+@router.post("/{sale_id}/cancel", dependencies=[Depends(require_csrf)])
+async def cancel_sale(
+    sale_id: str,
+    data: SaleCancelIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Verkauf stornieren.
+
+    Ersetzt das bisherige Loeschen. Der Verkauf bleibt vollstaendig erhalten -
+    mit Positionen, Kunde und Datum - zaehlt aber in keiner Auswertung mehr.
+    Loeschen zerstoerte die Nachvollziehbarkeit, was gerade dann schmerzt,
+    wenn spaeter jemand fragt, warum eine Provision anders ausfiel.
+    """
+    sale = db.get(Sale, sale_id)
+    if not sale:
+        raise HTTPException(status_code=404, detail="Verkauf nicht gefunden")
+
+    if user.role.value != "TEAM_LEADER":
+        eigener = scoped_employee_id(db, user, None)
+        if sale.employee_id != eigener:
+            raise HTTPException(
+                status_code=403,
+                detail="Du darfst nur deine eigenen Verkäufe stornieren",
+            )
+
+    if sale.cancelled_at:
+        raise HTTPException(status_code=409, detail="Dieser Verkauf ist bereits storniert")
+
+    before = serialize(db, sale)
+
+    sale.cancelled_at = datetime.now(timezone.utc)
+    sale.cancelled_by_user_id = user.id
+    sale.cancellation_reason = (data.reason or "").strip() or None
+    db.flush()
+
+    # Wochenstatistik neu rechnen, damit der Umsatz sofort stimmt.
+    refresh_weekly_stat(db, sale.employee_id, sale.sold_at.date())
+
+    audit(db, user, "sale.cancelled", "sale", sale_id, before=before, after=serialize(db, sale))
+    db.commit()
+
+    await manager.publish(
+        {"type": "data.changed", "entity": "sale", "action": "cancelled", "id": sale_id},
+        employee_id=sale.employee_id,
+    )
+    return serialize(db, sale)
+
+
+@router.post("/{sale_id}/restore", dependencies=[Depends(require_csrf)])
+async def restore_sale(
     sale_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Storno zurücknehmen. Nur Teamleiter."""
+    require_team_leader(user)
+
     sale = db.get(Sale, sale_id)
-
     if not sale:
-        raise HTTPException(
-            status_code=404,
-            detail="Verkauf nicht gefunden"
-        )
-
-    if user.role.value != "TEAM_LEADER":
-        employee_id = scoped_employee_id(db, user, None)
-
-        if sale.employee_id != employee_id:
-            raise HTTPException(
-                status_code=403,
-                detail="Du darfst nur deine eigenen Verkäufe löschen"
-            )
-
-    employee_id = sale.employee_id
-    sale_date = sale.sold_at.date()
+        raise HTTPException(status_code=404, detail="Verkauf nicht gefunden")
+    if not sale.cancelled_at:
+        raise HTTPException(status_code=409, detail="Dieser Verkauf ist nicht storniert")
 
     before = serialize(db, sale)
-
-    sale_items = (
-        db.query(SaleItem)
-        .filter(SaleItem.sale_id == sale.id)
-        .all()
-    )
-
-    for item in sale_items:
-        db.delete(item)
-
-    db.delete(sale)
+    sale.cancelled_at = None
+    sale.cancelled_by_user_id = None
+    sale.cancellation_reason = None
     db.flush()
 
-    refresh_weekly_stat(
-        db,
-        employee_id,
-        sale_date
-    )
-
-    audit(
-        db,
-        user,
-        "sale.deleted",
-        "sale",
-        sale_id,
-        before=before,
-        after=None,
-    )
-
+    refresh_weekly_stat(db, sale.employee_id, sale.sold_at.date())
+    audit(db, user, "sale.restored", "sale", sale_id, before=before, after=serialize(db, sale))
     db.commit()
 
     await manager.publish(
-        {
-            "type": "data.changed",
-            "entity": "sale",
-            "action": "deleted",
-            "id": sale_id,
-        },
-        employee_id=employee_id,
+        {"type": "data.changed", "entity": "sale", "action": "restored", "id": sale_id},
+        employee_id=sale.employee_id,
     )
-
-    return None
+    return serialize(db, sale)

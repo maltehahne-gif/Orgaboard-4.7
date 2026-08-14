@@ -6,6 +6,8 @@ import {
   useState,
 } from 'react'
 import {
+  Check,
+  CheckCheck,
   Download,
   FileText,
   Image as ImageIcon,
@@ -52,6 +54,7 @@ type Msg={
   created_at:string
   read_at:string|null
   is_read:boolean
+  delivery:{delivered:boolean;read:boolean;read_at:string|null;read_by:number}|null
   attachments:Attachment[]
 }
 
@@ -964,6 +967,33 @@ export function MessagesPage(){
                   {formatDateTime(
                     message.created_at
                   )}
+
+                  {/* Zustellstatus nur bei eigenen Nachrichten - beim
+                      Empfaenger waere die Angabe sinnlos. */}
+                  {message.delivery&&
+                    <span
+                      className={
+                        message.delivery.read
+                        ? 'chat-receipt read'
+                        : 'chat-receipt'
+                      }
+                      title={
+                        message.delivery.read
+                        ? (isTeam
+                            ? `Von ${message.delivery.read_by} gelesen`
+                            : 'Gelesen')
+                        : 'Gesendet'
+                      }
+                    >
+                      {message.delivery.read
+                        ? <CheckCheck size={13}/>
+                        : <Check size={13}/>}
+
+                      {isTeam&&message.delivery.read_by>0&&
+                        <b>{message.delivery.read_by}</b>
+                      }
+                    </span>
+                  }
                 </small>
               </div>
             </article>

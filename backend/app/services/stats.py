@@ -9,6 +9,16 @@ from app.models import Employee, Product, Sale, SaleChannel, SaleItem, WeeklySta
 K70_CATEGORY = "k70"
 
 
+def not_cancelled():
+    """Bedingung fuer "zaehlt in Auswertungen".
+
+    An einer Stelle, weil sie an elf Stellen gebraucht wird. Liefe sie
+    auseinander, wuerden Dashboard, Buntewoche und Verkaufsliste
+    unterschiedliche Umsaetze zeigen - und niemand wuesste, welcher stimmt.
+    """
+    return Sale.cancelled_at.is_(None)
+
+
 def is_k70_category(category: str | None) -> bool:
     return (category or "").strip().casefold() == K70_CATEGORY
 
@@ -25,7 +35,7 @@ def revenue_between(
         select(func.coalesce(func.sum(SaleItem.quantity * SaleItem.unit_price_cents), 0))
         .select_from(SaleItem)
         .join(Sale, Sale.id == SaleItem.sale_id)
-        .where(Sale.sold_at >= start, Sale.sold_at < end)
+        .where(Sale.sold_at >= start, Sale.sold_at < end, not_cancelled())
     )
     if employee_id:
         stmt = stmt.where(Sale.employee_id == employee_id)
@@ -94,6 +104,7 @@ def units_between(
         .where(
             Sale.sold_at >= start,
             Sale.sold_at < end,
+            not_cancelled(),
         )
     )
 

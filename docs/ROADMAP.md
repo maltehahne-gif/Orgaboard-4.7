@@ -95,18 +95,18 @@ Unabhängig voneinander, jeweils in sich abgeschlossen.
 
 ### 3.2 Verkäufe
 - ❌ Verkauf bearbeiten
-- ❌ nach Mitarbeiter filtern
-- ❌ Storno statt Löschen (Verkauf bleibt mit Stornokennzeichen erhalten)
+- ✅ nach Mitarbeiter filtern (war bereits vorhanden, nur für Teamleiter sichtbar)
+- ✅ Storno statt Löschen (Verkauf bleibt mit Stornokennzeichen erhalten)
 
 ### 3.3 Produkte
-- ❌ archivieren/deaktivieren
+- ✅ archivieren/deaktivieren
 - ❌ zentrale Preisverwaltung
 - ❌ Preisimport
 - ❌ bessere Filter
 
 ### 3.4 Verleih
-- ❌ Erinnerung vor Rückgabe
-- ❌ Warnung bei Überfälligkeit
+- ✅ Erinnerung vor Rückgabe
+- ✅ Warnung bei Überfälligkeit
 - ❌ Gerätehistorie
 - ❌ vollständige Seriennummernverwaltung
 
@@ -161,8 +161,8 @@ Unabhängig voneinander, jeweils in sich abgeschlossen.
 > erst angegangen werden, wenn der Rest steht.
 
 ### 5.2 Chat
-- ❌ Gesendet-Status
-- 🟡 Gelesen-Status (serverseitig vorhanden, Anzeige fehlt)
+- ✅ Gesendet-Status
+- ✅ Gelesen-Status (inkl. Leserzahl bei Team-Nachrichten)
 - ❌ einzelne Nachricht löschen
 - ❌ Nachricht bearbeiten
 - ❌ bessere Bild-Vollbildansicht

@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base
@@ -272,3 +272,68 @@ def test_single_alert_is_not_grouped(db):
     assert len(treffer) == 1
     assert not treffer[0].get("grouped")
     assert treffer[0]["employee"] == "Alleine"
+
+
+def test_cancelled_sale_disappears_from_all_figures(db):
+    """Ein Storno muss ueberall wirken, nicht nur in der Verkaufsliste.
+
+    Umsatz, Einheiten, Produkt-Ranking und Termin-Kennzahlen greifen auf
+    dieselben Verkaufspositionen zu - liefe die Bedingung auseinander,
+    zeigten Dashboard und Verkaufsliste verschiedene Summen.
+    """
+    from app.services.stats import revenue_between, units_between
+    from app.services.timeline import appointment_kpis, funnel_stage
+    from app.models import FunnelStage
+
+    e = make_employee(db)
+    c = Customer(employee_id=e.id, first_name="Max", last_name="Muster")
+    db.add(c)
+    p = Product(name="VK7 + PB7", category="Kobold", verified=True)
+    db.add(p)
+    db.flush()
+
+    now = datetime.now(timezone.utc)
+    s = make_sale(db, e, c, p, 1, 200000, now)
+    db.commit()
+
+    ms, me = month_bounds()
+    assert revenue_between(db, ms, me, e.id) == 200000
+    assert units_between(db, ms, me, e.id) == 2
+    assert len(product_ranking(db, ms, me, e.id)) == 1
+    assert funnel_stage(db, c.id) == FunnelStage.SALE
+
+    # Stornieren
+    s.cancelled_at = now
+    db.commit()
+
+    assert revenue_between(db, ms, me, e.id) == 0, "Umsatz muss den Storno beruecksichtigen"
+    assert units_between(db, ms, me, e.id) == 0, "Einheiten ebenso"
+    assert product_ranking(db, ms, me, e.id) == [], "Produkt-Ranking ebenso"
+    assert appointment_kpis(db, ms, me, e.id)["revenue_per_appointment_cents"] == 0
+    # Der Kunde faellt im Trichter zurueck - sonst bliebe er faelschlich Kaeufer.
+    assert funnel_stage(db, c.id) != FunnelStage.SALE
+
+
+def test_cancelled_sale_is_preserved_not_deleted(db):
+    """Der Datensatz bleibt vollstaendig erhalten."""
+    from app.models import SaleItem as SI
+
+    e = make_employee(db)
+    c = Customer(employee_id=e.id, first_name="Max", last_name="Muster")
+    db.add(c)
+    p = Product(name="VK7", verified=True)
+    db.add(p)
+    db.flush()
+    s = make_sale(db, e, c, p, 3, 90000, datetime.now(timezone.utc))
+    db.commit()
+
+    s.cancelled_at = datetime.now(timezone.utc)
+    s.cancellation_reason = "Kunde ist zurueckgetreten"
+    db.commit()
+
+    from sqlalchemy import func as f
+    assert db.scalar(select(f.count(Sale.id))) == 1
+    positionen = db.scalars(select(SI).where(SI.sale_id == s.id)).all()
+    assert len(positionen) == 1
+    assert positionen[0].quantity == 3
+    assert s.cancellation_reason == "Kunde ist zurueckgetreten"

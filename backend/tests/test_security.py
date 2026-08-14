@@ -99,22 +99,29 @@ def _make_sale(employee_id):
         db.close()
 
 
-def test_sale_delete_requires_csrf_token(client, employee_user):
-    """B1: Ohne CSRF-Header darf ein Verkauf nicht geloescht werden."""
+def test_sale_cancel_requires_csrf_token(client, employee_user):
+    """B1: Ohne CSRF-Header darf ein Verkauf nicht storniert werden.
+
+    Frueher ging es hier um das Loeschen. Loeschen gibt es nicht mehr -
+    stattdessen wird storniert, und der Schutz gilt unveraendert.
+    """
     _, employee_id = employee_user
     sale_id = _make_sale(employee_id)
     assert _login(client).status_code == 200
 
     # Das Session-Cookie schickt der Client automatisch mit - genau das macht
     # ein CSRF-Angriff auch. Fehlt der Header, muss der Server ablehnen.
-    response = client.request("DELETE", f"/api/v1/sales/{sale_id}")
+    response = client.post(f"/api/v1/sales/{sale_id}/cancel", json={"reason": None})
     assert response.status_code == 403
 
     csrf = client.cookies.get("orgaboard_csrf")
-    ok = client.request(
-        "DELETE", f"/api/v1/sales/{sale_id}", headers={"X-CSRF-Token": csrf}
+    ok = client.post(
+        f"/api/v1/sales/{sale_id}/cancel",
+        json={"reason": "Kunde zurückgetreten"},
+        headers={"X-CSRF-Token": csrf},
     )
-    assert ok.status_code == 204
+    assert ok.status_code == 200
+    assert ok.json()["cancelled"] is True
 
 
 def test_password_reset_clears_must_change_password(client, employee_user):

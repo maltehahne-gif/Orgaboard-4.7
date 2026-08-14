@@ -6,12 +6,15 @@ import {
 } from 'react'
 
 import {
+  Archive,
+  ArchiveRestore,
   Plus,
   Search,
   Package,
   X,
 } from 'lucide-react'
 
+import {useAuth} from '../lib/auth'
 import {api} from '../lib/api'
 
 
@@ -53,6 +56,14 @@ function getPrice(product:ProductRecord){
 
 export function ProductsPage(){
 
+  const {me}=useAuth()
+  const istTeamleiter=me?.role==='TEAM_LEADER'
+
+  // Archivierte Produkte bleiben erhalten, weil Verkaeufe auf sie verweisen.
+  // Sie verschwinden nur aus den Auswahllisten.
+  const [zeigeArchiv,setZeigeArchiv]=
+    useState(false)
+
   const [products,setProducts]=
     useState<ProductRecord[]>([])
 
@@ -92,7 +103,9 @@ export function ProductsPage(){
 
       const result:any =
         await api(
-          '/products?include_unverified=true'
+          zeigeArchiv
+            ? '/products/archived'
+            : '/products?include_unverified=true'
         )
 
       setProducts(
@@ -111,7 +124,35 @@ export function ProductsPage(){
 
   useEffect(()=>{
     load()
-  },[])
+  },[zeigeArchiv])
+
+
+  async function setzeAktiv(
+    product:ProductRecord,
+    aktiv:boolean
+  ){
+    try{
+      await api(
+        `/products/${product.id}/active`,
+        {
+          method:'PATCH',
+          body:JSON.stringify({active:aktiv}),
+        }
+      )
+      setMessage(
+        aktiv
+          ? `${product.name} ist wieder aktiv`
+          : `${product.name} wurde archiviert`
+      )
+      await load()
+    }catch(err){
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Konnte nicht geändert werden'
+      )
+    }
+  }
 
 
   const filtered=
@@ -337,12 +378,29 @@ export function ProductsPage(){
       <div className="simple-products-head">
 
         <div>
-          <h1>Produktkatalog</h1>
+          <h1>
+            {zeigeArchiv
+              ? 'Archivierte Produkte'
+              : 'Produktkatalog'}
+          </h1>
 
           <p>
-            Produkte schnell finden und für
-            Verkäufe verwenden.
+            {zeigeArchiv
+              ? 'Nicht mehr in Auswahllisten. Bisherige Verkäufe bleiben erhalten.'
+              : 'Produkte schnell finden und für Verkäufe verwenden.'}
           </p>
+
+          {istTeamleiter&&
+            <button
+              type="button"
+              className="archive-toggle"
+              onClick={()=>setZeigeArchiv(v=>!v)}
+            >
+              {zeigeArchiv
+                ? <><Package size={15}/> Zum Katalog</>
+                : <><Archive size={15}/> Archiv ansehen</>}
+            </button>
+          }
         </div>
 
 
@@ -513,6 +571,26 @@ export function ProductsPage(){
                     Preis nicht hinterlegt
                   </span>
                 )}
+
+                {istTeamleiter&&
+                  <button
+                    type="button"
+                    className="product-archive-button"
+                    onClick={()=>setzeAktiv(
+                      product,
+                      zeigeArchiv
+                    )}
+                    title={
+                      zeigeArchiv
+                        ? 'Wieder aktiv setzen'
+                        : 'Aus den Auswahllisten nehmen; Verkäufe bleiben erhalten'
+                    }
+                  >
+                    {zeigeArchiv
+                      ? <><ArchiveRestore size={15}/> Zurückholen</>
+                      : <><Archive size={15}/> Archivieren</>}
+                  </button>
+                }
 
               </div>
 
