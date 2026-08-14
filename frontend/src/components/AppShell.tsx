@@ -7,6 +7,7 @@ import {
   History,
   Home,
   LogOut,
+  AlarmClock,
   Mail,
   Menu,
   Package,
@@ -58,6 +59,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       {to: '/termine', label: 'Termine', icon: CalendarDays},
       {to: '/kunden', label: 'Kunden', icon: ContactRound},
+      {to: '/nachfassen', label: 'Nachfassen', icon: AlarmClock},
       {to: '/routenplanung', label: 'Routenplanung', icon: RouteIcon, short: 'Route'},
       {to: '/nachrichten', label: 'Nachrichten', icon: Mail},
     ],

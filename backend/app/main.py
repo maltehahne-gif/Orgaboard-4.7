@@ -6,7 +6,7 @@ from app.core.config import get_settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import decode_session_token
 from app.models import Employee, User
-from app.routers import appointments, assistant, auth, buntewoche, customers, dashboard, directory, history, messages, notifications, presentations, products, profile, rentals, sales, search, team
+from app.routers import appointments, assistant, auth, buntewoche, customers, dashboard, directory, followups, history, messages, notifications, presentations, products, profile, rentals, sales, search, team
 from app.services.realtime import SocketClient, manager
 
 settings=get_settings()
@@ -22,7 +22,7 @@ async def lifespan(_: FastAPI):
 app=FastAPI(title="OrgaBoard API",version="1.0.0",lifespan=lifespan)
 app.add_middleware(CORSMiddleware,allow_origins=[settings.frontend_origin],allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
 
-for router in [auth.router,dashboard.router,customers.router,appointments.router,sales.router,presentations.router,products.router,rentals.router,buntewoche.router,messages.router,assistant.router,search.router,history.router,team.router,profile.router,directory.router,notifications.router]:
+for router in [auth.router,dashboard.router,customers.router,appointments.router,sales.router,presentations.router,products.router,rentals.router,buntewoche.router,messages.router,assistant.router,search.router,history.router,team.router,profile.router,directory.router,notifications.router,followups.router]:
     app.include_router(router,prefix=settings.api_prefix)
 
 @app.get("/health")

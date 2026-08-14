@@ -52,6 +52,39 @@ class SaleChannel(str, enum.Enum):
     OTHER = "other"
 
 
+class FollowUpStatus(str, enum.Enum):
+    OPEN = "open"
+    DONE = "done"
+    CANCELLED = "cancelled"
+
+
+class FollowUpReason(str, enum.Enum):
+    """Warum nachgefasst wird. Steuert den Vorschlagstext in der Oberflaeche."""
+
+    NO_RESULT = "no_result"          # Termin ohne Abschluss
+    AFTER_SALE = "after_sale"        # Nachbetreuung nach Verkauf
+    RENTAL_RETURN = "rental_return"  # Geraet zurueckholen
+    OFFER = "offer"                  # Angebot nachfassen
+    MANUAL = "manual"                # von Hand angelegt
+
+
+class FunnelStage(str, enum.Enum):
+    """Stufen des Verkaufstrichters.
+
+    Die Stufe wird nicht gespeichert, sondern aus den Ereignissen des Kunden
+    abgeleitet - sonst laufen Stufe und Wirklichkeit auseinander, sobald jemand
+    einen Termin oder Verkauf nachtraegt.
+    """
+
+    CONTACT = "contact"
+    APPOINTMENT_SET = "appointment_set"
+    APPOINTMENT_DONE = "appointment_done"
+    PRESENTATION = "presentation"
+    OFFER = "offer"
+    SALE = "sale"
+    AFTERCARE = "aftercare"
+
+
 class User(Base):
     __tablename__ = "users"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
@@ -93,6 +126,45 @@ class Customer(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CustomerNote(Base):
+    """Notiz mit Verlauf.
+
+    Customer.notes bleibt als Kurzinfo bestehen. Wer den Gespraechsverlauf
+    nachvollziehen will, braucht aber datierte Eintraege statt eines Feldes,
+    das beim naechsten Bearbeiten ueberschrieben wird.
+    """
+
+    __tablename__ = "customer_notes"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id", ondelete="CASCADE"), index=True)
+    employee_id: Mapped[str] = mapped_column(ForeignKey("employees.id"), index=True)
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, index=True)
+
+
+class FollowUp(Base):
+    """Wiedervorlage: was wann bei welchem Kunden ansteht."""
+
+    __tablename__ = "follow_ups"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id", ondelete="CASCADE"), index=True)
+    employee_id: Mapped[str] = mapped_column(ForeignKey("employees.id"), index=True)
+
+    due_on: Mapped[date] = mapped_column(Date, index=True)
+    reason: Mapped[FollowUpReason] = mapped_column(Enum(FollowUpReason), default=FollowUpReason.MANUAL)
+    status: Mapped[FollowUpStatus] = mapped_column(Enum(FollowUpStatus), default=FollowUpStatus.OPEN, index=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Woraus die Wiedervorlage entstanden ist, damit die Timeline den
+    # Zusammenhang zeigen kann.
+    appointment_id: Mapped[str | None] = mapped_column(ForeignKey("appointments.id", ondelete="SET NULL"), nullable=True)
+    sale_id: Mapped[str | None] = mapped_column(ForeignKey("sales.id", ondelete="SET NULL"), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Product(Base):
@@ -156,6 +228,9 @@ class Appointment(Base):
     address_snapshot: Mapped[str | None] = mapped_column(String(500), nullable=True)
     phone_snapshot: Mapped[str | None] = mapped_column(String(80), nullable=True)
     email_snapshot: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Ergebnis der Durchfuehrung: sale | rental | none. Wurde bisher nur
+    # ausgewertet und verworfen; Trichter und Nachfassvorschlag brauchen es.
+    outcome: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
 

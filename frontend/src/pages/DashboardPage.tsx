@@ -1,3 +1,4 @@
+import {DashboardInsights} from '../components/DashboardInsights'
 import {BadgeEuro,CalendarClock,CalendarDays,CalendarRange,Clock3,Info,Mail,MapPinned,PackageCheck,Target} from 'lucide-react'
 import {useCallback,useEffect,useState} from 'react'
 import {Link} from 'react-router-dom'
@@ -278,6 +279,9 @@ export function DashboardPage(){
 
     </aside>
 
+
+  
+    <DashboardInsights/>
 
   </div>
 

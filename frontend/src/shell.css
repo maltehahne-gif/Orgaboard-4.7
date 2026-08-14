@@ -1044,3 +1044,623 @@ body.ob-scroll-locked {
     transition: none;
   }
 }
+
+/* ============================================================================
+   CRM: Kundenakte, Verlauf und Nachfassen
+   ========================================================================== */
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--ob-text-dim);
+  margin-bottom: 6px;
+}
+
+.back-link:hover { color: var(--ob-accent); }
+
+.customer-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  padding: 14px 18px;
+  font-size: 14px;
+}
+
+.customer-contact a,
+.customer-contact span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ob-text-dim);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.customer-contact a:hover { color: var(--ob-accent); }
+
+/* ------------------------------------------------------------- Trichter */
+
+.funnel-strip { padding: 16px 18px; }
+
+.funnel-steps {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 5px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.funnel-steps li span {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: #1c2b2f;
+}
+
+.funnel-steps li.done span { background: #1f7a45; }
+.funnel-steps li.current span { background: var(--ob-accent); }
+
+/* -------------------------------------------------------------- Verlauf */
+
+.note-compose { padding: 16px 18px; }
+
+.note-compose label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: #cbd2d1;
+}
+
+.note-compose textarea {
+  width: 100%;
+  background: #0d181d;
+  border: 1px solid #2b3d42;
+  color: var(--ob-text);
+  border-radius: 9px;
+  padding: 10px 11px;
+  outline: none;
+  resize: vertical;
+}
+
+.note-compose textarea:focus { border-color: #3f9455; }
+
+.timeline-card { padding: 16px 18px 20px; }
+
+.timeline {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 18px;
+  position: relative;
+}
+
+/* Verbindungslinie zwischen den Ereignissen, beim letzten weggelassen. */
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 30px;
+  bottom: 0;
+  width: 1px;
+  background: #1e2f33;
+}
+
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-item:last-child::before { display: none; }
+
+.timeline-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #142226;
+  border: 1px solid #24393e;
+  color: #8fa6a0;
+  z-index: 1;
+}
+
+.timeline-item.sale .timeline-icon { background: #10301d; border-color: #2c7a48; color: #6ee79a; }
+.timeline-item.appointment .timeline-icon { background: #13252e; border-color: #2b5f7a; color: #79c6ea; }
+.timeline-item.presentation .timeline-icon { background: #221a33; border-color: #4d3a7f; color: #b3a0e8; }
+.timeline-item.note .timeline-icon { background: #2a2411; border-color: #6b5a22; color: #e6cf72; }
+
+.timeline-body { min-width: 0; }
+
+.timeline-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+
+.timeline-body p {
+  margin: 4px 0 0;
+  color: var(--ob-text-dim);
+  font-size: 13.5px;
+  overflow-wrap: break-word;
+}
+
+.timeline-body small {
+  display: block;
+  margin-top: 4px;
+  color: #708079;
+  font-size: 12px;
+}
+
+.timeline-kind {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6f827b;
+}
+
+/* ------------------------------------------------------------ Nachfassen */
+
+.followup-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.followup-tabs button {
+  border: 1px solid #26383c !important;
+  background: #101a1e !important;
+  color: #c3cfcb !important;
+  border-radius: 999px !important;
+  padding: 8px 15px !important;
+  font-size: 13.5px;
+}
+
+.followup-tabs button.is-active {
+  background: linear-gradient(180deg, #2bab52, #19883f) !important;
+  border-color: #2eaf57 !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+.followup-list { display: flex; flex-direction: column; gap: 10px; }
+
+.followup-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 14px 0 2px;
+  font-size: 14px;
+  color: var(--ob-text-dim);
+  font-weight: 600;
+}
+
+.followup-group.overdue { color: #ffb26f; }
+
+.followup-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 17px;
+  background: linear-gradient(180deg, rgba(13, 24, 29, .96), rgba(9, 17, 21, .96));
+  border: 1px solid #21353a;
+  border-radius: var(--ob-radius);
+}
+
+.followup-main { min-width: 0; flex: 1; }
+
+.followup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.followup-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 650;
+  font-size: 15.5px;
+}
+
+.followup-name:hover { color: var(--ob-accent); }
+
+.followup-badge {
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #1b2b30;
+  color: #9fb4ad;
+  white-space: nowrap;
+}
+
+.followup-badge.no_result { background: #2d2313; color: #ffd486; }
+.followup-badge.after_sale { background: #163520; color: #72e594; }
+.followup-badge.rental_return { background: #13252e; color: #79c6ea; }
+
+.followup-note {
+  margin: 7px 0 0;
+  color: var(--ob-text-dim);
+  font-size: 13.5px;
+  overflow-wrap: break-word;
+}
+
+.followup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 16px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: #7f918a;
+}
+
+.followup-meta span,
+.followup-meta a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.followup-meta a:hover { color: var(--ob-accent); }
+
+.followup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  flex: none;
+}
+
+/* --------------------------------------------------------------- Handy */
+
+@media (max-width: 767px) {
+  .followup-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .followup-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, .07);
+  }
+
+  /* Erledigt ist die Hauptaktion und bekommt die volle Zeile. */
+  .followup-actions .primary { grid-column: 1 / -1; }
+
+  .followup-actions button { min-height: 44px; }
+
+  .followup-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ohne width:auto erben die Reiter aus styles.css volle Breite und
+     stehen einzeln untereinander, statt als Leiste zu scrollen. */
+  .followup-tabs button {
+    white-space: nowrap;
+    flex: 0 0 auto;
+    width: auto !important;
+  }
+
+  .customer-contact { gap: 8px 14px; padding: 12px 14px; font-size: 13.5px; }
+
+  .timeline-item { grid-template-columns: 26px minmax(0, 1fr); gap: 10px; }
+  .timeline-item::before { left: 12px; top: 26px; }
+  .timeline-icon { width: 26px; height: 26px; }
+  .timeline-card, .note-compose, .funnel-strip { padding: 14px; }
+}
+
+.customer-name-link { display: inline-block; }
+.customer-name-link:hover strong { color: var(--ob-accent); }
+
+/* .stat-card.green wird in styles.css auf display:flex gesetzt - ohne
+   Richtungsangabe stehen Bezeichnung und Zahl dadurch nebeneinander. */
+.stat-card.green,
+.stat-card.orange {
+  flex-direction: column;
+}
+
+/* ============================================================================
+   Dashboard-Auswertung: Kennzahlen, Trichter, Ranking, Team
+   ----------------------------------------------------------------------------
+   Dünne Marken, zurückhaltendes Beiwerk, Werte in Textfarbe statt in der
+   Farbe des Balkens - die Farbe gehört der Marke, nicht der Schrift.
+   ========================================================================== */
+
+.insights {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.insights-card { padding: 18px 20px 20px; }
+
+.insights-note {
+  margin: 4px 0 14px;
+  color: var(--ob-text-dim);
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------- Kennzahlen */
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--ob-line);
+  border: 1px solid var(--ob-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.kpi {
+  background: #0c171b;
+  padding: 14px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.kpi small {
+  color: #9fb0aa;
+  font-size: 12px;
+}
+
+.kpi strong {
+  font-size: 25px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-sub {
+  font-size: 12px;
+  color: #6f827b;
+}
+
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.delta.up { color: #31a661; }
+.delta.down { color: #cf3a40; }
+.delta.neutral { color: #6f827b; }
+
+/* ---------------------------------------------------------------- Trichter */
+
+.funnel-chart,
+.rank-chart {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.funnel-chart li,
+.rank-chart li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 88px;
+  align-items: center;
+  gap: 12px;
+}
+
+.funnel-label,
+.rank-label {
+  font-size: 13px;
+  color: #c3cfcb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Die Spur ist eine Hilfslinie, kein Rahmen - eine Nuance neben der Fläche. */
+.funnel-track,
+.rank-track,
+.goal-track {
+  display: block;
+  height: 12px;
+  background: #142226;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.funnel-bar,
+.rank-bar,
+.goal-bar {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  transition: width 0.3s ease;
+}
+
+.funnel-value,
+.rank-value {
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #dbe4e0;
+}
+
+.funnel-quotes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ob-line);
+}
+
+.funnel-quotes small {
+  display: block;
+  color: #9fb0aa;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.funnel-quotes strong {
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------- Hinweise */
+
+.alert-list,
+.goal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.alert {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 11px;
+  padding: 12px 13px;
+  border-radius: 10px;
+  background: #101a1e;
+  border-left: 3px solid #3a4a4e;
+}
+
+/* Geprüfte Statusfarben. Sie erscheinen immer zusammen mit Symbol und
+   Textmarke - nie als alleiniger Träger der Bedeutung. */
+.alert.critical { border-left-color: #cf3a40; }
+.alert.warn { border-left-color: #c07d0a; }
+.alert.info { border-left-color: #31a661; }
+
+.alert-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #16242a;
+  color: #9fb0aa;
+}
+
+.alert.critical .alert-icon { color: #cf3a40; }
+.alert.warn .alert-icon { color: #c07d0a; }
+
+.alert-body { min-width: 0; }
+
+.alert-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+
+.alert-severity {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #849690;
+}
+
+.alert-body p {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: var(--ob-text-dim);
+  overflow-wrap: break-word;
+}
+
+.alert-body small {
+  display: block;
+  margin-top: 4px;
+  color: #6f827b;
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------- Zielerreichung */
+
+.goal-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ob-line-soft);
+}
+
+.goal-list li:last-child { border-bottom: 0; }
+
+.goal-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin-bottom: 7px;
+}
+
+.goal-value {
+  font-size: 12.5px;
+  color: var(--ob-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-bar { background: #2c9155; }
+.goal-bar.reached { background: #3dd27b; }
+
+.goal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 7px;
+  font-size: 12px;
+  color: #7f918a;
+}
+
+/* ------------------------------------------------------------------ Handy */
+
+@media (max-width: 767px) {
+  .insights-card { padding: 14px; }
+
+  .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi { padding: 12px; }
+  .kpi strong { font-size: 21px; }
+
+  /* Beschriftung über den Balken, sonst bleiben davon 60px übrig. */
+  .funnel-chart li,
+  .rank-chart li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label value'
+      'track track';
+    gap: 5px 10px;
+  }
+
+  .funnel-label, .rank-label { grid-area: label; white-space: normal; }
+  .funnel-value, .rank-value { grid-area: value; }
+  .funnel-track, .rank-track { grid-area: track; }
+
+  .funnel-quotes { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .funnel-quotes strong { font-size: 16px; }
+
+  .goal-head { flex-direction: column; gap: 3px; }
+}

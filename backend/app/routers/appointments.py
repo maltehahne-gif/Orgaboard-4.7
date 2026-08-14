@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,8 +8,8 @@ from app.core.audit import audit
 from app.core.database import get_db
 from app.core.rbac import scoped_employee_id
 from app.core.security import get_current_user, require_csrf
-from app.core.timeutils import utc_aware
-from app.models import Appointment, AppointmentProduct, AppointmentStatus, AppointmentType, Customer, Employee, Product, ProductPresentation, Rental, RentalStatus, Sale, SaleChannel, SaleItem, User
+from app.core.timeutils import local_today, utc_aware
+from app.models import Appointment, AppointmentProduct, AppointmentStatus, AppointmentType, Customer, Employee, FollowUp, FollowUpReason, Product, ProductPresentation, Rental, RentalStatus, Sale, SaleChannel, SaleItem, User
 from app.services.realtime import manager
 from app.services.stats import refresh_weekly_stat
 
@@ -45,6 +45,11 @@ class CompletionSaleItemIn(BaseModel):
 
 class CompleteAppointmentIn(BaseModel):
     outcome: Literal["sale", "rental", "none"]
+
+    # Wiedervorlage direkt beim Abschluss anlegen. Bleibt das Feld leer,
+    # schlaegt die Antwort ein Datum vor, das die Oberflaeche anbieten kann.
+    follow_up_on: date | None = None
+    follow_up_note: str | None = None
 
     sale_sold_at: datetime | None = None
     sale_channel: SaleChannel = SaleChannel.FIELD
@@ -375,6 +380,47 @@ async def complete_appointment(
 
     before_status = a.status.value
     a.status = AppointmentStatus.COMPLETED
+    # Ergebnis festhalten. Ohne dieses Feld liesse sich spaeter nicht mehr
+    # unterscheiden, ob ein durchgefuehrter Termin ergebnislos blieb oder nie
+    # nachbereitet wurde - der Trichter braucht genau diese Unterscheidung.
+    a.outcome = data.outcome
+
+    follow_up_id = None
+    suggested_follow_up = None
+
+    if customer and not customer.deleted_at:
+        reason = {
+            "none": FollowUpReason.NO_RESULT,
+            "sale": FollowUpReason.AFTER_SALE,
+            "rental": FollowUpReason.RENTAL_RETURN,
+        }[data.outcome]
+
+        if data.follow_up_on:
+            follow_up = FollowUp(
+                customer_id=customer.id,
+                employee_id=a.employee_id,
+                due_on=data.follow_up_on,
+                reason=reason,
+                note=data.follow_up_note,
+                appointment_id=a.id,
+                sale_id=sale_id,
+            )
+            db.add(follow_up)
+            db.flush()
+            follow_up_id = follow_up.id
+        else:
+            # Vorschlag statt Automatik: anlegen soll der Mensch, nicht der
+            # Server. Fristen nach Erfahrungswerten im Aussendienst.
+            offsets = {"none": 14, "sale": 7, "rental": 3}
+            suggested_follow_up = {
+                "due_on": local_today() + timedelta(days=offsets[data.outcome]),
+                "reason": reason.value,
+                "label": {
+                    "none": "In zwei Wochen nachfassen",
+                    "sale": "In einer Woche nach dem Verkauf nachbetreuen",
+                    "rental": "In drei Tagen an die Rückgabe erinnern",
+                }[data.outcome],
+            }
 
     audit(
         db,
@@ -390,6 +436,7 @@ async def complete_appointment(
             "outcome": data.outcome,
             "sale_id": sale_id,
             "rental_id": rental_id,
+            "follow_up_id": follow_up_id,
         },
     )
 
@@ -424,7 +471,22 @@ async def complete_appointment(
             employee_id=a.employee_id,
         )
 
-    return serialize(db, a)
+    if follow_up_id:
+        await manager.publish(
+            {
+                "type": "data.changed",
+                "entity": "followup",
+                "action": "created",
+            },
+            employee_id=a.employee_id,
+        )
+
+    return {
+        **serialize(db, a),
+        "outcome": a.outcome,
+        "follow_up_id": follow_up_id,
+        "suggested_follow_up": suggested_follow_up,
+    }
 
 
 @router.delete("/{appointment_id}", status_code=204, dependencies=[Depends(require_csrf)])
