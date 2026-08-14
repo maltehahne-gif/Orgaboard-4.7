@@ -8194,3 +8194,327 @@ input[type="number"]{
   }
 
 }
+
+
+/* ORGABOARD OPEN BLOCK1 START */
+
+
+/* ==================================================
+   VERKAUFSFILTER
+   ================================================== */
+
+.sales-filter-panel{
+  display:flex;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  gap:12px;
+
+  padding:14px;
+}
+
+.sales-filter-panel label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+
+  min-width:150px;
+
+  color:#aebbb7;
+  font-size:12px;
+}
+
+.sales-filter-panel input,
+.sales-filter-panel select{
+  min-height:40px;
+
+  padding:8px 10px;
+
+  border:1px solid #294039;
+  border-radius:9px;
+
+  background:#091516;
+  color:#eef7f2;
+
+  outline:none;
+
+  color-scheme:dark;
+}
+
+.sales-filter-panel input:focus,
+.sales-filter-panel select:focus{
+  border-color:#34d769;
+
+  box-shadow:
+    0 0 0 3px rgba(52,215,105,.09);
+}
+
+.sales-filter-search{
+  position:relative;
+
+  flex:1 1 280px;
+}
+
+.sales-filter-search svg{
+  position:absolute;
+
+  left:11px;
+  top:50%;
+
+  color:#668077;
+
+  transform:translateY(-50%);
+
+  pointer-events:none;
+}
+
+.sales-filter-search input{
+  width:100%;
+
+  padding-left:36px;
+}
+
+.sales-filter-reset{
+  min-height:40px;
+
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+
+.sales-filter-result{
+  min-height:40px;
+
+  display:flex;
+  align-items:center;
+
+  padding:0 4px;
+
+  color:#8fa19b;
+}
+
+.sales-filter-result strong{
+  margin-right:4px;
+
+  color:#5cdd85;
+}
+
+
+/* ==================================================
+   PRODUKTFILTER
+   ================================================== */
+
+.simple-product-filters{
+  display:flex;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  gap:10px;
+
+  margin-top:10px;
+}
+
+.simple-product-filters label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+
+  color:#aebbb7;
+
+  font-size:12px;
+}
+
+.simple-product-filters select{
+  min-width:180px;
+  min-height:40px;
+
+  padding:8px 10px;
+
+  border:1px solid #294039;
+  border-radius:9px;
+
+  background:#091516;
+  color:#eef7f2;
+
+  color-scheme:dark;
+}
+
+.simple-product-filters button{
+  min-height:40px;
+
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+}
+
+
+/* ==================================================
+   VERLEIHFILTER
+   ================================================== */
+
+.rental-filter-panel{
+  display:flex;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  gap:12px;
+
+  padding:14px;
+}
+
+.rental-filter-search{
+  flex:1 1 280px;
+}
+
+.rental-filter-search input{
+  width:100%;
+  min-height:40px;
+
+  padding:8px 11px;
+
+  border:1px solid #294039;
+  border-radius:9px;
+
+  background:#091516;
+  color:#eef7f2;
+}
+
+.rental-filter-panel label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+
+  color:#aebbb7;
+  font-size:12px;
+}
+
+.rental-filter-panel select{
+  min-width:150px;
+  min-height:40px;
+
+  padding:8px 10px;
+
+  border:1px solid #294039;
+  border-radius:9px;
+
+  background:#091516;
+  color:#eef7f2;
+
+  color-scheme:dark;
+}
+
+.rental-filter-count{
+  min-height:40px;
+
+  display:flex;
+  align-items:center;
+
+  color:#8fa19b;
+}
+
+.rental-filter-count strong{
+  margin-right:4px;
+
+  color:#5cdd85;
+}
+
+
+/* automatisch berechneter Status */
+
+.rental-auto-state{
+  display:inline-flex;
+  align-items:center;
+
+  width:max-content;
+
+  margin-bottom:6px;
+
+  padding:5px 8px;
+
+  border-radius:999px;
+
+  font-size:11px;
+  font-weight:800;
+}
+
+.rental-auto-state.active{
+  border:1px solid rgba(255,190,80,.28);
+
+  background:#2a2010;
+  color:#ffd086;
+}
+
+.rental-auto-state.overdue{
+  border:1px solid rgba(255,90,90,.32);
+
+  background:#301313;
+  color:#ff9191;
+}
+
+.rental-auto-state.returned{
+  border:1px solid rgba(65,210,110,.28);
+
+  background:#10281a;
+  color:#8beaa6;
+}
+
+
+/* ==================================================
+   MOBILE
+   ================================================== */
+
+@media(max-width:760px){
+
+  .sales-filter-panel,
+  .rental-filter-panel{
+    display:grid;
+
+    grid-template-columns:1fr;
+
+    align-items:stretch;
+
+    width:100%;
+  }
+
+  .sales-filter-panel label,
+  .rental-filter-panel label{
+    min-width:0;
+    width:100%;
+  }
+
+  .sales-filter-panel input,
+  .sales-filter-panel select,
+  .rental-filter-panel input,
+  .rental-filter-panel select{
+    width:100%;
+    min-width:0;
+  }
+
+  .sales-filter-search,
+  .rental-filter-search{
+    width:100%;
+  }
+
+  .sales-filter-reset,
+  .rental-filter-panel button{
+    width:100%;
+  }
+
+  .simple-product-filters{
+    display:grid;
+
+    grid-template-columns:1fr;
+
+    width:100%;
+  }
+
+  .simple-product-filters label,
+  .simple-product-filters select,
+  .simple-product-filters button{
+    width:100%;
+    min-width:0;
+  }
+
+}
+
+
+/* ORGABOARD OPEN BLOCK1 END */
+

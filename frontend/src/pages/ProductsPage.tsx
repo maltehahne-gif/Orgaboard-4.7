@@ -59,6 +59,13 @@ export function ProductsPage(){
   const [search,setSearch]=
     useState('')
 
+
+  const [categoryFilter,setCategoryFilter]=
+    useState('')
+
+  const [priceFilter,setPriceFilter]=
+    useState('all')
+
   const [showForm,setShowForm]=
     useState(false)
 
@@ -139,6 +146,84 @@ export function ProductsPage(){
       products,
       search,
     ])
+
+
+  const categories=
+    useMemo(()=>{
+
+      return Array.from(
+        new Set(
+          products
+            .map(product=>
+              product.category?.trim()
+            )
+            .filter(
+              (value):value is string=>
+                Boolean(value)
+            )
+        )
+      )
+        .sort(
+          (a,b)=>
+            a.localeCompare(
+              b,
+              'de'
+            )
+        )
+
+    },[products])
+
+
+  const visibleProducts=
+    useMemo(()=>{
+
+      return filtered.filter(product=>{
+
+        if(
+          categoryFilter
+          &&product.category
+            !==categoryFilter
+        ){
+          return false
+        }
+
+
+        const hasPrice=
+          getPrice(product)!==null
+
+
+        if(
+          priceFilter==='with'
+          &&!hasPrice
+        ){
+          return false
+        }
+
+
+        if(
+          priceFilter==='without'
+          &&hasPrice
+        ){
+          return false
+        }
+
+
+        return true
+      })
+
+    },[
+      filtered,
+      categoryFilter,
+      priceFilter,
+    ])
+
+
+  function resetProductFilters(){
+
+    setSearch('')
+    setCategoryFilter('')
+    setPriceFilter('all')
+  }
 
 
   function resetForm(){
@@ -293,8 +378,74 @@ export function ProductsPage(){
       </div>
 
 
+      <div className="simple-product-filters">
+
+        <label>
+          Kategorie
+
+          <select
+            value={categoryFilter}
+            onChange={event=>
+              setCategoryFilter(
+                event.target.value
+              )
+            }
+          >
+            <option value="">
+              Alle Kategorien
+            </option>
+
+            {categories.map(category=>
+              <option
+                key={category}
+                value={category}
+              >
+                {category}
+              </option>
+            )}
+          </select>
+        </label>
+
+
+        <label>
+          Preis
+
+          <select
+            value={priceFilter}
+            onChange={event=>
+              setPriceFilter(
+                event.target.value
+              )
+            }
+          >
+            <option value="all">
+              Alle
+            </option>
+
+            <option value="with">
+              Preis vorhanden
+            </option>
+
+            <option value="without">
+              Preis fehlt
+            </option>
+          </select>
+        </label>
+
+
+        <button
+          type="button"
+          onClick={resetProductFilters}
+        >
+          <X size={16}/>
+          Filter zurücksetzen
+        </button>
+
+      </div>
+
+
       <div className="simple-product-count">
-        {filtered.length}
+        {visibleProducts.length}
         {' '}
         Produkte
       </div>
@@ -302,7 +453,7 @@ export function ProductsPage(){
 
       <div className="simple-product-grid">
 
-        {filtered.map(product=>{
+        {visibleProducts.map(product=>{
 
           const price=
             getPrice(product)

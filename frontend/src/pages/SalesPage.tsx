@@ -29,6 +29,7 @@ import type {
 
 import {Modal} from '../components/Modal'
 import {useToast} from '../components/Toast'
+import {useAuth} from '../lib/auth'
 
 
 type CatalogProduct = Product & {
@@ -58,6 +59,12 @@ type SaleItemForm = {
   quantity:number
   price_eur:string
   search:string
+}
+
+
+type SalesEmployeeOption = {
+  id:string
+  display_name:string
 }
 
 
@@ -142,6 +149,11 @@ export function SalesPage(){
 
   const toast=useToast()
 
+  const {me}=useAuth()
+
+  const isTeamLeader=
+    me?.role==='TEAM_LEADER'
+
 
   const [rows,setRows]=
     useState<Sale[]>([])
@@ -151,6 +163,28 @@ export function SalesPage(){
 
   const [products,setProducts]=
     useState<CatalogProduct[]>([])
+
+
+  const [employees,setEmployees]=
+    useState<SalesEmployeeOption[]>([])
+
+  const [salesSearch,setSalesSearch]=
+    useState('')
+
+  const [salesPeriod,setSalesPeriod]=
+    useState('all')
+
+  const [salesFrom,setSalesFrom]=
+    useState('')
+
+  const [salesTo,setSalesTo]=
+    useState('')
+
+  const [salesEmployee,setSalesEmployee]=
+    useState('')
+
+  const [salesProduct,setSalesProduct]=
+    useState('')
 
 
   const [open,setOpen]=
@@ -214,6 +248,24 @@ export function SalesPage(){
   useEffect(()=>{
     load().catch(console.error)
   },[])
+
+
+  /* Sales employee filters */
+  useEffect(()=>{
+
+    if(!isTeamLeader){
+      setEmployees([])
+      setSalesEmployee('')
+      return
+    }
+
+    api<SalesEmployeeOption[]>(
+      '/team/employees'
+    )
+      .then(setEmployees)
+      .catch(console.error)
+
+  },[isTeamLeader])
 
 
   function resetForm(){
@@ -413,6 +465,260 @@ export function SalesPage(){
         product.id
         === item.product_id
     )
+  }
+
+
+  const filteredSales=
+    useMemo(()=>{
+
+      const normalize=(value:any)=>
+        String(value||'')
+          .trim()
+          .toLowerCase()
+
+      const query=
+        normalize(salesSearch)
+
+      const productQuery=
+        normalize(salesProduct)
+
+      const now=
+        new Date()
+
+      let periodStart:
+        Date|null=null
+
+      let periodEnd:
+        Date|null=null
+
+
+      if(salesPeriod==='today'){
+
+        periodStart=
+          new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+          )
+
+        periodEnd=
+          new Date(periodStart)
+
+        periodEnd.setDate(
+          periodEnd.getDate()+1
+        )
+      }
+
+
+      if(salesPeriod==='week'){
+
+        periodStart=
+          new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+          )
+
+        const weekday=
+          (periodStart.getDay()+6)%7
+
+        periodStart.setDate(
+          periodStart.getDate()-weekday
+        )
+
+        periodEnd=
+          new Date(periodStart)
+
+        periodEnd.setDate(
+          periodEnd.getDate()+7
+        )
+      }
+
+
+      if(salesPeriod==='month'){
+
+        periodStart=
+          new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            1,
+          )
+
+        periodEnd=
+          new Date(
+            now.getFullYear(),
+            now.getMonth()+1,
+            1,
+          )
+      }
+
+
+      if(
+        salesPeriod==='custom'
+        && salesFrom
+      ){
+
+        periodStart=
+          new Date(
+            `${salesFrom}T00:00:00`
+          )
+      }
+
+
+      if(
+        salesPeriod==='custom'
+        && salesTo
+      ){
+
+        periodEnd=
+          new Date(
+            `${salesTo}T00:00:00`
+          )
+
+        periodEnd.setDate(
+          periodEnd.getDate()+1
+        )
+      }
+
+
+      return rows.filter(sale=>{
+
+        const current:any=sale
+
+        const soldAt=
+          new Date(current.sold_at)
+
+        if(
+          periodStart
+          && soldAt<periodStart
+        ){
+          return false
+        }
+
+        if(
+          periodEnd
+          && soldAt>=periodEnd
+        ){
+          return false
+        }
+
+
+        if(
+          isTeamLeader
+          && salesEmployee
+          && current.employee_id
+            !==salesEmployee
+        ){
+          return false
+        }
+
+
+        const customer=
+          customers.find(
+            item=>
+              item.id
+              ===current.customer_id
+          )
+
+        const itemNames=
+          (current.items||[])
+            .map((item:any)=>{
+
+              const product=
+                products.find(
+                  entry=>
+                    entry.id
+                    ===item.product_id
+                )
+
+              return (
+                item.name
+                ||product?.name
+                ||''
+              )
+            })
+
+
+        const itemCategories=
+          (current.items||[])
+            .map((item:any)=>{
+
+              const product=
+                products.find(
+                  entry=>
+                    entry.id
+                    ===item.product_id
+                )
+
+              return product?.category||''
+            })
+
+
+        if(productQuery){
+
+          const productText=
+            normalize([
+              ...itemNames,
+              ...itemCategories,
+            ].join(' '))
+
+          if(
+            !productText.includes(
+              productQuery
+            )
+          ){
+            return false
+          }
+        }
+
+
+        if(query){
+
+          const searchText=
+            normalize([
+              current.customer_name,
+              customer
+                ?customerName(customer)
+                :'',
+              current.notes,
+              current.channel,
+              ...itemNames,
+              ...itemCategories,
+            ].join(' '))
+
+          if(
+            !searchText.includes(query)
+          ){
+            return false
+          }
+        }
+
+
+        return true
+      })
+
+    },[
+      rows,
+      customers,
+      products,
+      salesSearch,
+      salesPeriod,
+      salesFrom,
+      salesTo,
+      salesEmployee,
+      salesProduct,
+      isTeamLeader,
+    ])
+
+
+  function resetSalesFilters(){
+
+    setSalesSearch('')
+    setSalesPeriod('all')
+    setSalesFrom('')
+    setSalesTo('')
+    setSalesEmployee('')
+    setSalesProduct('')
   }
 
 
@@ -632,6 +938,175 @@ export function SalesPage(){
       </div>
 
 
+      <section className="sales-filter-panel card">
+
+        <div className="sales-filter-search">
+
+          <Search size={17}/>
+
+          <input
+            type="search"
+            value={salesSearch}
+            onChange={event=>
+              setSalesSearch(
+                event.target.value
+              )
+            }
+            placeholder="Verkäufe suchen – Kunde, Produkt, Notiz …"
+          />
+
+        </div>
+
+
+        <label>
+          Zeitraum
+
+          <select
+            value={salesPeriod}
+            onChange={event=>
+              setSalesPeriod(
+                event.target.value
+              )
+            }
+          >
+            <option value="all">
+              Alle
+            </option>
+
+            <option value="today">
+              Heute
+            </option>
+
+            <option value="week">
+              Diese Woche
+            </option>
+
+            <option value="month">
+              Dieser Monat
+            </option>
+
+            <option value="custom">
+              Eigener Zeitraum
+            </option>
+          </select>
+        </label>
+
+
+        {salesPeriod==='custom'&&
+          <>
+            <label>
+              Von
+
+              <input
+                type="date"
+                value={salesFrom}
+                onChange={event=>
+                  setSalesFrom(
+                    event.target.value
+                  )
+                }
+              />
+            </label>
+
+            <label>
+              Bis
+
+              <input
+                type="date"
+                value={salesTo}
+                min={salesFrom||undefined}
+                onChange={event=>
+                  setSalesTo(
+                    event.target.value
+                  )
+                }
+              />
+            </label>
+          </>
+        }
+
+
+        {isTeamLeader&&
+          <label>
+            Mitarbeiter
+
+            <select
+              value={salesEmployee}
+              onChange={event=>
+                setSalesEmployee(
+                  event.target.value
+                )
+              }
+            >
+              <option value="">
+                Alle Mitarbeiter
+              </option>
+
+              {employees.map(
+                employee=>
+                  <option
+                    key={employee.id}
+                    value={employee.id}
+                  >
+                    {employee.display_name}
+                  </option>
+              )}
+            </select>
+          </label>
+        }
+
+
+        <label>
+          Produkt
+
+          <input
+            type="search"
+            list="sales-product-filter-list"
+            value={salesProduct}
+            onChange={event=>
+              setSalesProduct(
+                event.target.value
+              )
+            }
+            placeholder="Alle Produkte"
+          />
+
+          <datalist id="sales-product-filter-list">
+            {products.map(
+              product=>
+                <option
+                  key={product.id}
+                  value={product.name}
+                />
+            )}
+          </datalist>
+        </label>
+
+
+        <button
+          type="button"
+          className="sales-filter-reset"
+          onClick={resetSalesFilters}
+        >
+          <X size={16}/>
+          Filter zurücksetzen
+        </button>
+
+
+        <div className="sales-filter-result">
+          <strong>
+            {filteredSales.length}
+          </strong>
+          {' '}
+          {filteredSales.length===1
+            ?'Verkauf'
+            :'Verkäufe'
+          }
+        </div>
+
+      </section>
+
+
       <div className="table-card">
 
         <table>
@@ -649,19 +1124,19 @@ export function SalesPage(){
 
           <tbody>
 
-            {rows.length===0 && (
+            {filteredSales.length===0 && (
               <tr>
                 <td
                   colSpan={5}
                   className="empty"
                 >
-                  Noch keine Verkäufe erfasst.
+                  Keine Verkäufe für diese Auswahl gefunden.
                 </td>
               </tr>
             )}
 
 
-            {rows.map(sale=>{
+            {filteredSales.map(sale=>{
 
               const s:any=sale
 
