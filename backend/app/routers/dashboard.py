@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.rbac import scoped_employee_id
@@ -29,7 +29,7 @@ def dashboard(employee_id: str | None = None, user: User = Depends(get_current_u
     next_a = db.scalar(next_stmt)
     rentals = db.scalars(rental_stmt).all()
     unread_stmt = (
-        select(Message.id)
+        select(func.count(Message.id))
         .where(Message.sender_user_id != user.id)
         .where(
             or_(
@@ -55,7 +55,7 @@ def dashboard(employee_id: str | None = None, user: User = Depends(get_current_u
             )
         )
     )
-    unread = len(db.scalars(unread_stmt).all())
+    unread = int(db.scalar(unread_stmt) or 0)
     def a_out(a):
         c = db.get(Customer, a.customer_id) if a and a.customer_id else None
         return None if not a else {"id": a.id, "start_at": utc_aware(a.start_at), "end_at": utc_aware(a.end_at) if a.end_at else None, "customer_name": f"{c.first_name} {c.last_name}" if c else "Termin", "address": a.address_snapshot, "status": a.status.value, "appointment_type": a.appointment_type.value}

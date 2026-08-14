@@ -2,11 +2,12 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
+from app.core.audit import audit
 from app.core.rbac import current_employee, resolve_employee_by_name
 from app.core.timeutils import day_bounds, month_bounds, week_bounds
 from app.models import Appointment, AppointmentProduct, AppointmentStatus, AppointmentType, Customer, Employee, Message, Product, ProductPresentation, Rental, RentalStatus, Role, Sale, SaleChannel, SaleItem, User
 from app.services.serializers import current_price, product_out, sale_units
-from app.services.stats import revenue_between, units_between
+from app.services.stats import refresh_weekly_stat, revenue_between, units_between
 
 
 TOOL_SPECS = [
@@ -223,16 +224,22 @@ def execute_tool(db: Session, user: User, name: str, args: dict) -> dict:
         if not args.get("confirm"):
             return {"requires_confirmation":True,"message":"Bitte den Verkauf mit Produkten, Stückzahlen und Preisen bestätigen."}
         e=resolve_employee_by_name(db,user,args.get("employee_name"));c=db.get(Customer,args["customer_id"])
-        if not c or (user.role!=Role.TEAM_LEADER and c.employee_id!=e.id):return {"error":"Kunde nicht gefunden oder nicht berechtigt"}
+        if not c or c.deleted_at or (user.role!=Role.TEAM_LEADER and c.employee_id!=e.id):return {"error":"Kunde nicht gefunden oder nicht berechtigt"}
         resolved=[]
         for item in args["items"]:
             p=db.get(Product,item["product_id"])
-            if not p or not p.verified:return {"error":"Mindestens ein Produkt ist nicht verifiziert"}
+            if not p or not p.verified or not p.active:return {"error":"Mindestens ein Produkt ist nicht verifiziert"}
             if item["unit_price_cents"] is None:return {"error":"Verkaufspreis fehlt; er darf nicht geraten werden"}
             resolved.append((p,item))
         s=Sale(customer_id=c.id,employee_id=e.id,sold_at=datetime.fromisoformat(args["sold_at"]),channel=SaleChannel(args["channel"]))
         db.add(s);db.flush()
         for p,item in resolved:db.add(SaleItem(sale_id=s.id,product_id=p.id,product_name_snapshot=p.name,quantity=item["quantity"],unit_price_cents=item["unit_price_cents"]))
+        db.flush()
+        # Gleiche Nachbereitung wie im regulaeren Endpunkt: ohne diese beiden
+        # Zeilen tauchten ueber die KI angelegte Verkaeufe weder in der
+        # Wochenstatistik noch im Audit-Log auf.
+        refresh_weekly_stat(db,e.id,s.sold_at.date())
+        audit(db,user,"sale.created_via_assistant","sale",s.id,after={"customer_id":c.id,"employee_id":e.id,"item_count":len(resolved)})
         db.commit();return {"created":True,"sale_id":s.id,"units":sale_units(db,s.id),"total_cents":sum(i[1]["quantity"]*i[1]["unit_price_cents"] for i in resolved)}
 
     if name == "send_message":

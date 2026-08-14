@@ -23,6 +23,7 @@ from app.core.audit import audit
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.rbac import scoped_employee_id
+from app.core.timeutils import local_today
 from app.core.security import get_current_user, require_csrf
 from app.models import (
     Message,
@@ -686,7 +687,7 @@ async def share_buntewoche(
         )
 
     week = monday_of(
-        data.week_start or date.today()
+        data.week_start or local_today()
     )
 
     payload = make_payload(

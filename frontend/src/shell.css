@@ -1,0 +1,1046 @@
+/* ============================================================================
+   OrgaBoard Shell - Navigation und Seitenraster
+   ----------------------------------------------------------------------------
+   Eigener Namensraum (ob-*), damit nichts mit den gewachsenen Regeln in
+   styles.css kollidiert, die .sidebar und .app-shell an mehreren Stellen
+   ueberschreiben. Diese Datei wird nach styles.css geladen.
+
+   Drei Groessen:
+     bis  767px  Handy   - Reiterleiste unten, Schublade fuer alles Weitere
+     768-1179px  Tablet  - schmale Symbolleiste, Beschriftung beim Zeigen
+     ab  1180px  Desktop - volle Seitenleiste
+   ========================================================================== */
+
+:root {
+  --ob-rail: 74px;
+  --ob-sidebar: 248px;
+  --ob-topbar: 64px;
+  --ob-tabbar: 60px;
+  --ob-radius: 12px;
+
+  --ob-line: #1d2f2a;
+  --ob-line-soft: #16241f;
+  --ob-surface: #0a1317;
+  --ob-surface-2: #0e1a1f;
+  --ob-text: #e8f0ec;
+  --ob-text-dim: #93a49e;
+  --ob-accent: #34d769;
+  --ob-accent-deep: #178f45;
+}
+
+/* ---------------------------------------------------------------- Grundlage */
+
+.ob-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: var(--ob-sidebar) minmax(0, 1fr);
+}
+
+/* minmax(0,1fr) oben und min-width:0 hier verhindern, dass breite Inhalte das
+   Raster aufspannen. Genau das liess die Seite auf dem Handy waagerecht
+   scrollen und schnitt Ueberschriften rechts ab. */
+.ob-main {
+  /* Die Seitenleiste ist position:fixed und damit kein Rasterelement. Ohne
+     diese Zeile rutscht der Inhalt in Spalte 1 und wird auf deren Breite
+     gequetscht - auf dem Tablet waren das 74px. */
+  grid-column: 2;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Die globale Suche fuellt ihren Platz in der Kopfzeile, statt eine feste
+   Breite aus styles.css zu behalten. */
+.ob-topbar-search .global-search {
+  width: 100%;
+  max-width: 620px;
+}
+
+body.ob-scroll-locked {
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------- Seitenleiste */
+
+.ob-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--ob-sidebar);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 12px 14px;
+  background: linear-gradient(180deg, #071015, #060f0c);
+  border-right: 1px solid var(--ob-line);
+}
+
+.ob-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 14px;
+}
+
+.ob-brand-mark {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: #04140a;
+  background: linear-gradient(135deg, #3be874, #168f44);
+}
+
+.ob-brand-text strong {
+  display: block;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.ob-brand-text small {
+  display: block;
+  font-size: 11px;
+  color: var(--ob-text-dim);
+}
+
+.ob-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: var(--ob-radius);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  min-width: 0;
+}
+
+.ob-profile:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.ob-avatar {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 13px;
+  background: #16282c;
+  border: 1px solid #2a7843;
+  color: #dff9e7;
+}
+
+.ob-profile-text {
+  min-width: 0;
+}
+
+.ob-profile-text strong {
+  display: block;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ob-profile-text small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ob-text-dim);
+}
+
+/* --------------------------------------------------------------- Navigation */
+
+.ob-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Scrollbalken nicht dauerhaft anzeigen, aber Platz halten. */
+  scrollbar-width: thin;
+  scrollbar-color: #24383a transparent;
+}
+
+.ob-nav-group + .ob-nav-group {
+  margin-top: 14px;
+}
+
+.ob-nav-title {
+  margin: 0 0 5px;
+  padding: 0 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #647a72;
+}
+
+.ob-nav-link,
+.ob-logout {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #d3ded9;
+  font-size: 14px;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ob-nav-link svg,
+.ob-logout svg {
+  flex: none;
+  color: #7f9a90;
+  transition: color 0.15s ease;
+}
+
+.ob-nav-link:hover,
+.ob-logout:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.ob-nav-link:hover svg,
+.ob-logout:hover svg {
+  color: var(--ob-accent);
+}
+
+.ob-nav-link.is-active {
+  background: linear-gradient(90deg, rgba(37, 138, 68, 0.9), rgba(24, 96, 48, 0.72));
+  color: #fff;
+  font-weight: 600;
+}
+
+.ob-nav-link.is-active svg {
+  color: #b7f5cb;
+}
+
+.ob-nav-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ob-nav-badge {
+  flex: none;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--ob-accent);
+  color: #05170c;
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.ob-logout {
+  margin-top: 8px;
+  flex: none;
+}
+
+.ob-logout:hover {
+  background: rgba(255, 99, 99, 0.12);
+  color: #ffb4b4;
+}
+
+.ob-logout:hover svg {
+  color: #ff8080;
+}
+
+/* ------------------------------------------------------------------ Kopfzeile */
+
+.ob-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--ob-topbar);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 22px;
+  background: rgba(4, 10, 10, 0.86);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--ob-line-soft);
+}
+
+.ob-topbar-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.ob-topbar-name {
+  flex: none;
+  font-size: 13px;
+  color: var(--ob-text-dim);
+  white-space: nowrap;
+}
+
+.ob-topbar-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ob-icon-button {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #cfdad6;
+}
+
+.ob-icon-button:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ob-only-mobile {
+  display: none;
+}
+
+.ob-mobile-search {
+  display: none;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ob-line-soft);
+  background: rgba(4, 10, 10, 0.96);
+}
+
+/* --------------------------------------------------------------------- Inhalt */
+
+.ob-content {
+  flex: 1;
+  min-width: 0;
+  /* Breite Tabellen und Kalender scrollen in ihrem eigenen Container.
+     Ohne diese Zeile schob der Wochenkalender (min-width 1435px) die ganze
+     Seite zur Seite. */
+  overflow-x: clip;
+  padding: 22px 26px 48px;
+  max-width: 1650px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Bekannte Breitmacher bekommen ihren eigenen Scrollbereich. */
+.ob-content .table-card,
+.ob-content .wide,
+.ob-content .bunte-scroll,
+.ob-content .appointment-week-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Raster- und Flex-Kinder duerfen nicht an ihrem Inhalt kleben. */
+.ob-content .stat-grid > *,
+.ob-content .dashboard-grid > *,
+.ob-content .two-col > *,
+.ob-content .product-grid > *,
+.ob-content .history-grid > * {
+  min-width: 0;
+}
+
+/* Lange Wörter und URLs brechen um, statt die Spalte aufzuspannen. */
+.ob-content h1,
+.ob-content h2,
+.ob-content h3,
+.ob-content p {
+  overflow-wrap: break-word;
+}
+
+/* ======================================================== Tablet: 768-1179px */
+
+@media (max-width: 1179px) and (min-width: 768px) {
+  /* Symbolleiste statt voller Seitenleiste. Der iPad-Screenshot zeigte, dass
+     250px Seitenleiste plus Inhalt plus rechte Spalte zu gequetscht wirken -
+     die Leiste gibt hier 174px zurueck und klappt beim Zeigen auf. */
+  .ob-shell {
+    grid-template-columns: var(--ob-rail) minmax(0, 1fr);
+  }
+
+  .ob-sidebar {
+    width: var(--ob-rail);
+    padding: 16px 10px 12px;
+    overflow: hidden;
+    transition: width 0.18s ease;
+  }
+
+  .ob-sidebar:hover,
+  .ob-sidebar:focus-within {
+    width: var(--ob-sidebar);
+    box-shadow: 18px 0 46px rgba(0, 0, 0, 0.45);
+  }
+
+  /* Im eingeklappten Zustand nur Symbole zeigen. */
+  .ob-sidebar .ob-nav-label,
+  .ob-sidebar .ob-brand-text,
+  .ob-sidebar .ob-profile-text,
+  .ob-sidebar .ob-nav-title {
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+
+  .ob-sidebar:hover .ob-nav-label,
+  .ob-sidebar:hover .ob-brand-text,
+  .ob-sidebar:hover .ob-profile-text,
+  .ob-sidebar:hover .ob-nav-title,
+  .ob-sidebar:focus-within .ob-nav-label,
+  .ob-sidebar:focus-within .ob-brand-text,
+  .ob-sidebar:focus-within .ob-profile-text,
+  .ob-sidebar:focus-within .ob-nav-title {
+    opacity: 1;
+  }
+
+  /* Trennlinie statt Überschrift, solange die Leiste schmal ist. */
+  .ob-sidebar .ob-nav-title {
+    height: 1px;
+    margin: 10px 8px 8px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--ob-line);
+    color: transparent;
+  }
+
+  .ob-sidebar:hover .ob-nav-title,
+  .ob-sidebar:focus-within .ob-nav-title {
+    height: auto;
+    margin: 0 0 5px;
+    padding: 0 10px;
+    background: transparent;
+    color: #647a72;
+  }
+
+  .ob-nav-link {
+    position: relative;
+  }
+
+  /* Eingeklappt sitzt der Zaehler als kleine Plakette am Symbol ... */
+  .ob-nav-badge {
+    position: absolute;
+    top: 4px;
+    left: 26px;
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+  }
+
+  /* ... aufgeklappt gehoert er ans Zeilenende, sonst liegt er auf dem Text. */
+  .ob-sidebar:hover .ob-nav-badge,
+  .ob-sidebar:focus-within .ob-nav-badge {
+    position: static;
+    min-width: 19px;
+    height: 19px;
+    font-size: 11px;
+  }
+
+  .ob-topbar {
+    padding: 0 18px;
+  }
+
+  .ob-content {
+    padding: 18px 20px 44px;
+  }
+
+  /* Etwas kompakter, damit mehr auf den Schirm passt. */
+  .ob-content .stat-grid {
+    gap: 10px;
+  }
+}
+
+/* ============================================================ Handy: <768px */
+
+@media (max-width: 767px) {
+  .ob-shell {
+    display: block;
+  }
+
+  .ob-main {
+    grid-column: auto;
+  }
+
+  .ob-sidebar {
+    display: none;
+  }
+
+  .ob-only-mobile {
+    display: grid;
+  }
+
+  span.ob-only-mobile {
+    display: block;
+  }
+
+  .ob-mobile-search {
+    display: block;
+  }
+
+  /* Auf dem Handy ersetzt der Seitentitel die Suchleiste; gesucht wird ueber
+     das Lupensymbol. Vorher nahm das Suchfeld die halbe Kopfzeile ein. */
+  .ob-topbar-search,
+  .ob-topbar-name {
+    display: none;
+  }
+
+  .ob-topbar {
+    height: 54px;
+    padding: 0 6px 0 4px;
+    gap: 2px;
+  }
+
+  .ob-content {
+    padding: 14px 14px calc(var(--ob-tabbar) + 26px + env(safe-area-inset-bottom));
+  }
+
+  /* Typografie auf Handygroesse. Die Vorlagen waren fuer Desktop gesetzt -
+     "Willkommen zurueck, Jessica" lief deshalb ueber den Rand hinaus. */
+  .ob-content h1,
+  .ob-content .page-head h1 {
+    font-size: 21px;
+    line-height: 1.25;
+  }
+
+  .ob-content h2 {
+    font-size: 17px;
+  }
+
+  .ob-content h3 {
+    font-size: 15px;
+  }
+
+  .ob-content .page-head p,
+  .ob-content .dashboard-welcome p {
+    font-size: 13.5px;
+  }
+
+  .ob-content .card,
+  .ob-content .table-card,
+  .ob-content .stat-card {
+    border-radius: 14px;
+  }
+
+  .ob-content .stat-card {
+    padding: 14px;
+  }
+
+  .ob-content .stat-card strong {
+    font-size: 20px;
+  }
+
+  .ob-content .units-line strong,
+  .ob-content .hero-number {
+    font-size: 30px;
+  }
+
+  /* Kennzahlen zu zweit nebeneinander - einspaltig wird die Seite sonst sehr
+     lang, vierspaltig passt nicht. */
+  .ob-content .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .ob-content .dashboard-grid,
+  .ob-content .two-col,
+  .ob-content .product-grid,
+  .ob-content .history-grid,
+  .ob-content .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ob-content .dashboard-grid .big,
+  .ob-content .span-2 {
+    grid-column: span 1;
+  }
+
+  .ob-content .page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .ob-content .page-head .primary {
+    width: 100%;
+  }
+
+  /* Bedienelemente auf Fingergroesse. */
+  .ob-content .primary,
+  .ob-content button:not(.ob-icon-button),
+  .ob-content input,
+  .ob-content select {
+    min-height: 44px;
+  }
+
+  /* iOS zoomt Eingabefelder unter 16px automatisch heran. */
+  .ob-content input,
+  .ob-content select,
+  .ob-content textarea {
+    font-size: 16px;
+  }
+}
+
+/* ============================================================================
+   Dashboard-Eigenlayout (.apple-*) auf schmale Schirme bringen
+   ----------------------------------------------------------------------------
+   Ursache des abgeschnittenen Textes auf dem Handy: "1fr" ist die Kurzform von
+   "minmax(auto, 1fr)" - der Mindestwert ist damit min-content. Eine nicht
+   umbrechende Adresse in einer Terminkarte spannte die Spalte auf 647px auf,
+   und diese Breite wanderte ueber .apple-main-column bis zum Seitenraster
+   hinauf. Sichtbar war davon nur der linke Ausschnitt.
+
+   Die Klammer ist jeweils minmax(0, 1fr) beziehungsweise min-width: 0.
+   ========================================================================== */
+
+.apple-dashboard,
+.apple-main-column,
+.apple-side-column,
+.apple-timeline,
+.apple-time-row,
+.apple-task-card,
+.apple-taskline,
+.apple-task-header {
+  min-width: 0;
+}
+
+.apple-time-row {
+  grid-template-columns: 90px minmax(0, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .apple-dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Terminkarte stapeln, sobald sie schmal wird.
+   Nebeneinander belegen die fuenf Aktionsknoepfe feste 222px. Auf dem iPad
+   blieben davon 136px fuer Name und Adresse (der Name brach um), auf dem Handy
+   nur 42px - dort zerfiel er in einzelne Buchstaben. Gestapelt bekommt der
+   Text die volle Kartenbreite. */
+@media (max-width: 1179px) {
+  .apple-task-card {
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr);
+    grid-template-areas:
+      'dot main'
+      'actions actions';
+    align-items: start;
+    gap: 10px;
+  }
+
+  .apple-task-card .task-dot {
+    grid-area: dot;
+    margin-top: 5px;
+  }
+
+  .apple-task-card .task-main {
+    grid-area: main;
+    min-width: 0;
+  }
+
+  .apple-task-card .task-actions {
+    grid-area: actions;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  /* Gleichmaessig ueber die Breite, mindestens fingergross. */
+  .apple-task-card .task-actions > button {
+    flex: 1 1 0;
+    min-width: 44px;
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 767px) {
+  .apple-dashboard {
+    gap: 14px;
+  }
+
+  /* Uhrzeit ueber die Karte statt daneben - 90px Zeitspalte plus Karte
+     funktionieren auf 390px nicht. */
+  .apple-time-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .apple-time-row > :first-child {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 15px;
+  }
+
+  .apple-welcome {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .apple-welcome h1 {
+    font-size: 22px;
+    letter-spacing: -0.4px;
+  }
+
+  .apple-welcome p {
+    font-size: 13.5px;
+  }
+
+  .apple-taskline,
+  .appointment-week-shell {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .apple-task-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .apple-task-header h2 {
+    font-size: 18px;
+  }
+
+  .apple-task-header p {
+    font-size: 13px;
+  }
+
+  .apple-task-card h3 {
+    font-size: 15.5px;
+    line-height: 1.3;
+  }
+
+  .apple-task-card p {
+    font-size: 13px;
+    margin: 3px 0 0;
+  }
+
+  .apple-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  /* Lange Adressen umbrechen - aber an Wortgrenzen, nicht mitten im Namen. */
+  .apple-task-card .task-main,
+  .apple-task-card h3,
+  .apple-task-card p {
+    overflow-wrap: break-word;
+  }
+
+  /* Die Terminarten-Legende stand als eine Zeile mit sieben Eintraegen da. */
+  .apple-legend,
+  .legend {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    font-size: 11.5px;
+  }
+
+  .apple-legend > *,
+  .legend > * {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 1179px) and (min-width: 768px) {
+  /* Auf dem iPad war die rechte Spalte mit 360px zu breit fuer den Rest -
+     das Dashboard wirkte gequetscht. */
+  .apple-dashboard {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 16px;
+  }
+
+  .apple-welcome,
+  .apple-taskline,
+  .appointment-week-shell {
+    padding: 20px;
+  }
+
+  .apple-welcome h1 {
+    font-size: 26px;
+  }
+
+  .apple-task-card {
+    padding: 16px;
+  }
+}
+
+/* ============================================================================
+   Terminliste (/termine) auf schmalen Schirmen
+   ----------------------------------------------------------------------------
+   Gleiche Ursache wie beim Dashboard: "1fr 1fr auto" klemmt nicht auf 0, also
+   setzten die Knopfbeschriftungen "Wegbeschreibung" und "Durchgefuehrt" eine
+   Mindestbreite von 191px bzw. 154px. Die Karte wuchs dadurch auf 540px und
+   ragte aus dem 390px breiten Fenster.
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  .appointment-card,
+  .rental-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .appointment-list-copy {
+    min-width: 0;
+  }
+
+  .appointment-list-copy strong {
+    display: block;
+    font-size: 15.5px;
+  }
+
+  .appointment-list-copy small,
+  .appointment-list-copy p {
+    display: block;
+    min-width: 0;
+    margin: 3px 0 0;
+    font-size: 13px;
+    overflow-wrap: break-word;
+  }
+
+  /* Statusauswahl ueber die volle Breite, darunter die Aktionen zu zweit. */
+  .appointment-list-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .appointment-list-actions select {
+    grid-column: 1 / -1;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .appointment-list-actions button {
+    min-width: 0;
+    min-height: 44px;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  /* Lange Beschriftungen kuerzen, statt die Spalte aufzuspannen. */
+  .appointment-list-actions button > span,
+  .appointment-list-actions button {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Loeschen bekommt eine eigene Zeile, damit es nicht neben einer
+     Bestaetigung liegt und versehentlich getroffen wird. */
+  .appointment-list-actions .icon-danger {
+    grid-column: 1 / -1;
+  }
+
+  /* Die Karte zeigt den Status zweimal: einmal als ::before-Punkt, einmal als
+     span.dot im Text. Nebeneinander fiel das nicht auf - gestapelt standen
+     zwei gruene Punkte untereinander. Der Punkt im Text bleibt, weil er die
+     Terminart einfaerbt. */
+  .appointment-card::before {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------- Nachrichten auf dem Handy */
+
+@media (max-width: 767px) {
+  /* Der Loeschen-Knopf stand neben dem Chatnamen und liess ihm 86px -
+     "Team-Chat" brach dadurch mitten im Wort um. */
+  .chat-v2-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .chat-v2-header-person {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .chat-v2-header-person h2 {
+    font-size: 16px;
+  }
+
+  .chat-v2-header-person p,
+  .chat-v2-header-person small {
+    font-size: 12.5px;
+  }
+
+  /* Chatfenster hoch genug, damit Verlauf und Eingabe nutzbar bleiben. */
+  .chat-v2-panel {
+    min-height: 62vh;
+  }
+}
+
+/* ------------------------------------------------------- Reiterleiste unten */
+
+.ob-tabbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .ob-tabbar {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: stretch;
+    height: calc(var(--ob-tabbar) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    background: rgba(6, 13, 15, 0.97);
+    backdrop-filter: blur(18px);
+    border-top: 1px solid var(--ob-line);
+  }
+
+  .ob-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: 0;
+    background: transparent;
+    color: #849690;
+    font-size: 10.5px;
+    padding: 6px 2px;
+    min-width: 0;
+  }
+
+  .ob-tab span:last-child {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ob-tab.is-active {
+    color: var(--ob-accent);
+  }
+
+  .ob-tab-icon-wrap {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+
+  .ob-tab-dot {
+    position: absolute;
+    top: -1px;
+    right: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ob-accent);
+    border: 1.5px solid #060d0f;
+  }
+}
+
+/* ----------------------------------------------------------- Schublade Handy */
+
+.ob-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.ob-drawer-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ob-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 60;
+  width: min(310px, 86vw);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 12px calc(14px + env(safe-area-inset-bottom));
+  background: #081216;
+  border-left: 1px solid var(--ob-line);
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+  visibility: hidden;
+}
+
+.ob-drawer.is-open {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.ob-drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.ob-drawer-head .ob-profile {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* Ab Tablet wird die Schublade nicht gebraucht - dort steht die Seitenleiste. */
+@media (min-width: 768px) {
+  .ob-drawer,
+  .ob-drawer-backdrop {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------ Barrierefrei */
+
+.ob-nav-link:focus-visible,
+.ob-tab:focus-visible,
+.ob-logout:focus-visible,
+.ob-icon-button:focus-visible,
+.ob-profile:focus-visible {
+  outline: 2px solid var(--ob-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-sidebar,
+  .ob-drawer,
+  .ob-drawer-backdrop,
+  .ob-nav-link,
+  .ob-nav-label {
+    transition: none;
+  }
+}

@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: orgaboard
       POSTGRES_USER: orgaboard
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orgaboard-local-db-2026}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt - ./start.sh anlegen lassen oder .env.example kopieren}
     volumes:
       - orgaboard_db:/var/lib/postgresql/data
     healthcheck:
@@ -19,17 +19,22 @@ services:
     restart: unless-stopped
     environment:
       ENV: ${ENV:-development}
-      DATABASE_URL: postgresql+psycopg://orgaboard:${POSTGRES_PASSWORD:-orgaboard-local-db-2026}@db:5432/orgaboard
-      JWT_SECRET: ${JWT_SECRET:-orgaboard-local-only-jwt-secret-2026-change-before-public-deployment}
+      DATABASE_URL: postgresql+psycopg://orgaboard:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt}@db:5432/orgaboard
+      # Kein Standardwert: ein im Repository nachlesbares Secret erlaubt jedem,
+      # der es kennt, beliebige Sitzungen zu faelschen. ./start.sh erzeugt beim
+      # ersten Start eine .env mit einem zufaelligen Wert.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET fehlt - ./start.sh anlegen lassen oder .env.example kopieren}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:8080}
+      PASSWORD_RESET_ALLOWED_ORIGINS: ${PASSWORD_RESET_ALLOWED_ORIGINS:-}
       AUTO_CREATE_SCHEMA: "false"
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.6-terra}
       OPENAI_MAX_OUTPUT_TOKENS: ${OPENAI_MAX_OUTPUT_TOKENS:-1600}
       OPENAI_TIMEOUT_SECONDS: ${OPENAI_TIMEOUT_SECONDS:-45}
       AI_ENABLED: "true"
-      SEED_DEFAULT_PASSWORD: ${SEED_DEFAULT_PASSWORD:-OrgaBoard-Start-2026!}
+      SEED_DEFAULT_PASSWORD: ${SEED_DEFAULT_PASSWORD:?SEED_DEFAULT_PASSWORD fehlt - ./start.sh anlegen lassen oder .env.example kopieren}
+      SEED_USERS_FILE: ${SEED_USERS_FILE:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}

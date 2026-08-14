@@ -1,14 +1,41 @@
-
 # Lokale Zugangsdaten / Secrets
 .env
-_pycache_/
-.pyc
-.bak
-**/_pycache_/
-*.pyc
-*.pyo
+.env.local
+.env.*.local
 
-# Frontend Dateien
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Lokale Datenbanken
+*.db
+*.sqlite
+*.sqlite3
+
+# Hochgeladene Chat-Anhaenge
+/data/
+backend/data/
+
+# Frontend
 node_modules/
 dist/
+*.tsbuildinfo
+
+# Editor / Betriebssystem
 .vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Sicherungskopien
+*.bak
+*.backup
+*.orig
