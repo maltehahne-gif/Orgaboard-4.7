@@ -1379,3 +1379,288 @@ body.ob-scroll-locked {
 .stat-card.orange {
   flex-direction: column;
 }
+
+/* ============================================================================
+   Dashboard-Auswertung: Kennzahlen, Trichter, Ranking, Team
+   ----------------------------------------------------------------------------
+   Dünne Marken, zurückhaltendes Beiwerk, Werte in Textfarbe statt in der
+   Farbe des Balkens - die Farbe gehört der Marke, nicht der Schrift.
+   ========================================================================== */
+
+.insights {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.insights-card { padding: 18px 20px 20px; }
+
+.insights-note {
+  margin: 4px 0 14px;
+  color: var(--ob-text-dim);
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------- Kennzahlen */
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--ob-line);
+  border: 1px solid var(--ob-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.kpi {
+  background: #0c171b;
+  padding: 14px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.kpi small {
+  color: #9fb0aa;
+  font-size: 12px;
+}
+
+.kpi strong {
+  font-size: 25px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-sub {
+  font-size: 12px;
+  color: #6f827b;
+}
+
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.delta.up { color: #31a661; }
+.delta.down { color: #cf3a40; }
+.delta.neutral { color: #6f827b; }
+
+/* ---------------------------------------------------------------- Trichter */
+
+.funnel-chart,
+.rank-chart {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.funnel-chart li,
+.rank-chart li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 88px;
+  align-items: center;
+  gap: 12px;
+}
+
+.funnel-label,
+.rank-label {
+  font-size: 13px;
+  color: #c3cfcb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Die Spur ist eine Hilfslinie, kein Rahmen - eine Nuance neben der Fläche. */
+.funnel-track,
+.rank-track,
+.goal-track {
+  display: block;
+  height: 12px;
+  background: #142226;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.funnel-bar,
+.rank-bar,
+.goal-bar {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  transition: width 0.3s ease;
+}
+
+.funnel-value,
+.rank-value {
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #dbe4e0;
+}
+
+.funnel-quotes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ob-line);
+}
+
+.funnel-quotes small {
+  display: block;
+  color: #9fb0aa;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.funnel-quotes strong {
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------- Hinweise */
+
+.alert-list,
+.goal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.alert {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 11px;
+  padding: 12px 13px;
+  border-radius: 10px;
+  background: #101a1e;
+  border-left: 3px solid #3a4a4e;
+}
+
+/* Geprüfte Statusfarben. Sie erscheinen immer zusammen mit Symbol und
+   Textmarke - nie als alleiniger Träger der Bedeutung. */
+.alert.critical { border-left-color: #cf3a40; }
+.alert.warn { border-left-color: #c07d0a; }
+.alert.info { border-left-color: #31a661; }
+
+.alert-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #16242a;
+  color: #9fb0aa;
+}
+
+.alert.critical .alert-icon { color: #cf3a40; }
+.alert.warn .alert-icon { color: #c07d0a; }
+
+.alert-body { min-width: 0; }
+
+.alert-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+
+.alert-severity {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #849690;
+}
+
+.alert-body p {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: var(--ob-text-dim);
+  overflow-wrap: break-word;
+}
+
+.alert-body small {
+  display: block;
+  margin-top: 4px;
+  color: #6f827b;
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------- Zielerreichung */
+
+.goal-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ob-line-soft);
+}
+
+.goal-list li:last-child { border-bottom: 0; }
+
+.goal-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin-bottom: 7px;
+}
+
+.goal-value {
+  font-size: 12.5px;
+  color: var(--ob-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-bar { background: #2c9155; }
+.goal-bar.reached { background: #3dd27b; }
+
+.goal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 7px;
+  font-size: 12px;
+  color: #7f918a;
+}
+
+/* ------------------------------------------------------------------ Handy */
+
+@media (max-width: 767px) {
+  .insights-card { padding: 14px; }
+
+  .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi { padding: 12px; }
+  .kpi strong { font-size: 21px; }
+
+  /* Beschriftung über den Balken, sonst bleiben davon 60px übrig. */
+  .funnel-chart li,
+  .rank-chart li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label value'
+      'track track';
+    gap: 5px 10px;
+  }
+
+  .funnel-label, .rank-label { grid-area: label; white-space: normal; }
+  .funnel-value, .rank-value { grid-area: value; }
+  .funnel-track, .rank-track { grid-area: track; }
+
+  .funnel-quotes { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .funnel-quotes strong { font-size: 16px; }
+
+  .goal-head { flex-direction: column; gap: 3px; }
+}

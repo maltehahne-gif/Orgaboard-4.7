@@ -3,11 +3,17 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.rbac import scoped_employee_id
+from app.core.rbac import require_team_leader, scoped_employee_id
 from app.core.security import get_current_user
 from app.core.timeutils import day_bounds, local_today, month_bounds, week_bounds, utc_aware
 from app.models import Appointment, AppointmentStatus, Customer, Message, MessageHidden, MessageRead, Rental, RentalStatus, User
 from app.services.stats import dashboard_stats
+from app.services.analytics import (
+    employee_goal_progress,
+    product_ranking,
+    team_alerts,
+    trend,
+)
 from app.services.timeline import appointment_kpis, funnel_overview
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -20,6 +26,16 @@ def funnel(employee_id: str | None = None, user: User = Depends(get_current_user
     return funnel_overview(db, scope)
 
 
+def _period_bounds(period: str):
+    """Zeitraumgrenzen. Unbekannte Werte fallen auf den Monat zurück."""
+    today = local_today()
+    if period == "week":
+        return week_bounds(today)
+    if period == "day":
+        return day_bounds(today)
+    return month_bounds(today)
+
+
 @router.get("/kpis")
 def kpis(
     period: str = "month",
@@ -30,14 +46,44 @@ def kpis(
     """Terminbezogene Kennzahlen: durchgeführte Termine, Abschlussquote,
     Umsatz pro Termin, Vorführungen."""
     scope = scoped_employee_id(db, user, employee_id)
-    today = local_today()
-    if period == "week":
-        start, end = week_bounds(today)
-    elif period == "day":
-        start, end = day_bounds(today)
-    else:
-        start, end = month_bounds(today)
+    start, end = _period_bounds(period)
     return {"period": period, **appointment_kpis(db, start, end, scope)}
+
+
+@router.get("/trend")
+def trend_view(
+    period: str = "month",
+    employee_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Umsatz und Einheiten im Vergleich zum gleich langen Zeitraum davor."""
+    scope = scoped_employee_id(db, user, employee_id)
+    start, end = _period_bounds(period)
+    return {"period": period, **trend(db, start, end, scope)}
+
+
+@router.get("/products")
+def product_ranking_view(
+    period: str = "month",
+    employee_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Meistverkaufte Produkte im Zeitraum."""
+    scope = scoped_employee_id(db, user, employee_id)
+    start, end = _period_bounds(period)
+    return {"period": period, "products": product_ranking(db, start, end, scope)}
+
+
+@router.get("/team-overview")
+def team_overview(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Zielerreichung je Mitarbeiter und Hinweise auf auffällige Entwicklungen."""
+    require_team_leader(user)
+    return {
+        "employees": employee_goal_progress(db),
+        "alerts": team_alerts(db),
+    }
 
 
 @router.get("")

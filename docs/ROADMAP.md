@@ -51,30 +51,36 @@ Umgesetzt am 14.08.2026.
 
 ---
 
-## Phase 2 – Auswertung
+## Phase 2 – Auswertung ✅
 
-Baut vollständig auf Phase 1 auf.
+Umgesetzt am 14.08.2026.
 
-### 2.1 Verkaufstrichter 🟡
+### 2.1 Verkaufstrichter ✅
 - ✅ Stufen: Kontakt → Termin vereinbart → Termin durchgeführt → Vorführung → Angebot → Verkauf → Nachbetreuung
 - ✅ Conversion Kontakt → Termin
 - ✅ Conversion Termin → Verkauf
 - ✅ Abschlussquote
-- ❌ Darstellung auf dem Dashboard (Endpunkt `/dashboard/funnel` liefert die Daten)
+- ✅ Darstellung auf dem Dashboard
 
 > Die Stufe „Angebot" ist vorbereitet, aber unbesetzt: dafür fehlt eine
 > Angebotserfassung. Bis dahin springen Kunden von Vorführung auf Verkauf.
+> Das ist der nächste kleine Baustein, falls die Stufe gebraucht wird.
 
-### 2.2 Dashboard / Management 🟡
-- 🟡 durchgeführte Termine als Kennzahl – `/dashboard/kpis`, Anzeige fehlt
-- 🟡 Abschlussquote – berechnet, Anzeige fehlt
-- 🟡 Umsatz pro Termin – berechnet, Anzeige fehlt
-- 🟡 Vorführungen als Kennzahl – berechnet, Anzeige fehlt
-- ❌ Verkaufstrichter auf dem Dashboard
-- ❌ Zielerreichung pro Mitarbeiter
-- ❌ Produkt-Ranking
-- ❌ Trends
-- ❌ Teamleiter-Hinweise bei auffälligen Entwicklungen
+### 2.2 Dashboard / Management ✅
+- ✅ durchgeführte Termine als Kennzahl
+- ✅ Abschlussquote
+- ✅ Umsatz pro Termin
+- ✅ Vorführungen als Kennzahl
+- ✅ Verkaufstrichter auf dem Dashboard
+- ✅ Zielerreichung pro Mitarbeiter (Teamstatistiken)
+- ✅ Produkt-Ranking
+- ✅ Trends (Vergleich mit dem gleich langen Zeitraum davor)
+- ✅ Teamleiter-Hinweise bei auffälligen Entwicklungen
+
+> Die Hinweise arbeiten mit festen, benannten Schwellen in
+> `services/analytics.py` – keine Prognose, kein Modell. Betrifft dieselbe
+> Sache mehrere Mitarbeiter, werden die Hinweise zu einer Zeile
+> zusammengefasst, sonst verdeckt Wiederholung das Besondere.
 
 ---
 
