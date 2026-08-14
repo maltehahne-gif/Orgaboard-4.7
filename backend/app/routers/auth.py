@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.ratelimit import login_key, login_limiter
 from app.core.security import create_session_token, get_current_user, hash_password, make_csrf_token, verify_password, require_csrf
 from app.models import Employee, User
 
@@ -51,10 +52,16 @@ def user_payload(db: Session, user: User) -> dict:
 
 
 @router.post("/login")
-def login(data: LoginIn, response: Response, db: Session = Depends(get_db)):
+def login(data: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)):
+    key = login_key(request, data.email)
+    login_limiter.check(key)
+
     user = db.scalar(select(User).where(User.email == data.email.lower().strip(), User.is_active.is_(True)))
     if not user or not verify_password(data.password, user.password_hash):
+        login_limiter.register_failure(key)
         raise HTTPException(status_code=401, detail="E-Mail oder Passwort ist falsch")
+
+    login_limiter.reset(key)
     token = create_session_token(user)
     csrf = make_csrf_token()
     response.set_cookie("orgaboard_session", token, httponly=True, secure=settings.cookie_secure, samesite="lax", max_age=settings.jwt_exp_minutes * 60, path="/")
@@ -100,54 +107,73 @@ class PasswordResetConfirmIn(BaseModel):
     new_password: str
 
 
-def _password_reset_frontend_url(request: Request) -> str:
+def _allowed_reset_origins() -> set[str]:
     """
-    Ermittelt die sichere Frontend-Adresse.
+    Die Adressen, auf die ein Passwort-Reset-Link zeigen darf.
 
-    GitHub-Codespaces-Domains werden akzeptiert.
-    Für eine spätere eigene Domain kann FRONTEND_ORIGIN
-    in der Konfiguration verwendet werden.
+    Ausschliesslich konfigurierte Werte - niemals etwas, das aus dem
+    Request stammt. FRONTEND_ORIGIN plus optional weitere Adressen
+    ueber PASSWORD_RESET_ALLOWED_ORIGINS (kommagetrennt).
     """
+
+    allowed = set()
 
     configured = str(
         getattr(settings, "frontend_origin", "") or ""
     ).rstrip("/")
 
+    if configured:
+        allowed.add(configured)
+
+    extra = str(
+        getattr(settings, "password_reset_allowed_origins", "") or ""
+    )
+
+    for entry in extra.split(","):
+        entry = entry.strip().rstrip("/")
+        if entry:
+            allowed.add(entry)
+
+    return allowed
+
+
+def _password_reset_frontend_url(request: Request) -> str:
+    """
+    Ermittelt die Basisadresse fuer den Passwort-Reset-Link.
+
+    Der Origin-Header des Requests wird bewusst NICHT uebernommen. Frueher
+    wurde jede Adresse auf *.app.github.dev akzeptiert - damit konnte ein
+    Angreifer einen Reset fuer eine fremde E-Mail anstossen und per Origin
+    dafuer sorgen, dass der Link in der echten OrgaBoard-Mail auf seinen
+    eigenen Server zeigt. Ein Klick des Opfers haette das Token preisgegeben.
+
+    Der Header darf jetzt nur noch aus der Positivliste auswaehlen, nicht
+    sie erweitern.
+    """
+
+    allowed = _allowed_reset_origins()
+
+    if not allowed:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Die Frontend-Adresse für den "
+                "Passwort-Reset ist nicht eingerichtet."
+            ),
+        )
+
     origin = request.headers.get("origin", "").rstrip("/")
 
-    if origin:
-        try:
-            parsed = urlparse(origin)
+    # Bei mehreren erlaubten Adressen darf der Origin entscheiden, welche
+    # davon genommen wird - aber nur, wenn er selbst auf der Liste steht.
+    if origin and origin in allowed:
+        return origin
 
-            # Aktuelle GitHub-Codespaces-Adresse
-            if (
-                parsed.scheme == "https"
-                and parsed.hostname
-                and parsed.hostname.endswith(".app.github.dev")
-            ):
-                return origin
+    configured = str(
+        getattr(settings, "frontend_origin", "") or ""
+    ).rstrip("/")
 
-            # Konfigurierte Produktionsadresse
-            if configured and origin == configured:
-                return configured
-
-            # lokale Entwicklung
-            if parsed.hostname in {"localhost", "127.0.0.1"}:
-                return origin
-
-        except Exception:
-            pass
-
-    if configured:
-        return configured
-
-    raise HTTPException(
-        status_code=503,
-        detail=(
-            "Die Frontend-Adresse für den "
-            "Passwort-Reset ist nicht eingerichtet."
-        ),
-    )
+    return configured if configured in allowed else sorted(allowed)[0]
 
 
 def _send_password_reset_email(
@@ -415,6 +441,11 @@ def confirm_password_reset(
     user.password_hash = hash_password(
         data.new_password
     )
+
+    # Der Reset ist eine vollwertige Passwortvergabe. Ohne diese Zeile blieb der
+    # Nutzer im Zwangs-Dialog "Passwort aendern" haengen - und kam dort nicht
+    # heraus, weil dieser das alte Passwort verlangt, das er nicht mehr kennt.
+    user.must_change_password = False
 
     db.commit()
 

@@ -82,7 +82,8 @@ async def create_sale(data: SaleIn, user: User = Depends(get_current_user), db: 
     db.commit()
     await manager.publish({"type":"data.changed","entity":"sale"}, employee_id=employee_id)
     return serialize(db, s)
-@router.delete("/{sale_id}", status_code=204)
+
+@router.delete("/{sale_id}", status_code=204, dependencies=[Depends(require_csrf)])
 async def delete_sale(
     sale_id: str,
     user: User = Depends(get_current_user),
