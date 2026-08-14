@@ -788,6 +788,120 @@ body.ob-scroll-locked {
   }
 }
 
+/* ============================================================================
+   Terminliste (/termine) auf schmalen Schirmen
+   ----------------------------------------------------------------------------
+   Gleiche Ursache wie beim Dashboard: "1fr 1fr auto" klemmt nicht auf 0, also
+   setzten die Knopfbeschriftungen "Wegbeschreibung" und "Durchgefuehrt" eine
+   Mindestbreite von 191px bzw. 154px. Die Karte wuchs dadurch auf 540px und
+   ragte aus dem 390px breiten Fenster.
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  .appointment-card,
+  .rental-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .appointment-list-copy {
+    min-width: 0;
+  }
+
+  .appointment-list-copy strong {
+    display: block;
+    font-size: 15.5px;
+  }
+
+  .appointment-list-copy small,
+  .appointment-list-copy p {
+    display: block;
+    min-width: 0;
+    margin: 3px 0 0;
+    font-size: 13px;
+    overflow-wrap: break-word;
+  }
+
+  /* Statusauswahl ueber die volle Breite, darunter die Aktionen zu zweit. */
+  .appointment-list-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .appointment-list-actions select {
+    grid-column: 1 / -1;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .appointment-list-actions button {
+    min-width: 0;
+    min-height: 44px;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  /* Lange Beschriftungen kuerzen, statt die Spalte aufzuspannen. */
+  .appointment-list-actions button > span,
+  .appointment-list-actions button {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Loeschen bekommt eine eigene Zeile, damit es nicht neben einer
+     Bestaetigung liegt und versehentlich getroffen wird. */
+  .appointment-list-actions .icon-danger {
+    grid-column: 1 / -1;
+  }
+
+  /* Die Karte zeigt den Status zweimal: einmal als ::before-Punkt, einmal als
+     span.dot im Text. Nebeneinander fiel das nicht auf - gestapelt standen
+     zwei gruene Punkte untereinander. Der Punkt im Text bleibt, weil er die
+     Terminart einfaerbt. */
+  .appointment-card::before {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------- Nachrichten auf dem Handy */
+
+@media (max-width: 767px) {
+  /* Der Loeschen-Knopf stand neben dem Chatnamen und liess ihm 86px -
+     "Team-Chat" brach dadurch mitten im Wort um. */
+  .chat-v2-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .chat-v2-header-person {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .chat-v2-header-person h2 {
+    font-size: 16px;
+  }
+
+  .chat-v2-header-person p,
+  .chat-v2-header-person small {
+    font-size: 12.5px;
+  }
+
+  /* Chatfenster hoch genug, damit Verlauf und Eingabe nutzbar bleiben. */
+  .chat-v2-panel {
+    min-height: 62vh;
+  }
+}
+
 /* ------------------------------------------------------- Reiterleiste unten */
 
 .ob-tabbar {
