@@ -71,6 +71,141 @@ def serialize(db: Session, r: Rental):
     }
 
 
+def _geraeteschluessel(r: Rental) -> str | None:
+    """Erkennungsmerkmal eines physischen Geraets.
+
+    Produkt allein reicht nicht - davon gibt es viele Exemplare. Erst die
+    Seriennummer macht ein einzelnes Geraet unterscheidbar. Ohne sie laesst
+    sich keine Historie fuehren, deshalb faellt so ein Verleih hier raus.
+
+    Gross-/Kleinschreibung und Leerzeichen werden angeglichen: "vk7-1234"
+    und "VK7-1234 " sind dasselbe Geraet, nur unterschiedlich eingetippt.
+    """
+    if not r.serial_number or not r.serial_number.strip():
+        return None
+    return f"{r.product_id}:{r.serial_number.strip().upper()}"
+
+
+def _tage_draussen(r: Rental) -> int:
+    """Wie lange das Geraet bei diesem Verleih ausser Haus war/ist."""
+    ende = r.returned_at or datetime.now(timezone.utc)
+    tage = (to_business_tz(ende).date() - to_business_tz(r.issued_at).date()).days
+    return max(tage, 0)
+
+
+def _verleihe_im_zugriff(db: Session, user: User, employee_id: str | None):
+    """Alle Verleihe, die der Anfragende sehen darf - aelteste zuerst."""
+    scope = scoped_employee_id(db, user, employee_id)
+    stmt = select(Rental).order_by(Rental.issued_at.asc())
+    if scope:
+        stmt = stmt.where(Rental.employee_id == scope)
+    return db.scalars(stmt).all()
+
+
+@router.get("/devices")
+def list_devices(
+    employee_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Geraete statt Vorgaenge: ein Eintrag je Seriennummer.
+
+    Die Verleihliste zeigt einzelne Ausgaben. Wer wissen will, wie oft ein
+    bestimmtes Geraet schon unterwegs war und wie es zurueckkam, muss sonst
+    die Liste im Kopf zusammenrechnen.
+    """
+    geraete: dict[str, dict] = {}
+
+    for r in _verleihe_im_zugriff(db, user, employee_id):
+        key = _geraeteschluessel(r)
+        if key is None:
+            continue
+
+        eintrag = geraete.get(key)
+        if eintrag is None:
+            produkt = db.get(Product, r.product_id)
+            eintrag = geraete[key] = {
+                "key": key,
+                "product_id": r.product_id,
+                "product_name": produkt.name if produkt else None,
+                "serial_number": r.serial_number.strip(),
+                "loans": 0,
+                "days_out": 0,
+                "late_returns": 0,
+                "customer_ids": set(),
+                "first_issued_at": r.issued_at,
+                "last_issued_at": r.issued_at,
+                "current": None,
+            }
+
+        eintrag["loans"] += 1
+        eintrag["days_out"] += _tage_draussen(r)
+        eintrag["customer_ids"].add(r.customer_id)
+        eintrag["last_issued_at"] = r.issued_at
+        # Schreibweise der juengsten Ausgabe gewinnt - die ist am ehesten aktuell.
+        eintrag["serial_number"] = r.serial_number.strip()
+
+        if r.returned_at and r.due_at and r.returned_at > r.due_at:
+            eintrag["late_returns"] += 1
+
+        if r.status in {RentalStatus.RENTED, RentalStatus.DUE}:
+            c = db.get(Customer, r.customer_id)
+            eintrag["current"] = {
+                "rental_id": r.id,
+                "customer_id": r.customer_id,
+                "customer_name": f"{c.first_name} {c.last_name}" if c else None,
+                "issued_at": r.issued_at,
+                "due_at": r.due_at,
+                **due_state(r),
+            }
+
+    ausgabe = []
+    for eintrag in geraete.values():
+        kunden = eintrag.pop("customer_ids")
+        ausgabe.append({**eintrag, "customers": len(kunden), "in_use": eintrag["current"] is not None})
+
+    # Geraete, die gerade draussen sind, zuerst - danach die zuletzt benutzten.
+    ausgabe.sort(key=lambda d: (not d["in_use"], -d["last_issued_at"].timestamp()))
+    return ausgabe
+
+
+@router.get("/devices/history")
+def device_history(
+    product_id: str,
+    serial_number: str,
+    employee_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Lebenslauf eines Geraets: jede Ausgabe, neueste zuerst."""
+    gesucht = f"{product_id}:{serial_number.strip().upper()}"
+    treffer = [r for r in _verleihe_im_zugriff(db, user, employee_id) if _geraeteschluessel(r) == gesucht]
+
+    if not treffer:
+        raise HTTPException(status_code=404, detail="Zu diesem Gerät ist nichts erfasst")
+
+    produkt = db.get(Product, product_id)
+    verlauf = []
+    for r in reversed(treffer):
+        verlauf.append({
+            **serialize(db, r),
+            "days_out": _tage_draussen(r),
+            "returned_late": bool(r.returned_at and r.due_at and r.returned_at > r.due_at),
+        })
+
+    return {
+        "product_id": product_id,
+        "product_name": produkt.name if produkt else None,
+        "serial_number": treffer[-1].serial_number.strip(),
+        "loans": len(treffer),
+        "days_out": sum(_tage_draussen(r) for r in treffer),
+        "customers": len({r.customer_id for r in treffer}),
+        "late_returns": len([r for r in treffer if r.returned_at and r.due_at and r.returned_at > r.due_at]),
+        "first_issued_at": treffer[0].issued_at,
+        "history": verlauf,
+    }
+
+
 @router.get("/summary")
 def rental_summary(
     employee_id: str | None = None,

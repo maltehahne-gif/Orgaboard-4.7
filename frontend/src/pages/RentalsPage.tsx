@@ -3,12 +3,14 @@ import {AlertTriangle,Clock,Plus} from 'lucide-react'
 import {api,formatDateTime} from '../lib/api'
 import type {Customer,Product,Rental} from '../types'
 import {Modal} from '../components/Modal'
+import {RentalDevices} from '../components/RentalDevices'
 import {useToast} from '../components/Toast'
 
 const dt=()=>new Date().toISOString().slice(0,16)
 export function RentalsPage(){const [rows,setRows]=useState<Rental[]>([]);const [customers,setCustomers]=useState<Customer[]>([]);const [products,setProducts]=useState<Product[]>([]);const [open,setOpen]=useState(false);const [form,setForm]=useState({product_id:'',customer_id:'',serial_number:'',issued_at:dt(),due_at:'',status:'rented',notes:''});const [summary,setSummary]=useState<{active:number;overdue:number;due_soon:number;reminder_days:number}|null>(null);const toast=useToast();
 
 const [rentalSearch,setRentalSearch]=useState('');
+const [ansicht,setAnsicht]=useState<'vorgaenge'|'geraete'>('vorgaenge');
 const [rentalFilter,setRentalFilter]=useState('all');function computedRentalState(r:Rental){
 
   if(r.status==='returned'){
@@ -87,7 +89,26 @@ async function save(e:FormEvent){e.preventDefault();try{await api('/rentals',{me
       }
     </div>
   </div>
-}<section className="rental-filter-panel card">
+}<div className="rental-tabs">
+<button
+type="button"
+className={ansicht==='vorgaenge'?'is-active':undefined}
+onClick={()=>setAnsicht('vorgaenge')}
+>
+Vorgänge
+</button>
+<button
+type="button"
+className={ansicht==='geraete'?'is-active':undefined}
+onClick={()=>setAnsicht('geraete')}
+>
+Geräte
+</button>
+</div>
+
+{ansicht==='geraete'?<RentalDevices/>:<>
+
+<section className="rental-filter-panel card">
 
 <div className="rental-filter-search">
 <input
@@ -144,4 +165,8 @@ className={`rental-auto-state ${computedRentalState(r)}`}
 ?'🔴 Überfällig'
 :'🟡 Aktiv'}
 </span>
-<select value={r.status} onChange={e=>changeStatus(r.id,e.target.value)}><option value="rented">verliehen</option><option value="due">Rückgabe fällig</option><option value="returned">zurückgegeben</option></select><small>Rückgabe: {formatDateTime(r.due_at)}</small></div></div>)}</div>{open&&<Modal title="Verleihgerät ausgeben" onClose={()=>setOpen(false)}><form className="form-grid" onSubmit={save}><label>Produkt<select required value={form.product_id} onChange={e=>setForm({...form,product_id:e.target.value})}><option value="">Bitte wählen</option>{products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label>Kunde<select required value={form.customer_id} onChange={e=>setForm({...form,customer_id:e.target.value})}><option value="">Bitte wählen</option>{customers.map(c=><option key={c.id} value={c.id}>{c.full_name}</option>)}</select></label><label>Seriennummer<input value={form.serial_number} onChange={e=>setForm({...form,serial_number:e.target.value})}/></label><label>Status<select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option value="rented">verliehen</option><option value="due">Rückgabe fällig</option><option value="returned">zurückgegeben</option></select></label><label>Ausgabe<input type="datetime-local" value={form.issued_at} onChange={e=>setForm({...form,issued_at:e.target.value})}/></label><label>Geplante Rückgabe<input type="datetime-local" value={form.due_at} onChange={e=>setForm({...form,due_at:e.target.value})}/></label><label className="span-2">Notizen<textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label><div className="form-actions span-2"><button type="button" onClick={()=>setOpen(false)}>Abbrechen</button><button className="primary">Speichern</button></div></form></Modal>}</div>}
+<select value={r.status} onChange={e=>changeStatus(r.id,e.target.value)}><option value="rented">verliehen</option><option value="due">Rückgabe fällig</option><option value="returned">zurückgegeben</option></select><small>Rückgabe: {formatDateTime(r.due_at)}</small></div></div>)}</div>
+
+</>}
+
+{open&&<Modal title="Verleihgerät ausgeben" onClose={()=>setOpen(false)}><form className="form-grid" onSubmit={save}><label>Produkt<select required value={form.product_id} onChange={e=>setForm({...form,product_id:e.target.value})}><option value="">Bitte wählen</option>{products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label>Kunde<select required value={form.customer_id} onChange={e=>setForm({...form,customer_id:e.target.value})}><option value="">Bitte wählen</option>{customers.map(c=><option key={c.id} value={c.id}>{c.full_name}</option>)}</select></label><label>Seriennummer<input value={form.serial_number} onChange={e=>setForm({...form,serial_number:e.target.value})}/></label><label>Status<select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option value="rented">verliehen</option><option value="due">Rückgabe fällig</option><option value="returned">zurückgegeben</option></select></label><label>Ausgabe<input type="datetime-local" value={form.issued_at} onChange={e=>setForm({...form,issued_at:e.target.value})}/></label><label>Geplante Rückgabe<input type="datetime-local" value={form.due_at} onChange={e=>setForm({...form,due_at:e.target.value})}/></label><label className="span-2">Notizen<textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label><div className="form-actions span-2"><button type="button" onClick={()=>setOpen(false)}>Abbrechen</button><button className="primary">Speichern</button></div></form></Modal>}</div>}
