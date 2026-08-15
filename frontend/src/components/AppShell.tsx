@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ChevronDown,
   ContactRound,
+  FileText,
   Gauge,
   History,
   Home,
@@ -75,6 +76,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       {to: '/verkaeufe', label: 'Verkäufe', icon: ShoppingCart},
       {to: '/verkaufstabelle', label: 'Verkaufstabelle', icon: Table2, short: 'Tabelle'},
+      {to: '/berichte', label: 'Berichte', icon: FileText},
       {to: '/produkte', label: 'Produkte', icon: Package},
       {to: '/verleih', label: 'Verleih', icon: PackageCheck},
       {to: '/altgeraete', label: 'Altgeräte', icon: Recycle},
