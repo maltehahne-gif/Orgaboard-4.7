@@ -2,6 +2,7 @@ import {FormEvent,useEffect,useRef,useState} from 'react'
 import {Bot,CheckCircle2,Mic,Send,ShieldCheck,Volume2} from 'lucide-react'
 import {api} from '../lib/api'
 import {useToast} from '../components/Toast'
+import {DayBriefing} from '../components/DayBriefing'
 
 type ChatMessage={role:'user'|'assistant';content:string}
 type AssistantStatus={enabled:boolean;provider:'openai'|'local-safe';model:string|null}
@@ -77,12 +78,13 @@ export function AIPage(){
         {busy&&<div className="bubble assistant">Ich prüfe die verfügbaren Daten…</div>}
         <div ref={endRef}/>
       </div>
-      <div className="quick-prompts"><button onClick={()=>setInput('Wann ist mein nächster Termin?')}>Nächster Termin</button><button onClick={()=>setInput('Wie viele Einheiten fehlen mir noch?')}>Einheiten-Ziel</button><button onClick={()=>setInput('Welche Geräte habe ich im Verleih?')}>Verleih</button></div>
+      <div className="quick-prompts"><button onClick={()=>setInput('Was muss ich heute erledigen?')}>Heute erledigen</button><button onClick={()=>setInput('Wie stehe ich beim Monatsziel?')}>Monatsziel</button><button onClick={()=>setInput('Wie ist die Entwicklung im Vergleich zur Vorwoche?')}>Entwicklung</button><button onClick={()=>setInput('Wann ist mein nächster Termin?')}>Nächster Termin</button><button onClick={()=>setInput('Wie viele Einheiten fehlen mir noch?')}>Einheiten-Ziel</button><button onClick={()=>setInput('Welche Geräte habe ich im Verleih?')}>Verleih</button></div>
       <form className="chat-input" onSubmit={submit}><button type="button" className={listening?'mic active':'mic'} onClick={listen}><Mic size={20}/></button><input maxLength={4000} value={input} onChange={e=>setInput(e.target.value)} placeholder="Frage etwas oder gib eine Aktion in natürlicher Sprache ein…"/><button className="send" disabled={busy}><Send size={19}/></button></form>
       <small className="ai-disclaimer">Die KI kann Fehler machen. Geschäftsdaten werden nur über serverseitig geprüfte Tools gelesen oder geändert.</small>
     </section>
     <aside className="card ai-info">
       <div className={`ai-connection ${status.enabled?'online':''}`}>{status.enabled?<CheckCircle2/>:<ShieldCheck/>}<div><strong>{status.enabled?'OpenAI ist aktiv':'Sicherer lokaler Modus'}</strong><small>{status.enabled?(status.model||'OpenAI'):'API-Schlüssel noch nicht hinterlegt'}</small></div></div>
+      <DayBriefing/>
       <h2>Was kann ich?</h2>
       <ul><li>Termine und nächste Kundentermine</li><li>Wochenumsatz und Einheiten</li><li>Verleihgeräte und Rückgaben</li><li>Verifizierte Produktinformationen und Preise</li><li>Kundenhistorie und Produktvorstellungen</li><li>Aktionen mit serverseitiger Rechteprüfung</li></ul>
       <div className="info-box">{status.enabled?'Anfragen laufen über OpenAI. Der geheime Schlüssel liegt ausschließlich auf dem Server.':'OpenAI ist technisch vorbereitet. Zur Aktivierung fehlt nur noch dein persönlicher API-Schlüssel.'}</div>

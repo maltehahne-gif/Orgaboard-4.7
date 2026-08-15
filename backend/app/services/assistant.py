@@ -24,6 +24,9 @@ Regeln:
 - Frage gezielt nach fehlenden Pflichtangaben.
 - Bei kritischen Änderungen wie einem Verkauf muss vor dem finalen Schreiben eine Bestätigung vorliegen.
 - Behalte Gesprächskontext bei, aber antworte knapp und praktisch.
+- Für Fragen nach dem heutigen Tag, dem Monatsziel oder der Entwicklung nutze
+  get_day_briefing. Dessen Zahlen und Empfehlungen sind bereits ausgerechnet:
+  übernimm sie unverändert und rechne nichts nach.
 """
 
 
@@ -54,6 +57,55 @@ def _local_answer(db: Session, user: User, c: Conversation, text: str) -> str:
     """Safe, deterministic fallback for core questions when no LLM key is configured."""
     lower = text.casefold()
     e = current_employee(db, user)
+
+    # Tagesbriefing, Zielstand und Entwicklung kommen aus einer gerechneten
+    # Auswertung - die funktioniert ohne Sprachmodell genauso.
+    briefing_fragen = [
+        "was muss ich heute", "was steht heute an", "was habe ich heute",
+        "tagesplan", "briefing", "womit fange ich an", "was ist heute wichtig",
+    ]
+    ziel_fragen = ["monatsziel", "ziel erreicht", "wie stehe ich", "zielerreichung"]
+    entwicklung_fragen = [
+        "entwicklung", "warum ist der umsatz", "warum weniger", "warum mehr",
+        "im vergleich zur vorwoche", "vorwoche",
+    ]
+
+    if any(k in lower for k in briefing_fragen + ziel_fragen + entwicklung_fragen):
+        from app.core.rbac import scoped_employee_id
+        from app.services.briefing import _zahl, briefing_als_text, day_briefing
+
+        briefing = day_briefing(db, user, scoped_employee_id(db, user, None))
+
+        if any(k in lower for k in ziel_fragen) and not any(k in lower for k in briefing_fragen):
+            ziel = briefing["goal"]
+            if not ziel["units_target"]:
+                return "Für dich ist kein Monatsziel hinterlegt."
+            stand = (
+                f"Monatsziel: {ziel['units_month']} von {ziel['units_target']} Einheiten "
+                f"({ziel['units_percent']} %)."
+            )
+            if ziel["units_missing"] <= 0:
+                return f"{stand} Das Ziel ist erreicht."
+            if ziel["working_days_left"] == 0:
+                return f"{stand} Der Monat ist vorbei, es fehlen {ziel['units_missing']} Einheiten."
+            lage = "im Plan" if ziel["on_track"] else "hinter dem Soll"
+            return (
+                f"{stand} Damit liegst du {lage}. Bei {ziel['working_days_left']} verbleibenden "
+                f"Arbeitstagen sind das {_zahl(ziel['needed_per_working_day'])} Einheiten pro Tag."
+            )
+
+        if any(k in lower for k in entwicklung_fragen) and not any(k in lower for k in briefing_fragen):
+            entwicklung = briefing["development"]
+            if entwicklung["revenue_change_percent"] is None:
+                return "Für die Vorwoche liegen keine Vergleichszahlen vor."
+            return (
+                f"Wochenumsatz {_format_money(entwicklung['revenue_cents'])} gegenüber "
+                f"{_format_money(entwicklung['revenue_previous_cents'])} in der Vorwoche "
+                f"({entwicklung['revenue_change_percent']} %). Grund: "
+                + ", ".join(entwicklung["reasons"]) + "."
+            )
+
+        return briefing_als_text(briefing)
 
     if any(k in lower for k in ["nächster termin", "naechster termin", "hab ich heute noch was", "habe ich heute noch was"]):
         a = db.scalar(select(Appointment).where(Appointment.employee_id==e.id, Appointment.start_at>=datetime.now(timezone.utc), Appointment.status.notin_([AppointmentStatus.CANCELLED,AppointmentStatus.COMPLETED])).order_by(Appointment.start_at))

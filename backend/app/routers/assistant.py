@@ -3,9 +3,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.rbac import scoped_employee_id
 from app.core.security import get_current_user, require_csrf
 from app.models import Conversation, ConversationMessage, User
 from app.services.assistant import chat
+from app.services.briefing import day_briefing
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 
@@ -26,6 +28,17 @@ def assistant_status(user: User = Depends(get_current_user)):
         "provider": "openai" if enabled else "local-safe",
         "model": settings.openai_model if enabled else None,
     }
+
+
+@router.get("/briefing")
+def briefing(
+    employee_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Tagesbriefing aus echten Daten - funktioniert auch ohne KI-Anbieter."""
+    scope = scoped_employee_id(db, user, employee_id)
+    return day_briefing(db, user, scope)
 
 
 @router.post("/chat", dependencies=[Depends(require_csrf)])

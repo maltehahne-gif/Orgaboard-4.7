@@ -10070,6 +10070,123 @@ to{
   .tradein-filter button { flex: 0 0 auto; white-space: nowrap; }
 }
 
+/* ============================================================================
+   Tagesbriefing (KI-Seite)
+   ----------------------------------------------------------------------------
+   Die Zahlen kommen fertig gerechnet vom Server - kein Sprachmodell im Spiel.
+   Deshalb steht hier auch etwas, wenn kein KI-Schlüssel hinterlegt ist.
+   ========================================================================== */
+
+.briefing { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+.briefing-laedt { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+.briefing-kopf { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.briefing-kopf h2 { margin: 0; font-size: 16px; }
+
+.briefing-scope {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(52, 215, 105, .13);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.briefing-leer { margin: 0; color: var(--muted); font-size: 13px; }
+
+.briefing-aufgaben { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.briefing-aufgaben a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid #1c2c30;
+  border-radius: 10px;
+  background: #0c171b;
+  color: inherit;
+}
+
+.briefing-aufgaben a:hover { border-color: #2f4a44; }
+
+/* Überfälliges bekommt eine rote Kante - Farbe stützt, der Text trägt. */
+.briefing-aufgaben li.is-dringend a { border-left: 3px solid #cf3a40; }
+
+.briefing-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(52, 215, 105, .10);
+  color: var(--green);
+}
+
+.briefing-aufgaben li.is-dringend .briefing-icon { background: rgba(207, 58, 64, .13); color: #ff8b84; }
+
+.briefing-text { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.briefing-text strong { font-size: 12.5px; }
+.briefing-text small { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.briefing-kennzahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+
+.briefing-kennzahlen > div {
+  padding: 10px 11px;
+  border: 1px solid #21353a;
+  border-radius: 10px;
+  background: #0c171b;
+}
+
+.briefing-kennzahl-kopf {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.briefing-kennzahlen strong { display: block; margin-top: 4px; font-size: 16px; font-variant-numeric: tabular-nums; }
+.briefing-kennzahlen small { display: block; margin-top: 2px; font-size: 10.5px; color: var(--muted); }
+.briefing-kennzahlen small.ist-gut { color: #3dd27b; }
+.briefing-kennzahlen small.ist-knapp { color: #e6bc55; }
+
+.briefing-grund { margin: 0; color: var(--muted); font-size: 12.5px; }
+.briefing-grund strong { color: #c3cfcb; }
+
+.briefing-vorschlaege ul,
+.briefing-team ul {
+  list-style: none;
+  margin: 7px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.briefing-vorschlaege li,
+.briefing-team li {
+  position: relative;
+  padding-left: 14px;
+  color: #c3cfcb;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.briefing-vorschlaege li::before,
+.briefing-team li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.briefing-team li::before { background: #c07d0a; }
+
 /* Verkauf: Storno-Zelle mit Wiederherstellen-Button */
 .sale-cancelled-cell{display:flex;align-items:center;gap:6px}
 .sale-cancelled-flag{display:inline-flex;align-items:center;gap:6px;color:var(--danger);font-size:13px}

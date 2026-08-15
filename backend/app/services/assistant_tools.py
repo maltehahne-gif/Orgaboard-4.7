@@ -95,6 +95,18 @@ TOOL_SPECS = [
         "parameters": {"type":"object","properties":{"recipient_name":{"type":"string"},"body":{"type":"string"}},"required":["recipient_name","body"],"additionalProperties":False},
         "strict": True,
     },
+    {
+        "type": "function", "name": "get_day_briefing",
+        "description": (
+            "Tagesbriefing: offene Wiedervorlagen, Termine heute, faellige Verleihgeraete, "
+            "Stand beim Monatsziel, Wochenentwicklung mit Begruendung und konkrete "
+            "Handlungsempfehlungen. Fuer Fragen wie 'Was muss ich heute erledigen?', "
+            "'Wie stehe ich beim Monatsziel?' oder 'Warum ist der Umsatz gefallen?'. "
+            "Die Zahlen sind bereits ausgerechnet - uebernimm sie unveraendert."
+        ),
+        "parameters": {"type":"object","properties":{},"required":[],"additionalProperties":False},
+        "strict": True,
+    },
 ]
 
 
@@ -112,6 +124,14 @@ def _appointment_dict(db: Session, a: Appointment) -> dict:
 
 
 def execute_tool(db: Session, user: User, name: str, args: dict) -> dict:
+    if name == "get_day_briefing":
+        # Import hier, weil briefing.py seinerseits Auswertungsdienste zieht -
+        # ein Import auf Modulebene ergaebe einen Ringschluss.
+        from app.core.rbac import scoped_employee_id
+        from app.services.briefing import day_briefing
+
+        return day_briefing(db, user, scoped_employee_id(db, user, None))
+
     if name == "get_next_appointment":
         employee = resolve_employee_by_name(db, user, args.get("employee_name"))
         a = db.scalar(select(Appointment).where(Appointment.employee_id == employee.id, Appointment.start_at >= datetime.now(timezone.utc), Appointment.status.notin_([AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED])).order_by(Appointment.start_at))
