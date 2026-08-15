@@ -136,11 +136,23 @@ type KpiProps = {
   icon: ReactNode
   percent: number | null
   series: number[]
+  /** Wohin die Karte führt. */
+  to: string
+  /** Was einen dort erwartet - für die Vorlesehilfe. */
+  ziel: string
 }
 
-function Kpi({label, value, icon, percent, series}: KpiProps) {
+/**
+ * Kennzahlenkarte.
+ *
+ * Die ganze Karte ist ein Link, nicht nur eine Zeile am Fuß: Wer eine Zahl
+ * sieht, die ihn stutzig macht, will die dahinterliegende Liste sehen. Ein
+ * Link statt onClick, damit Mittelklick und "in neuem Tab öffnen"
+ * funktionieren.
+ */
+function Kpi({label, value, icon, percent, series, to, ziel}: KpiProps) {
   return (
-    <article className="dash-kpi">
+    <Link to={to} className="dash-kpi dashboard-link-card" aria-label={`${label}: ${value}. ${ziel}`}>
       <header>
         <span className="dash-kpi-label">{label}</span>
         <span className="dash-kpi-icon">{icon}</span>
@@ -148,7 +160,7 @@ function Kpi({label, value, icon, percent, series}: KpiProps) {
       <strong className="dash-kpi-value">{value}</strong>
       <Delta percent={percent} />
       <Sparkline values={series} />
-    </article>
+    </Link>
   )
 }
 
@@ -342,6 +354,8 @@ export function DashboardPage() {
           icon={<TrendingUp size={16} strokeWidth={2} />}
           percent={kpis.revenueChange}
           series={kpis.revenue}
+          to="/verkaeufe"
+          ziel="Zu den Verkäufen"
         />
         <Kpi
           label="Abgeschlossene Verkäufe"
@@ -349,6 +363,8 @@ export function DashboardPage() {
           icon={<ShoppingCart size={16} strokeWidth={2} />}
           percent={kpis.dealsChange}
           series={kpis.deals}
+          to="/verkaeufe"
+          ziel="Zu den Verkäufen"
         />
         <Kpi
           label="Neukunden"
@@ -356,6 +372,8 @@ export function DashboardPage() {
           icon={<UserPlus size={16} strokeWidth={2} />}
           percent={kpis.freshChange}
           series={kpis.fresh}
+          to="/kunden"
+          ziel="Zu den Kunden"
         />
         <Kpi
           label="Termine (Woche)"
@@ -363,6 +381,8 @@ export function DashboardPage() {
           icon={<CalendarRange size={16} strokeWidth={2} />}
           percent={kpis.datesChange}
           series={kpis.dates}
+          to="/termine"
+          ziel="Zu den Terminen"
         />
       </div>
 
@@ -536,6 +556,9 @@ export function DashboardPage() {
               formatPoint={(value, label) => `${label}: ${money(value)}`}
             />
           </div>
+          <Link to="/verkaeufe" className="dash-card-action">
+            Alle Verkäufe
+          </Link>
         </section>
       </div>
 
