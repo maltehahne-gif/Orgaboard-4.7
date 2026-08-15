@@ -64,13 +64,27 @@ const ICONS: Record<string, typeof AlarmClock> = {
  * beteiligt. Deshalb steht hier auch etwas, wenn kein KI-Schlüssel
  * hinterlegt ist.
  */
+/** Ob die Antwort die Felder hat, auf die die Darstellung zugreift. */
+function brauchbar(antwort: unknown): antwort is Briefing {
+  if (!antwort || typeof antwort !== 'object') return false
+  const b = antwort as Partial<Briefing>
+  return Boolean(b.goal && b.development && Array.isArray(b.tasks))
+}
+
 export function DayBriefing() {
   const [daten, setDaten] = useState<Briefing | null>(null)
   const [fehler, setFehler] = useState(false)
 
   useEffect(() => {
     api<Briefing>('/assistant/briefing')
-      .then(setDaten)
+      .then(antwort => {
+        // Die Form prüfen, nicht nur den Erfolg: eine Antwort, die
+        // durchkommt aber anders aussieht als erwartet, hat die ganze
+        // KI-Seite mitgerissen. Der Assistent darf keine Voraussetzung
+        // sein - fällt er aus, verschwindet die Karte, sonst nichts.
+        if (brauchbar(antwort)) setDaten(antwort)
+        else setFehler(true)
+      })
       .catch(() => setFehler(true))
   }, [])
 

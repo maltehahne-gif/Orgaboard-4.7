@@ -11410,3 +11410,121 @@ to{
     width:100%;
   }
 }
+
+
+/* ==================================================
+   KI-PRIORITAETEN
+   ================================================== */
+
+.ki-prioritaeten{
+  padding:16px 18px;
+  margin-bottom:14px;
+}
+
+.ki-zaehler{
+  margin-left:auto;
+  padding:2px 9px;
+
+  border-radius:999px;
+
+  background:#2c1f14;
+  color:#f2a65a;
+  font-size:11px;
+  font-weight:600;
+}
+
+.ki-prio-liste{
+  display:flex;
+  flex-direction:column;
+
+  margin:12px 0 0;
+  padding:0;
+
+  list-style:none;
+}
+
+.ki-prio a,
+.ki-prio > span{
+  display:flex;
+  align-items:flex-start;
+  gap:11px;
+
+  padding:10px 0;
+
+  border-top:1px solid #12211f;
+
+  color:inherit;
+  text-decoration:none;
+}
+
+.ki-prio:first-child a,
+.ki-prio:first-child > span{
+  border-top:0;
+}
+
+.ki-prio a:hover .ki-prio-text strong{
+  color:#5cdd85;
+}
+
+.ki-prio-stufe{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:none;
+
+  width:26px;
+  height:26px;
+  margin-top:1px;
+
+  border-radius:8px;
+
+  background:#12251f;
+  color:#6f847d;
+}
+
+.ki-prio-stufe.hoch{
+  background:#2c1f14;
+  color:#f2a65a;
+}
+
+.ki-prio-stufe.mittel{
+  background:#153021;
+  color:#5cdd85;
+}
+
+.ki-prio-text{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  flex:1;
+  min-width:0;
+}
+
+.ki-prio-text strong{
+  font-size:13px;
+  line-height:1.35;
+}
+
+.ki-prio-text small{
+  color:#8fa19b;
+  font-size:11.5px;
+  line-height:1.45;
+}
+
+.ki-prio > a > svg:last-child{
+  flex:none;
+  margin-top:4px;
+  color:#41544e;
+}
+
+/* Auf dem Telefon liegt die Chatspalte oben, die Auswertungen darunter -
+   und die Schnellfragen brauchen mehr Platz als eine Zeile. */
+@media (max-width:900px){
+  .quick-prompts{
+    flex-wrap:wrap;
+  }
+
+  .ki-prioritaeten{
+    padding:14px;
+  }
+}

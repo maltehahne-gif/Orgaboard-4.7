@@ -3,6 +3,27 @@ import {Bot,CheckCircle2,Mic,Send,ShieldCheck,Volume2} from 'lucide-react'
 import {api} from '../lib/api'
 import {useToast} from '../components/Toast'
 import {DayBriefing} from '../components/DayBriefing'
+import {AssistantPriorities} from '../components/AssistantPriorities'
+import {useAuth} from '../lib/auth'
+import {darfVerwalten} from '../lib/roles'
+
+/* Die Schnellfragen laufen bewusst über den Chat und nicht direkt auf die
+   Auswertungs-Endpunkte: im Chat kommt die Begründung mit, und eine
+   Rückfrage lässt sich anschließen. */
+const SCHNELLFRAGEN: Array<[string,string]> = [
+  ['Was muss ich heute tun?','Was muss ich heute tun? Nenne mir die Prioritäten mit Begründung.'],
+  ['Nächsten Termin vorbereiten','Bereite mich auf meinen nächsten Termin vor.'],
+  ['Wen nachfassen?','Wen sollte ich heute nachfassen und warum?'],
+  ['Wie läuft mein Monat?','Wie läuft mein Monat? Wo liegt der größte Hebel?'],
+  ['Schaffe ich mein Ziel?','Schaffe ich mein Monatsziel? Wie viel fehlt pro Arbeitstag?'],
+  ['Verkäufe analysieren','Analysiere meine Verkäufe: Trichter und Produkte.'],
+  ['Nachbetreuung','Bei welchen Kunden wäre eine Nachbetreuung fällig?'],
+]
+
+const TEAM_SCHNELLFRAGEN: Array<[string,string]> = [
+  ['Wie läuft mein Team?','Wie läuft mein Team? Nenne die Kennzahlen je Mitarbeiter.'],
+  ['Wer braucht Unterstützung?','Wer im Team liegt unter Ziel und woran liegt es?'],
+]
 
 type ChatMessage={role:'user'|'assistant';content:string}
 type AssistantStatus={enabled:boolean;provider:'openai'|'local-safe';model:string|null}
@@ -16,6 +37,7 @@ export function AIPage(){
   const [conversationId,setConversationId]=useState<string|null>(null)
   const [busy,setBusy]=useState(false)
   const [listening,setListening]=useState(false)
+  const {me}=useAuth()
   const toast=useToast()
   const endRef=useRef<HTMLDivElement>(null)
 
@@ -78,15 +100,30 @@ export function AIPage(){
         {busy&&<div className="bubble assistant">Ich prüfe die verfügbaren Daten…</div>}
         <div ref={endRef}/>
       </div>
-      <div className="quick-prompts"><button onClick={()=>setInput('Was muss ich heute erledigen?')}>Heute erledigen</button><button onClick={()=>setInput('Wie stehe ich beim Monatsziel?')}>Monatsziel</button><button onClick={()=>setInput('Wie ist die Entwicklung im Vergleich zur Vorwoche?')}>Entwicklung</button><button onClick={()=>setInput('Wann ist mein nächster Termin?')}>Nächster Termin</button><button onClick={()=>setInput('Wie viele Einheiten fehlen mir noch?')}>Einheiten-Ziel</button><button onClick={()=>setInput('Welche Geräte habe ich im Verleih?')}>Verleih</button></div>
+      <div className="quick-prompts">
+        {SCHNELLFRAGEN.map(([beschriftung,frage])=>
+          <button key={beschriftung} onClick={()=>setInput(frage)}>{beschriftung}</button>)}
+        {darfVerwalten(me?.role)&&TEAM_SCHNELLFRAGEN.map(([beschriftung,frage])=>
+          <button key={beschriftung} onClick={()=>setInput(frage)}>{beschriftung}</button>)}
+      </div>
       <form className="chat-input" onSubmit={submit}><button type="button" className={listening?'mic active':'mic'} onClick={listen}><Mic size={20}/></button><input maxLength={4000} value={input} onChange={e=>setInput(e.target.value)} placeholder="Frage etwas oder gib eine Aktion in natürlicher Sprache ein…"/><button className="send" disabled={busy}><Send size={19}/></button></form>
       <small className="ai-disclaimer">Die KI kann Fehler machen. Geschäftsdaten werden nur über serverseitig geprüfte Tools gelesen oder geändert.</small>
     </section>
     <aside className="card ai-info">
       <div className={`ai-connection ${status.enabled?'online':''}`}>{status.enabled?<CheckCircle2/>:<ShieldCheck/>}<div><strong>{status.enabled?'OpenAI ist aktiv':'Sicherer lokaler Modus'}</strong><small>{status.enabled?(status.model||'OpenAI'):'API-Schlüssel noch nicht hinterlegt'}</small></div></div>
+      <AssistantPriorities/>
       <DayBriefing/>
       <h2>Was kann ich?</h2>
-      <ul><li>Termine und nächste Kundentermine</li><li>Wochenumsatz und Einheiten</li><li>Verleihgeräte und Rückgaben</li><li>Verifizierte Produktinformationen und Preise</li><li>Kundenhistorie und Produktvorstellungen</li><li>Aktionen mit serverseitiger Rechteprüfung</li></ul>
+      <ul>
+        <li>Tagesbriefing und Prioritäten mit Begründung</li>
+        <li>Vorbereitung auf den nächsten Termin</li>
+        <li>Wen du heute nachfassen solltest</li>
+        <li>Monatslauf, Abschlussquote und größter Hebel</li>
+        <li>Zielprognose auf Arbeitstage gerechnet</li>
+        <li>Verkaufstrichter und Produktanalyse</li>
+        <li>Kundenhistorie, Verleih und verifizierte Preise</li>
+        <li>Änderungen erst nach deiner Bestätigung</li>
+      </ul>
       <div className="info-box">{status.enabled?'Anfragen laufen über OpenAI. Der geheime Schlüssel liegt ausschließlich auf dem Server.':'OpenAI ist technisch vorbereitet. Zur Aktivierung fehlt nur noch dein persönlicher API-Schlüssel.'}</div>
     </aside>
   </div>
