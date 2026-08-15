@@ -9995,6 +9995,81 @@ to{
   .admin-aktionen button { width: 40px; height: 40px; }
 }
 
+/* ============================================================================
+   Altgeräte
+   ========================================================================== */
+
+/* Statuszähler als Filterleiste - ein Klick schaltet den Filter um. */
+.tradein-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tradein-filter button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #26383c !important;
+  background: #101a1e !important;
+  color: #c3cfcb !important;
+  border-radius: 999px !important;
+  padding: 8px 14px !important;
+  font-size: 13px;
+}
+
+.tradein-filter button span {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #1b2b30;
+  color: #9fb0aa;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.tradein-filter button.is-active {
+  border-color: #2eaf57 !important;
+  background: linear-gradient(180deg, #2bab52, #19883f) !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+.tradein-filter button.is-active span {
+  background: rgba(0, 0, 0, .22);
+  color: #fff;
+}
+
+/* Der Platzhalter nennt drei Suchfelder und braucht mehr Breite als die
+   Standardsuche - nur hier, damit andere Seiten unverändert bleiben. */
+.search-field.tradein-suche { flex: 1; min-width: 300px; max-width: 460px; }
+
+.tradein-zustand,
+.tradein-status {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #1b2b30;
+  color: #9fb0aa;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Zustand: die Farbe unterstützt die Aussage, der Text trägt sie. */
+.tradein-zustand.is-working { background: #163520; color: #72e594; }
+.tradein-zustand.is-defective { background: #2a1512; color: #ff9b91; }
+.tradein-zustand.is-parts { background: #2a2011; color: #e6bc55; }
+
+.tradein-status.is-stored { background: #13252e; color: #79c6ea; }
+.tradein-status.is-returned { background: #253038; color: #c0c8c9; }
+.tradein-status.is-disposed { background: #2a1512; color: #ff9b91; }
+.tradein-status.is-sold { background: #163520; color: #72e594; }
+
+@media (max-width: 767px) {
+  .tradein-filter { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+  .tradein-filter button { flex: 0 0 auto; white-space: nowrap; }
+}
+
 /* Verkauf: Storno-Zelle mit Wiederherstellen-Button */
 .sale-cancelled-cell{display:flex;align-items:center;gap:6px}
 .sale-cancelled-flag{display:inline-flex;align-items:center;gap:6px;color:var(--danger);font-size:13px}

@@ -300,6 +300,55 @@ class Rental(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class TradeInCondition(str, enum.Enum):
+    """Zustand des hereingenommenen Altgeraets."""
+
+    WORKING = "working"        # laeuft
+    DEFECTIVE = "defective"    # defekt
+    PARTS = "parts"            # nur als Ersatzteile
+    UNKNOWN = "unknown"        # noch nicht geprueft
+
+
+class TradeInStatus(str, enum.Enum):
+    """Wo das Altgeraet gerade steht."""
+
+    RECEIVED = "received"      # angenommen
+    STORED = "stored"          # eingelagert
+    RETURNED = "returned"      # an den Kunden zurueck
+    DISPOSED = "disposed"      # entsorgt
+    SOLD = "sold"              # weiterverkauft
+
+
+class TradeIn(Base):
+    """Altgeraet, das bei einem Kunden hereingenommen wurde.
+
+    Bewusst ein eigener Datensatz und keine Spalte am Verkauf: ein Altgeraet
+    kann auch ohne Verkauf anfallen, und umgekehrt koennen bei einem Verkauf
+    mehrere Geraete hereinkommen. Die Verbindung zum Verkauf bleibt deshalb
+    optional.
+    """
+
+    __tablename__ = "trade_ins"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id"), index=True)
+    employee_id: Mapped[str] = mapped_column(ForeignKey("employees.id"), index=True)
+    # Wird der Verkauf spaeter geloescht, soll das Altgeraet erhalten bleiben.
+    sale_id: Mapped[str | None] = mapped_column(
+        ForeignKey("sales.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    model: Mapped[str] = mapped_column(String(255), index=True)
+    serial_number: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    condition: Mapped[TradeInCondition] = mapped_column(
+        Enum(TradeInCondition), default=TradeInCondition.UNKNOWN, index=True
+    )
+    status: Mapped[TradeInStatus] = mapped_column(
+        Enum(TradeInStatus), default=TradeInStatus.RECEIVED, index=True
+    )
+    received_on: Mapped[date] = mapped_column(Date, index=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
 class Message(Base):
     __tablename__ = "messages"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
