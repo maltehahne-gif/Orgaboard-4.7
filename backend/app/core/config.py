@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # Bewusst nicht ueber die Oberflaeche: das erste Konto muss aus einer
     # Quelle kommen, die selbst schon geschuetzt ist.
     system_admin_email: str | None = None
+    # Nur fuer die allererste Anlage: existiert das Konto noch nicht, wird es
+    # damit angelegt. Ohne dieses Passwort wird nichts angelegt, nur gehoben.
+    system_admin_password: str | None = None
     seed_allow_demo_business_data: bool = False
     auto_create_schema: bool = True
     business_timezone: str = "Europe/Berlin"
