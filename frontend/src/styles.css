@@ -9243,356 +9243,652 @@ to{
 .apple-legend span { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
 .apple-legend i { width: 9px; height: 9px; border-radius: 50%; }
 
+
 /* ============================================================================
-   Dashboard - Rasterung im Stil des Referenzentwurfs: Kennzahlenreihe,
-   Wochenplaner, zwei dichte Kartenreihen, Auswertungen darunter.
+   Dashboard
+   ----------------------------------------------------------------------------
+   Aufbau nach der Referenzvorlage, Reihe fuer Reihe:
+
+     Kopf     Titel + Untertitel links, Zeitraum-Pille + Kalenderknopf rechts
+     Reihe 1  vier gleich breite Kennzahlen, je mit Verlaufskurve am Fuss
+     Reihe 2  vier gleich breite Karten (Termine, Schnellzugriff, Kunden, Post)
+     Reihe 3  zwei Karten im Verhaeltnis 47:53 (Route, Umsatzverlauf)
+
+   Die Karten einer Reihe sind gleich hoch (align-items: stretch aus dem
+   Raster), der Inhalt fuellt sie ueber .dash-card-body, Fusszeilen sitzen
+   dadurch immer buendig am unteren Rand.
    ========================================================================== */
 
-.dash-page { display: flex; flex-direction: column; gap: 20px; }
+.dash {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ------------------------------------------------------------------- Kopf */
 
 .dash-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 14px;
+  margin-bottom: 2px;
 }
 
-.dash-head h1 { margin: 0; font-size: 25px; }
-.dash-head p { margin: 4px 0 0; color: var(--muted); }
+.dash-head h1 {
+  margin: 0;
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
 
-.dash-week-pill {
+.dash-head p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.dash-head-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 15px;
-  border-radius: 999px;
-  border: 1px solid #24383d;
-  background: #0b1418;
-  color: #c3cfcb;
-  font-size: 13px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #24383d !important;
+  border-radius: 10px !important;
+  background: #0c171b !important;
+  color: #c3cfcb !important;
+  font-size: 12.5px;
   white-space: nowrap;
 }
 
-.dash-week-pill svg { color: var(--green); }
+.dash-pill svg { color: #7f918a; }
+.dash-pill:hover { border-color: #3f9455 !important; color: #fff !important; }
+.dash-pill.is-static { cursor: default; }
 
-.dash-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-
-.dash-kpi {
-  background: linear-gradient(180deg, rgba(13, 24, 29, .96), rgba(9, 17, 21, .96));
-  border: 1px solid #21353a;
-  border-radius: var(--radius);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, .18);
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-a.dash-kpi.dash-kpi-link { color: inherit; transition: border-color .15s ease, transform .15s ease; }
-a.dash-kpi.dash-kpi-link:hover { border-color: #2f4a44; transform: translateY(-2px); }
-
-.dash-kpi-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.dash-kpi-top small { color: #c8d0cf; font-size: 12.5px; }
-
-.dash-kpi-icon {
-  width: 30px;
-  height: 30px;
-  flex: none;
-  border-radius: 8px;
+.dash-pill-icon {
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, .04);
-  border: 1px solid #223236;
-  color: #7fd79a;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #24383d;
+  border-radius: 10px;
+  background: #0c171b;
+  color: #7f918a;
 }
 
-.dash-kpi strong { font-size: 23px; font-variant-numeric: tabular-nums; }
-.dash-kpi-sub { font-size: 12px; color: var(--muted); }
+.dash-pill-icon:hover { border-color: #3f9455; color: var(--green); }
 
-.dash-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.dash-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+/* ------------------------------------------------------------------ Raster */
 
-.dash-card { padding: 16px 17px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.dash-row { display: grid; gap: 14px; align-items: stretch; }
 
-.dash-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.dash-card-head h2 { margin: 0; font-size: 14.5px; }
-.dash-card-head a { flex: none; font-size: 12px; color: var(--muted); }
-.dash-card-head a:hover { color: var(--green); }
+.dash-row-kpi,
+.dash-row-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.dash-row-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-/* Fusszeile der dichten Dashboardkarten - immer am unteren Kartenrand,
-   auch wenn die Karte durch eine Nachbarkarte in der Reihe hoeher gezogen wird. */
-.dash-card-link {
-  margin-top: auto;
-  padding-top: 2px;
+/* Die Vorlage gibt der Umsatzkurve etwas mehr Platz als der Route. */
+.dash-row-split { grid-template-columns: 47fr 53fr; }
+
+.dash-row > * { min-width: 0; }
+
+/* ------------------------------------------------------------- Kennzahlen */
+
+.dash-kpi {
+  display: flex;
+  flex-direction: column;
+  min-height: 152px;
+  padding: 15px 16px 0;
+  border: 1px solid #21353a;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #0e1a1f, #0a1418);
+  overflow: hidden;
+}
+
+.dash-kpi header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dash-kpi-label {
+  color: #9fb0aa;
   font-size: 12.5px;
-  font-weight: 600;
+  line-height: 1.3;
+}
+
+.dash-kpi-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #26403a;
+  border-radius: 9px;
+  background: rgba(52, 215, 105, 0.08);
   color: var(--green);
 }
 
-.dash-card-link:hover { text-decoration: underline; }
+.dash-kpi-value {
+  margin-top: 9px;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
 
-.dash-card-button {
-  margin-top: auto;
+.dash-kpi-delta {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 9px 12px;
-  border-radius: 9px;
-  border: 1px solid #22353a;
-  background: #0c171b;
-  color: #edf2f1;
-  font-size: 12.5px;
+  gap: 3px;
+  margin-top: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-kpi-delta.up { color: #3dd27b; }
+.dash-kpi-delta.down { color: #ff7a6b; }
+.dash-kpi-delta.neutral { color: #6f827b; font-weight: 400; }
+
+.dash-kpi-delta em {
+  font-style: normal;
+  font-weight: 400;
+  color: #7f918a;
+}
+
+/* Die Kurve sitzt buendig am unteren Kartenrand, wie in der Vorlage. */
+.spark {
+  display: block;
+  width: 100%;
+  height: 42px;
+  margin-top: auto;
+}
+
+/* ----------------------------------------------------------------- Karten */
+
+.dash-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid #21353a;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #0e1a1f, #0a1418);
+}
+
+.dash-card-title {
+  margin: 0;
+  font-size: 14px;
   font-weight: 600;
 }
 
-.dash-card-button:hover { border-color: #3f9455; color: var(--green); }
-
-.dash-quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex: 1; align-content: center; }
-
-.dash-quick-grid button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 11px 6px;
-  border-radius: 10px;
-  border: 1px solid #22353a;
-  background: #0c171b;
-  color: #edf2f1;
-  font-size: 11.5px;
-  text-align: center;
-}
-
-.dash-quick-grid button svg { color: var(--green); }
-.dash-quick-grid button:hover { border-color: #3f9455; background: #102319; }
-
-.dash-list { display: flex; flex-direction: column; }
-
-.dash-list-row {
+.dash-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid #16241f;
 }
 
-.dash-list-row:last-child { border-bottom: 0; }
-.dash-list-empty { padding: 4px 0 2px; color: var(--muted); font-size: 12.5px; }
+.dash-card-head .dash-pill {
+  height: 30px;
+  padding: 0 11px;
+  font-size: 11.5px;
+}
 
-.dash-rental-name { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 13px; }
-.dash-rental-name svg { flex: none; color: var(--muted); }
+/* Traegt den Inhalt und schiebt Fusszeilen nach unten. */
+.dash-card-body {
+  flex: 1;
+  min-height: 0;
+  margin-top: 13px;
+}
 
-/* Terminvorschau "Heute" - Zeitstrahl mit durchgehender Linie, wie im
-   Referenzentwurf, statt der grossen Wochenkarten. */
-.dash-agenda { display: flex; flex-direction: column; }
+.dash-empty {
+  margin: 0;
+  padding: 10px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
 
-.dash-agenda-row {
+.dash-card-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 13px;
+  padding: 9px 12px;
+  border: 1px solid #24383d;
+  border-radius: 9px;
+  background: #0c171b;
+  color: #c3cfcb;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.dash-card-action:hover { border-color: #3f9455; color: var(--green); }
+
+.dash-card-link {
+  margin-top: 13px;
+  color: var(--green);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.dash-card-link:hover { text-decoration: underline; }
+.dash-card-link.is-inline { margin-top: 0; font-weight: 500; color: var(--muted); }
+.dash-card-link.is-inline:hover { color: var(--green); }
+
+/* ------------------------------------------------- Terminliste mit Zeitachse */
+
+.agenda { list-style: none; margin: 0; padding: 0; }
+
+.agenda-row {
   display: grid;
-  grid-template-columns: 42px 16px minmax(0, 1fr);
+  grid-template-columns: 38px 13px minmax(0, 1fr);
   gap: 8px;
-  padding-bottom: 14px;
+  padding-bottom: 12px;
 }
 
-.dash-agenda-row:last-child { padding-bottom: 0; }
+.agenda-row:last-child { padding-bottom: 0; }
 
-.dash-agenda-time {
+.agenda-time {
   display: flex;
   flex-direction: column;
-  padding-top: 1px;
+  padding-top: 7px;
   font-variant-numeric: tabular-nums;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
-.dash-agenda-time strong { font-size: 12.5px; }
-.dash-agenda-time span { font-size: 10.5px; color: var(--muted); }
+.agenda-time b { font-size: 11.5px; font-weight: 600; color: #c3cfcb; }
+.agenda-time i { font-size: 10.5px; font-style: normal; color: #6f827b; }
 
-/* Durchgehende Linie zwischen den Punkten - beim letzten Eintrag weggelassen. */
-.dash-agenda-line {
+/* Durchgehende Linie zwischen den Punkten, beim letzten Eintrag weggelassen. */
+.agenda-rail {
   position: relative;
   display: flex;
   justify-content: center;
 }
 
-.dash-agenda-line::before {
+.agenda-rail::before {
   content: '';
   position: absolute;
-  top: 14px;
-  bottom: -14px;
+  top: 16px;
+  bottom: -12px;
   width: 1px;
   background: #1e2f33;
 }
 
-.dash-agenda-row:last-child .dash-agenda-line::before { display: none; }
+.agenda-row:last-child .agenda-rail::before { display: none; }
 
-.dash-agenda-dot {
-  width: 9px;
-  height: 9px;
-  margin-top: 5px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px #0d181d;
+.agenda-dot {
   position: relative;
   z-index: 1;
+  width: 8px;
+  height: 8px;
+  margin-top: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #0c171b;
 }
 
-.dash-agenda-main { display: flex; flex-direction: column; min-width: 0; gap: 1px; padding-top: 1px; }
-.dash-agenda-main strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dash-agenda-main span { font-size: 12px; color: #c3cfcb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dash-agenda-main small { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agenda-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 9px !important;
+  border: 1px solid transparent !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  text-align: left;
+}
 
-/* Top Kunden / Nachrichten - Zeilen mit Initialen-Avatar. */
-.dash-people { display: flex; flex-direction: column; }
+.agenda-body b { font-size: 12.5px; font-weight: 600; }
+.agenda-body span {
+  font-size: 11.5px;
+  color: #9fb0aa;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-body i {
+  font-size: 11px;
+  font-style: normal;
+  color: #6f827b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-.dash-people-row {
+.agenda-body:hover { border-color: #2b4a3c !important; background: #0f1d1a !important; }
+
+/* Der naechste Termin ist in der Vorlage gruen hinterlegt. */
+.agenda-row.is-next .agenda-body {
+  border-color: rgba(52, 215, 105, 0.28) !important;
+  background: rgba(52, 215, 105, 0.08) !important;
+}
+
+/* ---------------------------------------------------------- Schnellzugriff */
+
+.quick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  height: 100%;
+  align-content: start;
+}
+
+.quick button {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px 6px !important;
+  border: 1px solid #22353a !important;
+  border-radius: 10px !important;
+  background: #0c171b !important;
+  color: #dde4e2 !important;
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.quick button span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #26403a;
+  border-radius: 9px;
+  background: rgba(52, 215, 105, 0.08);
+  color: var(--green);
+}
+
+.quick button:hover { border-color: #3f9455 !important; background: #102319 !important; }
+
+/* ------------------------------------------------- Kunden- und Nachrichtenliste */
+
+.people { list-style: none; margin: 0; padding: 0; }
+
+.people li + li { margin-top: 6px; }
+
+.people a {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid #16241f;
+  gap: 9px;
+  padding: 8px 9px;
+  border: 1px solid #1c2c30;
+  border-radius: 10px;
+  background: #0c171b;
   color: inherit;
 }
 
-.dash-people-row:last-child { border-bottom: 0; }
-.dash-people-row:hover .dash-people-main strong { color: var(--green); }
+.people a:hover { border-color: #2f4a44; }
 
-.dash-people-avatar {
+.people-avatar {
   flex: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
   display: grid;
   place-items: center;
-  background: #16282c;
+  width: 30px;
+  height: 30px;
   border: 1px solid #2a7843;
+  border-radius: 50%;
+  background: #16282c;
   color: #dff9e7;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
 }
 
-.dash-people-main { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
-.dash-people-main strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dash-people-main span { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dash-people-main small { font-size: 10.5px; color: #5f746c; }
-
-.dash-k70-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-
-.dash-k70-grid div {
-  padding: 10px;
-  border-radius: 10px;
-  background: #0c171b;
-  border: 1px solid #21353a;
-}
-
-.dash-k70-grid span { display: block; color: var(--muted); font-size: 11px; }
-.dash-k70-grid strong { display: block; margin-top: 4px; font-size: 15px; color: var(--orange); }
-
-/* Routenplanung - Kartenvorschau links, Kennzahlen rechts, wie im
-   Referenzentwurf. Distanz/Fahrzeit zeigen "-", solange keine Route
-   berechnet wurde - erfundene Werte waeren hier falsche Praezision. */
-.dash-route-body { display: grid; grid-template-columns: minmax(0, 1fr) 128px; gap: 14px; flex: 1; }
-
-/* Rein dekorative Vorschau - kein echtes Kartenmaterial, nur ein
-   Stimmungsbild, solange keine Route berechnet wurde. */
-.dash-route-visual {
-  position: relative;
-  min-height: 130px;
-  border-radius: 10px;
-  background:
-    radial-gradient(circle at 18% 22%, rgba(52, 215, 105, .07), transparent 45%),
-    radial-gradient(circle at 82% 78%, rgba(52, 215, 105, .05), transparent 45%),
-    #0c171b;
-  border: 1px solid #21353a;
-  overflow: hidden;
-}
-
-.dash-route-path {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.dash-route-path path {
-  fill: none;
-  stroke: #2c9155;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-dasharray: 1 9;
-}
-
-.dash-route-dot {
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  margin: -4.5px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 0 4px rgba(52, 215, 105, .16);
-}
-
-.dash-route-stats { display: flex; flex-direction: column; gap: 8px; }
-
-.dash-route-stats div { display: flex; flex-direction: column; gap: 1px; }
-.dash-route-stats strong { font-size: 16px; font-variant-numeric: tabular-nums; }
-.dash-route-stats span { font-size: 11px; color: var(--muted); }
-.dash-route-stats .primary { margin-top: auto; font-size: 12.5px; padding: 9px 10px; }
-
-/* Umsatz - Entwicklung: drei echte Werte (heute/Woche/Monat) als Saeulen,
-   keine Tagesreihe - die liegt in der API nicht vor. */
-.dash-revenue-chart { display: flex; align-items: flex-end; gap: 16px; flex: 1; min-height: 120px; }
-
-.dash-revenue-bar {
-  flex: 1;
+.people-main {
   display: flex;
   flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.people-main b { font-size: 12.5px; font-weight: 600; }
+
+.people-main i,
+.people-main em {
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people-main i { font-size: 11px; color: #9fb0aa; }
+.people-main em { font-size: 10.5px; color: #5f746c; }
+
+/* Rangplakette rechts - in der Vorlage sitzt hier eine Kundenklasse. */
+.people-rank {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #26403a;
+  border-radius: 7px;
+  background: rgba(52, 215, 105, 0.10);
+  color: var(--green);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.people-unread {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+/* ----------------------------------------------------------- Routenplanung */
+
+.dash-card-body.route {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 108px;
+  gap: 12px;
+  min-height: 148px;
+}
+
+.route-map {
+  position: relative;
+  border: 1px solid #1c2c30;
+  border-radius: 10px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 25%, rgba(52, 215, 105, 0.07), transparent 42%),
+    radial-gradient(circle at 78% 75%, rgba(52, 215, 105, 0.05), transparent 42%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 26px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 26px),
+    #0a1417;
+}
+
+.route-map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.route-line {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.route-stop {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -4px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(52, 215, 105, 0.18);
+}
+
+.route-stats { display: flex; flex-direction: column; gap: 10px; }
+
+.route-stats > div { display: flex; flex-direction: column; gap: 1px; }
+.route-stats b { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.route-stats i { font-size: 10.5px; font-style: normal; color: #6f827b; }
+
+.route-button {
+  margin-top: auto;
+  display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
+  justify-content: center;
+  padding: 8px 10px;
+  border: 1px solid #24383d;
+  border-radius: 9px;
+  background: #0c171b;
+  color: #c3cfcb;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.route-button:hover { border-color: #3f9455; color: var(--green); }
+
+/* ------------------------------------------------------- Umsatz-Liniendiagramm */
+
+.linechart {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 8px;
+  height: 100%;
+  min-height: 150px;
+}
+
+.linechart-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  /* Gleiche Höhe wie die Beschriftungszeile, damit die Achsenwerte genau
+     auf den Gitterlinien sitzen. */
+  padding-bottom: 18px;
+  text-align: right;
+  color: #6f827b;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.linechart-plot { position: relative; display: flex; flex-direction: column; }
+
+.linechart-canvas { position: relative; flex: 1; min-height: 0; }
+
+.linechart-canvas svg {
+  display: block;
+  width: 100%;
   height: 100%;
 }
 
-.dash-revenue-bar strong { font-size: 12px; font-variant-numeric: tabular-nums; }
+.linechart-dot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 2.5px rgba(52, 215, 105, 0.18);
+}
 
-.dash-revenue-track {
-  width: 100%;
-  max-width: 46px;
-  flex: 1;
+.linechart-labels {
+  position: relative;
+  height: 18px;
+  padding-top: 5px;
+  color: #6f827b;
+  font-size: 10.5px;
+}
+
+.linechart-labels span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------- K70 und Ausleihen */
+
+.k70 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+
+.k70 > div {
+  padding: 11px 12px;
+  border: 1px solid #21353a;
+  border-radius: 10px;
+  background: #0c171b;
+}
+
+.k70 i { display: block; font-style: normal; color: var(--muted); font-size: 11px; }
+.k70 b { display: block; margin-top: 4px; font-size: 15px; color: var(--orange); }
+
+.rentals { list-style: none; margin: 0; padding: 0; }
+
+.rentals li {
   display: flex;
-  align-items: flex-end;
-  background: #101a1e;
-  border-radius: 6px;
-  overflow: hidden;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #16241f;
 }
 
-.dash-revenue-fill {
-  width: 100%;
-  border-radius: 6px 6px 0 0;
-  background: linear-gradient(180deg, #7add7d, #1ed45f);
+.rentals li:last-child { border-bottom: 0; }
+
+.rentals li > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 13px;
 }
 
-.dash-revenue-bar small { color: var(--muted); font-size: 11.5px; }
+.rentals svg { flex: none; color: var(--muted); }
 
-.dash-section-head { display: flex; align-items: flex-start; gap: 10px; margin-top: 4px; }
+/* ----------------------------------------------------- Abschnitt Wochenplaner */
+
+.dash-section-head { display: flex; align-items: flex-start; gap: 10px; margin-top: 6px; }
 .dash-section-head svg { flex: none; margin-top: 2px; color: var(--green); }
 .dash-section-head h2 { margin: 0; font-size: 17px; }
 .dash-section-head p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
 
+/* ------------------------------------------------------------------- Tablet */
+
 @media (max-width: 1179px) {
-  .dash-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dash-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dash-grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .dash-row-kpi,
+  .dash-row-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dash-row-split,
+  .dash-row-two { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* -------------------------------------------------------------------- Handy */
+
 @media (max-width: 767px) {
-  .dash-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .dash-kpi { padding: 14px; }
-  .dash-kpi strong { font-size: 20px; }
-  .dash-grid-4 { grid-template-columns: minmax(0, 1fr); }
+  .dash { gap: 12px; }
+  .dash-row { gap: 10px; }
+  .dash-row-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dash-row-four { grid-template-columns: minmax(0, 1fr); }
+
   .dash-head { flex-direction: column; align-items: stretch; }
+  .dash-head h1 { font-size: 22px; }
+  .dash-head-tools .dash-pill { flex: 1; justify-content: center; }
+
+  .dash-kpi { min-height: 132px; padding: 13px 13px 0; }
+  .dash-kpi-value { font-size: 21px; }
+  .spark { height: 34px; }
+
+  .dash-card { padding: 14px; }
+  .dash-card-body.route { grid-template-columns: minmax(0, 1fr); }
+  .route-map { min-height: 130px; }
+  .route-stats { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+  .route-button { margin-top: 0; flex: 1 0 100%; min-height: 42px; }
+  .linechart { grid-template-columns: 40px minmax(0, 1fr); }
 }
 
 /* Verkauf: Storno-Zelle mit Wiederherstellen-Button */

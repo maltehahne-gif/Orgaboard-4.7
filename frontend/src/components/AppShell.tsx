@@ -235,7 +235,6 @@ export function AppShell() {
             <strong>
               Orga<span className="ob-brand-accent">Board</span>
             </strong>
-            <small>Vertriebssystem</small>
           </span>
         </div>
 

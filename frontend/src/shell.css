@@ -53,9 +53,11 @@
 
 /* Die globale Suche fuellt ihren Platz in der Kopfzeile, statt eine feste
    Breite aus styles.css zu behalten. */
+/* Die Vorlage gibt der Suche rund ein Viertel der Inhaltsbreite - ueber die
+   volle Breite gezogen wirkt die Kopfzeile leer. */
 .ob-topbar-search .global-search {
   width: 100%;
-  max-width: 620px;
+  max-width: 430px;
 }
 
 body.ob-scroll-locked {
@@ -599,9 +601,7 @@ body.ob-scroll-locked {
 .ob-content .two-col > *,
 .ob-content .product-grid > *,
 .ob-content .history-grid > *,
-.ob-content .dash-kpi-grid > *,
-.ob-content .dash-grid-4 > *,
-.ob-content .dash-grid-2 > * {
+.ob-content .dash-row > * {
   min-width: 0;
 }
 

@@ -31,6 +31,7 @@ def out(c: Customer):
         "id": c.id, "employee_id": c.employee_id, "first_name": c.first_name, "last_name": c.last_name,
         "street": c.street, "house_number": c.house_number, "postal_code": c.postal_code, "city": c.city,
         "phone": c.phone, "email": c.email, "notes": c.notes,
+        "created_at": c.created_at,
         "full_name": f"{c.first_name} {c.last_name}",
         "address": " ".join(x for x in [c.street, c.house_number, c.postal_code, c.city] if x),
     }

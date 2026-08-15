@@ -3,19 +3,19 @@ import {
   AlarmClock,
   ArrowDownRight,
   ArrowUpRight,
-  BadgeEuro,
   BarChart3,
   CalendarDays,
   CalendarRange,
+  ChevronDown,
   ContactRound,
-  Mail,
+  FileText,
   Package,
-  PackageCheck,
   Route as RouteIcon,
   ShoppingCart,
-  Target,
+  TrendingUp,
+  UserPlus,
 } from 'lucide-react'
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {useCallback, useEffect, useMemo, useState, type ReactNode} from 'react'
 import {Link, useNavigate} from 'react-router-dom'
 import {api, formatDateTime, money} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
@@ -23,11 +23,12 @@ import {useAuth} from '../lib/auth'
 import type {Appointment, Customer, Product, Sale} from '../types'
 import {AppointmentWeek} from '../components/AppointmentWeek'
 import {AppointmentModal} from '../components/AppointmentModal'
+import {LineChart, Sparkline} from '../components/Charts'
 import {addDays, appointmentPayload, appointmentTypeOption, downloadCalendarFile, startOfWorkWeek, type AppointmentDraft} from '../lib/appointments'
 import {useToast} from '../components/Toast'
 
 type RentalRow = {id: string; product_id: string; due_at: string | null; status: string}
-type MessageRow = {id: string; sender_name: string; body: string; created_at: string}
+type MessageRow = {id: string; sender_name: string; body: string; created_at: string; is_read?: boolean}
 
 type Dash = {
   revenue_today_cents: number
@@ -48,12 +49,12 @@ type Dash = {
   unread_messages: number
 }
 
-type WeekTrend = {revenue_change_percent: number | null}
 type TeamEmployee = {id: string; display_name: string}
 type Editor = {appointment?: Appointment; initialDay?: Date}
 
 const weekFormatter = new Intl.DateTimeFormat('de-DE', {day: '2-digit', month: 'short'})
 const timeFormatter = new Intl.DateTimeFormat('de-DE', {hour: '2-digit', minute: '2-digit'})
+const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
 function greeting() {
   const hour = new Date().getHours()
@@ -82,16 +83,72 @@ function initials(name: string) {
     .toUpperCase()
 }
 
-function Delta({percent}: {percent: number | null | undefined}) {
-  if (percent === null || percent === undefined) return null
+/** Kurzform für die Achse: 128.450,00 € -> "128k €". */
+function compactEuro(cents: number) {
+  const euro = cents / 100
+  if (euro >= 1000) return `${Math.round(euro / 1000)}k €`
+  return `${Math.round(euro)} €`
+}
+
+/** Tagesindex innerhalb einer Woche, die montags beginnt. */
+function dayIndex(weekStart: Date, value: string) {
+  const day = new Date(value)
+  day.setHours(0, 0, 0, 0)
+  const start = new Date(weekStart)
+  start.setHours(0, 0, 0, 0)
+  return Math.floor((day.getTime() - start.getTime()) / 86400000)
+}
+
+/** Zählt Einträge auf die sieben Tage einer Woche. */
+function weekSeries<T>(rows: T[], weekStart: Date, date: (row: T) => string, value: (row: T) => number) {
+  const series = Array<number>(7).fill(0)
+  for (const row of rows) {
+    const index = dayIndex(weekStart, date(row))
+    if (index >= 0 && index < 7) series[index] += value(row)
+  }
+  return series
+}
+
+function changePercent(current: number, previous: number): number | null {
+  if (previous === 0) return null
+  return Math.round(((current - previous) / previous) * 1000) / 10
+}
+
+function Delta({percent}: {percent: number | null}) {
+  if (percent === null) {
+    return <span className="dash-kpi-delta neutral">kein Vorwochenwert</span>
+  }
   const up = percent >= 0
   const Icon = up ? ArrowUpRight : ArrowDownRight
   return (
-    <span className={`delta ${up ? 'up' : 'down'}`}>
-      <Icon size={13} />
+    <span className={`dash-kpi-delta ${up ? 'up' : 'down'}`}>
+      <Icon size={13} strokeWidth={2.4} />
       {up ? '+' : ''}
-      {percent.toLocaleString('de-DE')}% vs. letzte Woche
+      {percent.toLocaleString('de-DE')}%
+      <em>vs. letzte Woche</em>
     </span>
+  )
+}
+
+type KpiProps = {
+  label: string
+  value: string
+  icon: ReactNode
+  percent: number | null
+  series: number[]
+}
+
+function Kpi({label, value, icon, percent, series}: KpiProps) {
+  return (
+    <article className="dash-kpi">
+      <header>
+        <span className="dash-kpi-label">{label}</span>
+        <span className="dash-kpi-icon">{icon}</span>
+      </header>
+      <strong className="dash-kpi-value">{value}</strong>
+      <Delta percent={percent} />
+      <Sparkline values={series} />
+    </article>
   )
 }
 
@@ -101,8 +158,10 @@ export function DashboardPage() {
 
   const toast = useToast()
   const [dashboard, setDashboard] = useState<Dash | null>(null)
-  const [weekTrend, setWeekTrend] = useState<WeekTrend | null>(null)
   const [appointments, setAppointments] = useState<Appointment[]>([])
+  // Nur für den Vorwochenvergleich der Kennzahl - der Wochenplaner darunter
+  // bekommt weiterhin ausschliesslich die Termine der angezeigten Woche.
+  const [previousAppointments, setPreviousAppointments] = useState<Appointment[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [employees, setEmployees] = useState<TeamEmployee[]>([])
@@ -114,26 +173,26 @@ export function DashboardPage() {
   const isTeamLeader = me?.role === 'TEAM_LEADER'
 
   const load = useCallback(async () => {
-    const end = addDays(weekStart, 7)
-    const query = `?start=${encodeURIComponent(weekStart.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
+    const range = (from: Date) =>
+      `?start=${encodeURIComponent(from.toISOString())}&end=${encodeURIComponent(addDays(from, 7).toISOString())}`
     try {
-      const [dash, appointmentRows, customerRows, productRows, employeeRows, trend, saleRows, messageRows] =
+      const [dash, appointmentRows, previousRows, customerRows, productRows, employeeRows, saleRows, messageRows] =
         await Promise.all([
           api<Dash>('/dashboard'),
-          api<Appointment[]>(`/appointments${query}`),
+          api<Appointment[]>(`/appointments${range(weekStart)}`),
+          api<Appointment[]>(`/appointments${range(addDays(weekStart, -7))}`),
           api<Customer[]>('/customers'),
           api<Product[]>('/products'),
           isTeamLeader ? api<TeamEmployee[]>('/team/employees') : Promise.resolve([]),
-          api<WeekTrend>('/dashboard/trend?period=week'),
           api<Sale[]>('/sales'),
           api<MessageRow[]>('/messages'),
         ])
       setDashboard(dash)
       setAppointments(appointmentRows)
+      setPreviousAppointments(previousRows)
       setCustomers(customerRows)
       setProducts(productRows)
       setEmployees(employeeRows)
-      setWeekTrend(trend)
       setSales(saleRows)
       setMessages(messageRows)
     } catch (error) {
@@ -201,264 +260,286 @@ export function DashboardPage() {
     return `${weekFormatter.format(weekStart)} – ${weekFormatter.format(end)}`
   }, [weekStart])
 
-  const dueRentals = useMemo(
-    () => dashboard?.rentals.filter(r => r.status === 'due').length ?? 0,
-    [dashboard],
-  )
+  /** Alle vier Kennzahlen samt Tagesreihe und Vorwochenvergleich. */
+  const kpis = useMemo(() => {
+    const previousStart = addDays(weekStart, -7)
+    const activeSales = sales.filter(sale => !sale.cancelled)
+    const newCustomers = customers.filter(customer => customer.created_at)
+
+    const revenue = weekSeries(activeSales, weekStart, s => s.sold_at, s => s.counts_total_cents)
+    const revenuePrev = weekSeries(activeSales, previousStart, s => s.sold_at, s => s.counts_total_cents)
+    const deals = weekSeries(activeSales, weekStart, s => s.sold_at, () => 1)
+    const dealsPrev = weekSeries(activeSales, previousStart, s => s.sold_at, () => 1)
+    const fresh = weekSeries(newCustomers, weekStart, c => c.created_at!, () => 1)
+    const freshPrev = weekSeries(newCustomers, previousStart, c => c.created_at!, () => 1)
+    const dates = weekSeries(appointments, weekStart, a => a.start_at, () => 1)
+    const datesPrev = weekSeries(previousAppointments, previousStart, a => a.start_at, () => 1)
+
+    const sum = (values: number[]) => values.reduce((total, value) => total + value, 0)
+
+    return {
+      revenue,
+      revenueTotal: sum(revenue),
+      revenueChange: changePercent(sum(revenue), sum(revenuePrev)),
+      deals,
+      dealsTotal: sum(deals),
+      dealsChange: changePercent(sum(deals), sum(dealsPrev)),
+      fresh,
+      freshTotal: sum(fresh),
+      freshChange: changePercent(sum(fresh), sum(freshPrev)),
+      dates,
+      datesTotal: sum(dates),
+      datesChange: changePercent(sum(dates), sum(datesPrev)),
+    }
+  }, [appointments, customers, previousAppointments, sales, weekStart])
 
   const topCustomers = useMemo(() => {
-    const totals = new Map<string, {name: string; cents: number}>()
+    const totals = new Map<string, {name: string; cents: number; deals: number}>()
     for (const sale of sales) {
       if (sale.cancelled) continue
-      const entry = totals.get(sale.customer_id) ?? {name: sale.customer_name, cents: 0}
+      const entry = totals.get(sale.customer_id) ?? {name: sale.customer_name, cents: 0, deals: 0}
       entry.cents += sale.counts_total_cents
+      entry.deals += 1
       totals.set(sale.customer_id, entry)
     }
     return [...totals.entries()]
       .map(([customerId, value]) => ({customerId, ...value}))
       .sort((a, b) => b.cents - a.cents)
-      .slice(0, 4)
+      .slice(0, 3)
   }, [sales])
 
   if (!dashboard) return <div className="loading">Dashboard wird geladen…</div>
 
   const firstName = me?.full_name?.split(' ')[0]
+  const today = dashboard.today_appointments
 
   return (
-    <div className="dash-page">
-      <div className="dash-head">
+    <div className="dash">
+      {/* ---------- Seitenkopf ---------- */}
+      <header className="dash-head">
         <div>
           <h1>Dashboard</h1>
           <p>
-            {greeting()}, {firstName}! Hier ist dein Überblick für diese Woche.
+            {greeting()}, {firstName}! Hier ist dein Überblick für heute.
           </p>
         </div>
-        <span className="dash-week-pill">
-          <CalendarDays size={15} />
-          {weekLabel}
-        </span>
+        <div className="dash-head-tools">
+          <button type="button" className="dash-pill" onClick={() => setWeekStart(startOfWorkWeek())}>
+            Diese Woche
+            <ChevronDown size={14} strokeWidth={2.2} />
+          </button>
+          <Link to="/termine" className="dash-pill-icon" aria-label="Zum Terminkalender">
+            <CalendarDays size={16} strokeWidth={1.9} />
+          </Link>
+        </div>
+      </header>
+
+      {/* ---------- Reihe 1: vier Kennzahlen mit Verlaufskurve ---------- */}
+      <div className="dash-row dash-row-kpi">
+        <Kpi
+          label="Umsatz (Woche)"
+          value={money(kpis.revenueTotal)}
+          icon={<TrendingUp size={16} strokeWidth={2} />}
+          percent={kpis.revenueChange}
+          series={kpis.revenue}
+        />
+        <Kpi
+          label="Abgeschlossene Verkäufe"
+          value={String(kpis.dealsTotal)}
+          icon={<ShoppingCart size={16} strokeWidth={2} />}
+          percent={kpis.dealsChange}
+          series={kpis.deals}
+        />
+        <Kpi
+          label="Neukunden"
+          value={String(kpis.freshTotal)}
+          icon={<UserPlus size={16} strokeWidth={2} />}
+          percent={kpis.freshChange}
+          series={kpis.fresh}
+        />
+        <Kpi
+          label="Termine (Woche)"
+          value={String(kpis.datesTotal)}
+          icon={<CalendarRange size={16} strokeWidth={2} />}
+          percent={kpis.datesChange}
+          series={kpis.dates}
+        />
       </div>
 
-      <div className="dash-kpi-grid">
-        <div className="dash-kpi">
-          <div className="dash-kpi-top">
-            <small>Umsatz (Woche)</small>
-            <span className="dash-kpi-icon">
-              <BadgeEuro size={17} />
-            </span>
-          </div>
-          <strong>{money(dashboard.revenue_week_cents)}</strong>
-          <Delta percent={weekTrend?.revenue_change_percent} />
-        </div>
+      {/* ---------- Reihe 2: vier Karten ---------- */}
+      <div className="dash-row dash-row-four">
+        <section className="dash-card">
+          <h2 className="dash-card-title">Heute – Termine</h2>
 
-        <div className="dash-kpi">
-          <div className="dash-kpi-top">
-            <small>Einheiten (Monat)</small>
-            <span className="dash-kpi-icon">
-              <Target size={17} />
-            </span>
+          <div className="dash-card-body">
+            {today.length === 0 && <p className="dash-empty">Heute keine Termine geplant</p>}
+            <ol className="agenda">
+              {today.slice(0, 4).map((item, index) => {
+                const type = appointmentTypeOption(item.appointment_type)
+                return (
+                  <li className={index === 0 ? 'agenda-row is-next' : 'agenda-row'} key={item.id}>
+                    <span className="agenda-time">
+                      <b>{timeFormatter.format(new Date(item.start_at))}</b>
+                      {item.end_at && <i>{timeFormatter.format(new Date(item.end_at))}</i>}
+                    </span>
+                    <span className="agenda-rail">
+                      <i className="agenda-dot" style={{background: type.color}} />
+                    </span>
+                    <button type="button" className="agenda-body" onClick={() => setEditor({appointment: item})}>
+                      <b>{type.label}</b>
+                      <span>{item.customer_name || 'Termin'}</span>
+                      <i>{item.notes || item.address || 'Kein Ort hinterlegt'}</i>
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
           </div>
-          <strong>{dashboard.units_month}</strong>
-          <span className="dash-kpi-sub">
-            {dashboard.units_percent}% von {dashboard.units_target} Ziel
-          </span>
-        </div>
 
-        <div className="dash-kpi">
-          <div className="dash-kpi-top">
-            <small>Aktive Ausleihen</small>
-            <span className="dash-kpi-icon">
-              <PackageCheck size={17} />
-            </span>
-          </div>
-          <strong>{dashboard.active_rentals}</strong>
-          <span className="dash-kpi-sub">
-            {dueRentals > 0 ? `${dueRentals} bald fällig` : 'alles im Zeitplan'}
-          </span>
-        </div>
-
-        <Link to="/nachrichten" className="dash-kpi dash-kpi-link">
-          <div className="dash-kpi-top">
-            <small>Ungelesene Nachrichten</small>
-            <span className="dash-kpi-icon">
-              <Mail size={17} />
-            </span>
-          </div>
-          <strong>{dashboard.unread_messages}</strong>
-          <span className="dash-kpi-sub">Postfach öffnen</span>
-        </Link>
-      </div>
-
-      <div className="dash-grid-4">
-        <section className="card dash-card">
-          <div className="dash-card-head">
-            <h2>Heute – Termine</h2>
-          </div>
-          {dashboard.today_appointments.length === 0 && <p className="dash-list-empty">Heute keine Termine geplant</p>}
-          <div className="dash-agenda">
-            {dashboard.today_appointments.slice(0, 4).map(item => {
-              const type = appointmentTypeOption(item.appointment_type)
-              return (
-                <div className="dash-agenda-row" key={item.id}>
-                  <div className="dash-agenda-time">
-                    <strong>{timeFormatter.format(new Date(item.start_at))}</strong>
-                    {item.end_at && <span>{timeFormatter.format(new Date(item.end_at))}</span>}
-                  </div>
-                  <div className="dash-agenda-line">
-                    <span className="dash-agenda-dot" style={{background: type.color}} />
-                  </div>
-                  <div className="dash-agenda-main">
-                    <strong>{type.label}</strong>
-                    <span>{item.customer_name || 'Termin'}</span>
-                    {(item.notes || item.address) && <small>{item.notes || item.address}</small>}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          <Link to="/termine" className="dash-card-button">
-            <CalendarDays size={15} />
+          <Link to="/termine" className="dash-card-action">
             Alle Termine anzeigen
           </Link>
         </section>
 
-        <section className="card dash-card">
-          <div className="dash-card-head">
-            <h2>Schnellzugriff</h2>
-          </div>
-          <div className="dash-quick-grid">
-            <button onClick={() => setEditor({initialDay: new Date()})}>
-              <CalendarDays size={18} />
-              Neuer Termin
-            </button>
-            <button onClick={() => navigate('/kunden', {state: {openCreate: true}})}>
-              <ContactRound size={18} />
-              Neuer Kunde
-            </button>
-            <button onClick={() => navigate('/nachfassen')}>
-              <AlarmClock size={18} />
-              Nachfassen
-            </button>
-            <button onClick={() => navigate('/routenplanung')}>
-              <RouteIcon size={18} />
-              Route planen
-            </button>
-            <button onClick={() => navigate('/verkaeufe', {state: {openCreate: true}})}>
-              <ShoppingCart size={18} />
-              Neuer Verkauf
-            </button>
-            <button onClick={() => navigate('/verkaufstabelle')}>
-              <BarChart3 size={18} />
-              Bericht öffnen
-            </button>
+        <section className="dash-card">
+          <h2 className="dash-card-title">Schnellzugriff</h2>
+          <div className="dash-card-body">
+            <div className="quick">
+              <button type="button" onClick={() => setEditor({initialDay: new Date()})}>
+                <span><CalendarDays size={18} strokeWidth={1.9} /></span>
+                Neuer Termin
+              </button>
+              <button type="button" onClick={() => navigate('/kunden', {state: {openCreate: true}})}>
+                <span><ContactRound size={18} strokeWidth={1.9} /></span>
+                Neuer Kunde
+              </button>
+              <button type="button" onClick={() => navigate('/nachfassen')}>
+                <span><AlarmClock size={18} strokeWidth={1.9} /></span>
+                Nachfassen
+              </button>
+              <button type="button" onClick={() => navigate('/routenplanung')}>
+                <span><RouteIcon size={18} strokeWidth={1.9} /></span>
+                Route planen
+              </button>
+              <button type="button" onClick={() => navigate('/verkaeufe', {state: {openCreate: true}})}>
+                <span><FileText size={18} strokeWidth={1.9} /></span>
+                Neuer Verkauf
+              </button>
+              <button type="button" onClick={() => navigate('/verkaufstabelle')}>
+                <span><BarChart3 size={18} strokeWidth={1.9} /></span>
+                Bericht öffnen
+              </button>
+            </div>
           </div>
         </section>
 
-        <section className="card dash-card">
-          <div className="dash-card-head">
-            <h2>Top Kunden</h2>
-          </div>
-          {topCustomers.length === 0 && <p className="dash-list-empty">Noch keine Verkäufe erfasst</p>}
-          <div className="dash-people">
-            {topCustomers.map(entry => (
-              <Link to={`/kunden/${entry.customerId}`} className="dash-people-row" key={entry.customerId}>
-                <span className="dash-people-avatar">{initials(entry.name)}</span>
-                <span className="dash-people-main">
-                  <strong>{entry.name}</strong>
-                  <span>Umsatz: {money(entry.cents)}</span>
-                </span>
-              </Link>
-            ))}
+        <section className="dash-card">
+          <h2 className="dash-card-title">Top Kunden</h2>
+          <div className="dash-card-body">
+            {topCustomers.length === 0 && <p className="dash-empty">Noch keine Verkäufe erfasst</p>}
+            <ul className="people">
+              {topCustomers.map((entry, index) => (
+                <li key={entry.customerId}>
+                  <Link to={`/kunden/${entry.customerId}`}>
+                    <span className="people-avatar">{initials(entry.name)}</span>
+                    <span className="people-main">
+                      <b>{entry.name}</b>
+                      <i>Umsatz: {money(entry.cents)}</i>
+                    </span>
+                    <span className="people-rank" title={`${entry.deals} Verkäufe`}>
+                      {index + 1}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
           <Link to="/kunden" className="dash-card-link">
             Alle Kunden anzeigen
           </Link>
         </section>
 
-        <section className="card dash-card">
-          <div className="dash-card-head">
-            <h2>Nachrichten</h2>
+        <section className="dash-card">
+          <h2 className="dash-card-title">Nachrichten</h2>
+          <div className="dash-card-body">
+            {messages.length === 0 && <p className="dash-empty">Noch keine Nachrichten</p>}
+            <ul className="people">
+              {messages.slice(0, 3).map(item => (
+                <li key={item.id}>
+                  <Link to="/nachrichten">
+                    <span className="people-avatar">{initials(item.sender_name)}</span>
+                    <span className="people-main">
+                      <b>{item.sender_name}</b>
+                      <i>{item.body}</i>
+                      <em>{relativeTime(item.created_at)}</em>
+                    </span>
+                    {item.is_read === false && <span className="people-unread" aria-label="ungelesen" />}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
-          {messages.length === 0 && <p className="dash-list-empty">Noch keine Nachrichten</p>}
-          <div className="dash-people">
-            {messages.slice(0, 4).map(item => (
-              <Link to="/nachrichten" className="dash-people-row" key={item.id}>
-                <span className="dash-people-avatar">{initials(item.sender_name)}</span>
-                <span className="dash-people-main">
-                  <strong>{item.sender_name}</strong>
-                  <span>{item.body}</span>
-                  <small>{relativeTime(item.created_at)}</small>
-                </span>
-              </Link>
-            ))}
-          </div>
-          <Link to="/nachrichten" className="dash-card-link">
+          <Link to="/nachrichten" className="dash-card-action">
             Alle Nachrichten anzeigen
           </Link>
         </section>
       </div>
 
-      <div className="dash-grid-2">
-        <section className="card dash-card dash-route-card">
-          <div className="dash-card-head">
-            <h2>Routenplanung – Heute</h2>
-          </div>
-          <div className="dash-route-body">
-            <div className="dash-route-visual" aria-hidden="true">
-              <svg viewBox="0 0 260 100" preserveAspectRatio="none" className="dash-route-path">
-                <path d="M22 74 C48 30, 70 30, 92 46 S140 78, 168 50 S210 18, 238 24" />
+      {/* ---------- Reihe 3: Route und Umsatzverlauf ---------- */}
+      <div className="dash-row dash-row-split">
+        <section className="dash-card">
+          <h2 className="dash-card-title">Routenplanung – Heute</h2>
+          <div className="dash-card-body route">
+            <div className="route-map" aria-hidden="true">
+              <svg viewBox="0 0 260 140" preserveAspectRatio="none">
+                <path className="route-line" d="M28 108 C60 60, 84 56, 108 74 S158 108, 182 72 S222 34, 236 40" />
               </svg>
-              <span className="dash-route-dot" style={{left: '8.5%', top: '74%'}} />
-              <span className="dash-route-dot" style={{left: '35.4%', top: '46%'}} />
-              <span className="dash-route-dot" style={{left: '64.6%', top: '50%'}} />
-              <span className="dash-route-dot" style={{left: '91.5%', top: '24%'}} />
+              <span className="route-stop" style={{left: '10.8%', top: '77%'}} />
+              <span className="route-stop" style={{left: '41.5%', top: '53%'}} />
+              <span className="route-stop" style={{left: '70%', top: '51%'}} />
+              <span className="route-stop" style={{left: '90.8%', top: '28.5%'}} />
             </div>
-            <div className="dash-route-stats">
+
+            <div className="route-stats">
               <div>
-                <strong>{dashboard.today_appointments.length}</strong>
-                <span>Stopps</span>
+                <b>{today.length}</b>
+                <i>Stopps</i>
               </div>
               <div>
-                <strong>–</strong>
-                <span>Gesamtdistanz</span>
+                <b>–</b>
+                <i>Gesamtdistanz</i>
               </div>
               <div>
-                <strong>–</strong>
-                <span>Fahrzeit</span>
+                <b>–</b>
+                <i>Fahrzeit</i>
               </div>
-              <Link to="/routenplanung" className="primary">
-                <RouteIcon size={16} />
-                Route planen
+              <Link to="/routenplanung" className="route-button">
+                Route anzeigen
               </Link>
             </div>
           </div>
         </section>
 
-        <section className="card dash-card">
+        <section className="dash-card">
           <div className="dash-card-head">
-            <h2>Umsatz – Entwicklung</h2>
+            <h2 className="dash-card-title">Verkäufe – Umsatzentwicklung</h2>
+            <span className="dash-pill is-static">
+              {weekLabel}
+              <ChevronDown size={14} strokeWidth={2.2} />
+            </span>
           </div>
-          <div className="dash-revenue-chart">
-            {[
-              {label: 'Heute', cents: dashboard.revenue_today_cents},
-              {label: 'Woche', cents: dashboard.revenue_week_cents},
-              {label: 'Monat', cents: dashboard.revenue_month_cents},
-            ].map(bar => (
-              <div className="dash-revenue-bar" key={bar.label}>
-                <strong>{money(bar.cents)}</strong>
-                <span className="dash-revenue-track">
-                  <span
-                    className="dash-revenue-fill"
-                    style={{height: `${Math.max(6, (bar.cents / (dashboard.revenue_month_cents || 1)) * 100)}%`}}
-                  />
-                </span>
-                <small>{bar.label}</small>
-              </div>
-            ))}
+          <div className="dash-card-body">
+            <LineChart
+              values={kpis.revenue}
+              labels={WEEKDAYS}
+              formatTick={compactEuro}
+              formatPoint={(value, label) => `${label}: ${money(value)}`}
+            />
           </div>
         </section>
       </div>
 
+      {/* ---------- Wochenplaner und Auswertungen ---------- */}
       <div className="dash-section-head">
         <CalendarRange size={18} />
         <div>
@@ -478,45 +559,49 @@ export function DashboardPage() {
         onDelete={appointment => remove(appointment, true)}
       />
 
-      <div className="dash-grid-2">
-        <section className="card dash-card">
-          <div className="dash-card-head">
-            <h2>K70-Material</h2>
-          </div>
-          <div className="dash-k70-grid">
-            <div>
-              <span>Heute</span>
-              <strong>{money(dashboard.k70_revenue_today_cents)}</strong>
-            </div>
-            <div>
-              <span>Woche</span>
-              <strong>{money(dashboard.k70_revenue_week_cents)}</strong>
-            </div>
-            <div>
-              <span>Monat</span>
-              <strong>{money(dashboard.k70_revenue_month_cents)}</strong>
+      <div className="dash-row dash-row-two">
+        <section className="dash-card">
+          <h2 className="dash-card-title">K70-Material</h2>
+          <div className="dash-card-body">
+            <div className="k70">
+              <div>
+                <i>Heute</i>
+                <b>{money(dashboard.k70_revenue_today_cents)}</b>
+              </div>
+              <div>
+                <i>Woche</i>
+                <b>{money(dashboard.k70_revenue_week_cents)}</b>
+              </div>
+              <div>
+                <i>Monat</i>
+                <b>{money(dashboard.k70_revenue_month_cents)}</b>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="card dash-card">
+        <section className="dash-card">
           <div className="dash-card-head">
-            <h2>Ausleihen</h2>
-            <Link to="/verleih">Alle anzeigen</Link>
+            <h2 className="dash-card-title">Ausleihen</h2>
+            <Link to="/verleih" className="dash-card-link is-inline">
+              Alle anzeigen
+            </Link>
           </div>
-          {dashboard.rentals.length === 0 && <p className="dash-list-empty">Keine aktiven Ausleihen</p>}
-          <div className="dash-list">
-            {dashboard.rentals.slice(0, 4).map(rental => (
-              <div className="dash-list-row" key={rental.id}>
-                <span className="dash-rental-name">
-                  <Package size={14} />
-                  {productName(rental.product_id)}
-                </span>
-                <span className={rental.status === 'due' ? 'rental-flag overdue' : 'rental-flag soon'}>
-                  {rental.due_at ? `bis ${formatDateTime(rental.due_at)}` : rental.status}
-                </span>
-              </div>
-            ))}
+          <div className="dash-card-body">
+            {dashboard.rentals.length === 0 && <p className="dash-empty">Keine aktiven Ausleihen</p>}
+            <ul className="rentals">
+              {dashboard.rentals.slice(0, 4).map(rental => (
+                <li key={rental.id}>
+                  <span>
+                    <Package size={14} />
+                    {productName(rental.product_id)}
+                  </span>
+                  <span className={rental.status === 'due' ? 'rental-flag overdue' : 'rental-flag soon'}>
+                    {rental.due_at ? `bis ${formatDateTime(rental.due_at)}` : rental.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
       </div>

@@ -40,7 +40,8 @@ export function GlobalSearch() {
         ref={inputRef}
         value={q}
         onChange={e => setQ(e.target.value)}
-        placeholder="Kunden, Produkte, Termine, Verkäufe suchen…"
+        placeholder="Globale Suche…"
+        aria-label="Kunden, Produkte, Termine und Verkäufe durchsuchen"
       />
       {q ? (
         <button className="icon-button" onClick={() => setQ('')}>
