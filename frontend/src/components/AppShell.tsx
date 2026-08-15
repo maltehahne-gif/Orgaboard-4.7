@@ -2,6 +2,7 @@ import {
   BarChart3,
   Bot,
   CalendarDays,
+  ChevronDown,
   ContactRound,
   Gauge,
   History,
@@ -21,12 +22,13 @@ import {
   X,
 } from 'lucide-react'
 import type {LucideIcon} from 'lucide-react'
-import {useEffect, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import {NavLink, Outlet, useLocation} from 'react-router-dom'
 import {useAuth} from '../lib/auth'
 import {api} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
 import {GlobalSearch} from './GlobalSearch'
+import {NotificationsBell} from './NotificationsBell'
 import {APP_VERSION} from '../lib/changelog'
 
 type NavItem = {
@@ -145,6 +147,8 @@ export function AppShell() {
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement | null>(null)
 
   const isTeamLeader = me?.role === 'TEAM_LEADER'
   const groups = visibleGroups(isTeamLeader)
@@ -170,6 +174,17 @@ export function AppShell() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [drawerOpen])
+
+  useEffect(() => {
+    if (!profileMenuOpen) return
+    const onClick = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [profileMenuOpen])
 
   const initials = me?.full_name
     ?.split(' ')
@@ -211,18 +226,12 @@ export function AppShell() {
             <CalendarDays size={18} strokeWidth={2.2} />
           </span>
           <span className="ob-brand-text">
-            <strong>OrgaBoard</strong>
+            <strong>
+              Orga<span className="ob-brand-accent">Board</span>
+            </strong>
             <small>Vertriebssystem</small>
           </span>
         </div>
-
-        <NavLink to="/profil" className="ob-profile">
-          <span className="ob-avatar">{initials}</span>
-          <span className="ob-profile-text">
-            <strong>{me?.full_name}</strong>
-            <small>{roleLabel}</small>
-          </span>
-        </NavLink>
 
         <nav className="ob-nav" aria-label="Hauptnavigation">
           {groups.map(group => (
@@ -232,11 +241,6 @@ export function AppShell() {
             </div>
           ))}
         </nav>
-
-        <button className="ob-logout" onClick={logout}>
-          <LogOut size={18} strokeWidth={1.9} aria-hidden="true" />
-          <span className="ob-nav-label">Abmelden</span>
-        </button>
 
         <NavLink to="/profil" className="ob-version">
           OrgaBoard v{APP_VERSION}
@@ -271,7 +275,44 @@ export function AppShell() {
             {mobileSearchOpen ? <X size={22} /> : <Search size={22} />}
           </button>
 
-          <span className="ob-topbar-name">{me?.employee?.display_name}</span>
+          <div className="ob-topbar-tools">
+            <NotificationsBell />
+
+            <NavLink to="/nachrichten" className="ob-icon-button" aria-label="Nachrichten">
+              <Mail size={19} strokeWidth={1.9} />
+              {unread > 0 && <span className="ob-notif-dot">{badge}</span>}
+            </NavLink>
+
+            <div className="ob-topbar-profile-wrap" ref={profileMenuRef}>
+              <button
+                type="button"
+                className="ob-topbar-profile"
+                onClick={() => setProfileMenuOpen(open => !open)}
+                aria-expanded={profileMenuOpen}
+                aria-label="Profilmenü"
+              >
+                <span className="ob-avatar">{initials}</span>
+                <span className="ob-topbar-profile-text">
+                  <strong>{me?.full_name}</strong>
+                  <small>{roleLabel}</small>
+                </span>
+                <ChevronDown size={15} strokeWidth={2} aria-hidden="true" />
+              </button>
+
+              {profileMenuOpen && (
+                <div className="ob-profile-menu">
+                  <NavLink to="/profil" className="ob-profile-menu-item">
+                    <Settings size={16} strokeWidth={1.9} aria-hidden="true" />
+                    Profil &amp; Einstellungen
+                  </NavLink>
+                  <button type="button" className="ob-profile-menu-item" onClick={logout}>
+                    <LogOut size={16} strokeWidth={1.9} aria-hidden="true" />
+                    Abmelden
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </header>
 
         {mobileSearchOpen && (

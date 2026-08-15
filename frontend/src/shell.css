@@ -13,10 +13,11 @@
 
 :root {
   --ob-rail: 74px;
-  --ob-sidebar: 248px;
-  --ob-topbar: 64px;
+  --ob-sidebar: 252px;
+  --ob-topbar: 68px;
   --ob-tabbar: 60px;
-  --ob-radius: 12px;
+  --ob-radius: 14px;
+  --ob-radius-lg: 18px;
 
   --ob-line: #1d2f2a;
   --ob-line-soft: #16241f;
@@ -104,6 +105,10 @@ body.ob-scroll-locked {
   display: block;
   font-size: 11px;
   color: var(--ob-text-dim);
+}
+
+.ob-brand-accent {
+  color: var(--ob-accent);
 }
 
 .ob-profile {
@@ -273,8 +278,8 @@ body.ob-scroll-locked {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 22px;
+  gap: 14px;
+  padding: 0 26px;
   background: rgba(4, 10, 10, 0.86);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--ob-line-soft);
@@ -285,11 +290,253 @@ body.ob-scroll-locked {
   min-width: 0;
 }
 
-.ob-topbar-name {
+/* Suche, Glocke, Nachrichten, Profil - rechter Block der Kopfzeile. */
+.ob-topbar-tools {
   flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 767px) {
+  .ob-topbar-tools {
+    display: none;
+  }
+}
+
+.ob-topbar-profile-wrap {
+  position: relative;
+  flex: none;
+  margin-left: 4px;
+}
+
+.ob-topbar-profile {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 12px 6px 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ob-topbar-profile:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--ob-line);
+}
+
+.ob-topbar-profile .ob-avatar {
+  width: 30px;
+  height: 30px;
+  font-size: 11.5px;
+}
+
+.ob-topbar-profile-text {
+  min-width: 0;
+  text-align: left;
+}
+
+.ob-topbar-profile-text strong {
+  display: block;
   font-size: 13px;
-  color: var(--ob-text-dim);
+  line-height: 1.25;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.ob-topbar-profile-text small {
+  display: block;
+  font-size: 11px;
+  color: var(--ob-text-dim);
+}
+
+.ob-topbar-profile > svg {
+  flex: none;
+  color: var(--ob-text-dim);
+}
+
+@media (max-width: 1179px) {
+  .ob-topbar-profile-text {
+    display: none;
+  }
+
+  .ob-topbar-profile {
+    padding: 6px;
+  }
+}
+
+.ob-profile-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 60;
+  width: 220px;
+  padding: 6px;
+  background: var(--ob-surface-2);
+  border: 1px solid var(--ob-line);
+  border-radius: var(--ob-radius);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ob-profile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ob-text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ob-profile-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ob-accent);
+}
+
+.ob-profile-menu-item svg {
+  flex: none;
+  color: var(--ob-text-dim);
+}
+
+.ob-profile-menu-item:hover svg {
+  color: var(--ob-accent);
+}
+
+/* ----------------------------------------------------- Benachrichtigungen */
+
+.ob-notif {
+  position: relative;
+}
+
+.ob-notif-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ff5a5a;
+  color: #200404;
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.ob-topbar-tools .ob-icon-button {
+  position: relative;
+}
+
+.ob-notif-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 60;
+  width: min(340px, 86vw);
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--ob-surface-2);
+  border: 1px solid var(--ob-line);
+  border-radius: var(--ob-radius);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+.ob-notif-head {
+  padding: 12px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ob-text-dim);
+  border-bottom: 1px solid var(--ob-line-soft);
+}
+
+.ob-notif-empty {
+  padding: 22px 14px;
+  text-align: center;
+  color: var(--ob-text-dim);
+  font-size: 13px;
+}
+
+.ob-notif-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--ob-line-soft);
+  background: transparent;
+  text-align: left;
+  color: var(--ob-text-dim);
+}
+
+.ob-notif-row:last-child {
+  border-bottom: 0;
+}
+
+.ob-notif-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ob-notif-row.is-unread {
+  color: var(--ob-text);
+}
+
+.ob-notif-row.is-unread strong::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--ob-accent);
+}
+
+.ob-notif-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ob-notif-row-main strong {
+  font-size: 13.5px;
+  color: var(--ob-text);
+}
+
+.ob-notif-row-main small {
+  font-size: 12px;
+  overflow-wrap: break-word;
+}
+
+.ob-notif-time {
+  color: #5f746c;
+}
+
+.ob-notif-row > svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--ob-accent);
 }
 
 .ob-topbar-title {
@@ -359,7 +606,10 @@ body.ob-scroll-locked {
 .ob-content .dashboard-grid > *,
 .ob-content .two-col > *,
 .ob-content .product-grid > *,
-.ob-content .history-grid > * {
+.ob-content .history-grid > *,
+.ob-content .dash-kpi-grid > *,
+.ob-content .dash-grid-4 > *,
+.ob-content .dash-grid-2 > * {
   min-width: 0;
 }
 
@@ -499,8 +749,7 @@ body.ob-scroll-locked {
 
   /* Auf dem Handy ersetzt der Seitentitel die Suchleiste; gesucht wird ueber
      das Lupensymbol. Vorher nahm das Suchfeld die halbe Kopfzeile ein. */
-  .ob-topbar-search,
-  .ob-topbar-name {
+  .ob-topbar-search {
     display: none;
   }
 
@@ -601,36 +850,21 @@ body.ob-scroll-locked {
 }
 
 /* ============================================================================
-   Dashboard-Eigenlayout (.apple-*) auf schmale Schirme bringen
+   Wochenplaner (Dashboard) auf schmale Schirme bringen
    ----------------------------------------------------------------------------
    Ursache des abgeschnittenen Textes auf dem Handy: "1fr" ist die Kurzform von
    "minmax(auto, 1fr)" - der Mindestwert ist damit min-content. Eine nicht
-   umbrechende Adresse in einer Terminkarte spannte die Spalte auf 647px auf,
-   und diese Breite wanderte ueber .apple-main-column bis zum Seitenraster
-   hinauf. Sichtbar war davon nur der linke Ausschnitt.
+   umbrechende Adresse in einer Terminkarte spannte die Spalte auf.
 
    Die Klammer ist jeweils minmax(0, 1fr) beziehungsweise min-width: 0.
    ========================================================================== */
 
-.apple-dashboard,
-.apple-main-column,
-.apple-side-column,
 .apple-timeline,
 .apple-time-row,
 .apple-task-card,
 .apple-taskline,
 .apple-task-header {
   min-width: 0;
-}
-
-.apple-time-row {
-  grid-template-columns: 90px minmax(0, 1fr);
-}
-
-@media (max-width: 1100px) {
-  .apple-dashboard {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* Terminkarte stapeln, sobald sie schmal wird.
@@ -677,12 +911,8 @@ body.ob-scroll-locked {
 }
 
 @media (max-width: 767px) {
-  .apple-dashboard {
-    gap: 14px;
-  }
-
-  /* Uhrzeit ueber die Karte statt daneben - 90px Zeitspalte plus Karte
-     funktionieren auf 390px nicht. */
+  /* Uhrzeit ueber die Karte statt daneben - eine feste Zeitspalte plus Karte
+     funktioniert auf 390px nicht. */
   .apple-time-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
@@ -695,22 +925,7 @@ body.ob-scroll-locked {
     font-size: 15px;
   }
 
-  .apple-welcome {
-    padding: 18px;
-    border-radius: 18px;
-  }
-
-  .apple-welcome h1 {
-    font-size: 22px;
-    letter-spacing: -0.4px;
-  }
-
-  .apple-welcome p {
-    font-size: 13.5px;
-  }
-
-  .apple-taskline,
-  .appointment-week-shell {
+  .apple-taskline {
     padding: 16px;
     border-radius: 18px;
   }
@@ -722,7 +937,7 @@ body.ob-scroll-locked {
   }
 
   .apple-task-header h2 {
-    font-size: 18px;
+    font-size: 17px;
   }
 
   .apple-task-header p {
@@ -737,11 +952,6 @@ body.ob-scroll-locked {
   .apple-task-card p {
     font-size: 13px;
     margin: 3px 0 0;
-  }
-
-  .apple-stat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 9px;
   }
 
   /* Lange Adressen umbrechen - aber an Wortgrenzen, nicht mitten im Namen. */
@@ -766,21 +976,8 @@ body.ob-scroll-locked {
 }
 
 @media (max-width: 1179px) and (min-width: 768px) {
-  /* Auf dem iPad war die rechte Spalte mit 360px zu breit fuer den Rest -
-     das Dashboard wirkte gequetscht. */
-  .apple-dashboard {
-    grid-template-columns: minmax(0, 1fr) 300px;
-    gap: 16px;
-  }
-
-  .apple-welcome,
-  .apple-taskline,
-  .appointment-week-shell {
+  .apple-taskline {
     padding: 20px;
-  }
-
-  .apple-welcome h1 {
-    font-size: 26px;
   }
 
   .apple-task-card {
