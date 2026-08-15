@@ -116,6 +116,54 @@ TOOL_SPECS = [
         "strict": True,
     },
     {
+        "type": "function", "name": "get_priorities",
+        "description": "Was heute am wichtigsten ist, mit Begründung je Eintrag. Für Fragen wie 'Was ist heute am wichtigsten?'.",
+        "parameters": {"type":"object","properties":{},"required":[],"additionalProperties":False},
+        "strict": True,
+    },
+    {
+        "type": "function", "name": "prepare_appointment",
+        "description": "Vorbereitung auf einen Termin: Kunde, Adresse, letzter Kontakt, gekaufte und vorgeführte Produkte, Notizen, offene Wiedervorlagen, Verleihgeräte. Ohne appointment_id der nächste Termin.",
+        "parameters": {"type":"object","properties":{"appointment_id":{"type":["string","null"]}},"required":["appointment_id"],"additionalProperties":False},
+        "strict": True,
+    },
+    {
+        "type": "function", "name": "get_follow_up_suggestions",
+        "description": "Wen man heute kontaktieren sollte, priorisiert und begründet.",
+        "parameters": {"type":"object","properties":{},"required":[],"additionalProperties":False},
+        "strict": True,
+    },
+    {
+        "type": "function", "name": "get_aftercare_suggestions",
+        "description": "Kunden, bei denen nach einem Verkauf eine Nachbetreuung fällig wäre. Legt nichts an, schlägt nur vor.",
+        "parameters": {"type":"object","properties":{},"required":[],"additionalProperties":False},
+        "strict": True,
+    },
+    {
+        "type": "function", "name": "get_sales_coaching",
+        "description": "Wie der Monat läuft und woran es liegt: Termine, Abschlussquote, Vergleich zum Vormonat, größter Hebel.",
+        "parameters": {"type":"object","properties":{},"required":[],"additionalProperties":False},
+        "strict": True,
+    },
+    {
+        "type": "function", "name": "get_goal_forecast",
+        "description": "Zielprognose: erreichte und fehlende Einheiten, verbleibende Arbeitstage, benötigte Einheiten je Arbeitstag.",
+        "parameters": {"type":"object","properties":{},"required":[],"additionalProperties":False},
+        "strict": True,
+    },
+    {
+        "type": "function", "name": "get_funnel",
+        "description": "Verkaufstrichter von Kontakt bis Nachbetreuung, mit dem größten Abfall zwischen zwei Stufen.",
+        "parameters": {"type":"object","properties":{},"required":[],"additionalProperties":False},
+        "strict": True,
+    },
+    {
+        "type": "function", "name": "get_product_analysis",
+        "description": "Welche Produkte sich verkaufen und welche nicht - nur aus echten Verkaufsdaten.",
+        "parameters": {"type":"object","properties":{"days":{"type":["integer","null"]}},"required":["days"],"additionalProperties":False},
+        "strict": True,
+    },
+    {
         "type": "function", "name": "get_day_briefing",
         "description": (
             "Tagesbriefing: offene Wiedervorlagen, Termine heute, faellige Verleihgeraete, "
@@ -171,6 +219,25 @@ def _beschreibung(db: Session, name: str, args: dict) -> str:
 
     if name == "send_message":
         return f"Nachricht an {args.get('recipient_name', '?')} senden"
+
+    if name in {"get_priorities","prepare_appointment","get_follow_up_suggestions",
+                "get_aftercare_suggestions","get_sales_coaching","get_goal_forecast",
+                "get_funnel","get_product_analysis"}:
+        # Import hier, weil assistant_insights seinerseits Auswertungsdienste
+        # zieht - auf Modulebene ergaebe das einen Ringschluss.
+        from app.core.rbac import scoped_employee_id
+        from app.services import assistant_insights as ki
+
+        scope = scoped_employee_id(db, user, None)
+
+        if name == "get_priorities":            return ki.prioritaeten(db, user, scope)
+        if name == "prepare_appointment":       return ki.terminvorbereitung(db, scope, args.get("appointment_id"))
+        if name == "get_follow_up_suggestions": return ki.nachfassvorschlaege(db, scope)
+        if name == "get_aftercare_suggestions": return ki.nachbetreuung(db, scope)
+        if name == "get_sales_coaching":        return ki.verkaufscoach(db, scope)
+        if name == "get_goal_forecast":         return ki.zielprognose(db, scope)
+        if name == "get_funnel":                return ki.trichter(db, scope)
+        return ki.produktanalyse(db, scope, int(args.get("days") or 90))
 
     if name == "create_follow_up":
         c = db.get(Customer, args.get("customer_id", ""))
@@ -355,6 +422,25 @@ def execute_tool(db: Session, user: User, name: str, args: dict,
         audit(db,user,"message.sent_via_assistant","message",m.id,
               after={"recipient_user_id":users[0].id})
         db.commit();return {"sent":True,"recipient":users[0].full_name}
+
+    if name in {"get_priorities","prepare_appointment","get_follow_up_suggestions",
+                "get_aftercare_suggestions","get_sales_coaching","get_goal_forecast",
+                "get_funnel","get_product_analysis"}:
+        # Import hier, weil assistant_insights seinerseits Auswertungsdienste
+        # zieht - auf Modulebene ergaebe das einen Ringschluss.
+        from app.core.rbac import scoped_employee_id
+        from app.services import assistant_insights as ki
+
+        scope = scoped_employee_id(db, user, None)
+
+        if name == "get_priorities":            return ki.prioritaeten(db, user, scope)
+        if name == "prepare_appointment":       return ki.terminvorbereitung(db, scope, args.get("appointment_id"))
+        if name == "get_follow_up_suggestions": return ki.nachfassvorschlaege(db, scope)
+        if name == "get_aftercare_suggestions": return ki.nachbetreuung(db, scope)
+        if name == "get_sales_coaching":        return ki.verkaufscoach(db, scope)
+        if name == "get_goal_forecast":         return ki.zielprognose(db, scope)
+        if name == "get_funnel":                return ki.trichter(db, scope)
+        return ki.produktanalyse(db, scope, int(args.get("days") or 90))
 
     if name == "create_follow_up":
         e=current_employee(db,user);c=db.get(Customer,args["customer_id"])

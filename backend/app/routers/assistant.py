@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -47,6 +47,44 @@ def briefing(
 @router.post("/chat", dependencies=[Depends(require_csrf)])
 def assistant_chat(data: ChatIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return chat(db, user, data.message.strip(), data.conversation_id)
+
+
+# Die Auswertungen sind auch ohne Chat abrufbar: die KI-Seite zeigt sie
+# direkt an, und das funktioniert dann auch ohne OpenAI-Schluessel.
+_AUSWERTUNGEN = {
+    "priorities": lambda db, u, s: _ki().prioritaeten(db, u, s),
+    "next-appointment": lambda db, u, s: _ki().terminvorbereitung(db, s, None),
+    "follow-ups": lambda db, u, s: _ki().nachfassvorschlaege(db, s),
+    "aftercare": lambda db, u, s: _ki().nachbetreuung(db, s),
+    "coaching": lambda db, u, s: _ki().verkaufscoach(db, s),
+    "goal": lambda db, u, s: _ki().zielprognose(db, s),
+    "funnel": lambda db, u, s: _ki().trichter(db, s),
+    "products": lambda db, u, s: _ki().produktanalyse(db, s),
+}
+
+
+def _ki():
+    from app.services import assistant_insights
+    return assistant_insights
+
+
+@router.get("/insights/{was}")
+def auswertung(
+    was: str,
+    employee_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Eine einzelne Auswertung, ohne Umweg ueber das Sprachmodell.
+
+    Dieselben Funktionen, die der Chat als Werkzeug ruft - damit koennen
+    Oberflaeche und Chat nicht auseinanderlaufen. Die Sichtbarkeit setzt
+    scoped_employee_id durch, wie ueberall sonst.
+    """
+    if was not in _AUSWERTUNGEN:
+        raise HTTPException(status_code=404, detail="Unbekannte Auswertung")
+    scope = scoped_employee_id(db, user, employee_id)
+    return _AUSWERTUNGEN[was](db, user, scope)
 
 
 class BestaetigungIn(BaseModel):
