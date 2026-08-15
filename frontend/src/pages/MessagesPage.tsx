@@ -8,6 +8,8 @@ import {
 import {
   Check,
   CheckCheck,
+  ChevronLeft,
+  ChevronRight,
   Download,
   FileText,
   Image as ImageIcon,
@@ -15,6 +17,7 @@ import {
   Mic,
   Palette,
   Paperclip,
+  Pencil,
   Plus,
   Search,
   Send,
@@ -54,6 +57,9 @@ type Msg={
   created_at:string
   read_at:string|null
   is_read:boolean
+  edited_at:string|null
+  deleted_at:string|null
+  deleted:boolean
   delivery:{delivered:boolean;read:boolean;read_at:string|null;read_by:number}|null
   attachments:Attachment[]
 }
@@ -126,6 +132,10 @@ export function MessagesPage(){
   const recorderRef=useRef<MediaRecorder|null>(null)
   const streamRef=useRef<MediaStream|null>(null)
   const chunksRef=useRef<Blob[]>([])
+
+  const [editingId,setEditingId]=useState<string|null>(null)
+  const [editBody,setEditBody]=useState('')
+  const [lightbox,setLightbox]=useState<{images:Attachment[];index:number}|null>(null)
 
   const selectedUser=useMemo(
     ()=>users.find(user=>user.id===selected),
@@ -228,6 +238,8 @@ export function MessagesPage(){
       if(
         type==='message.new'
         || type==='message.cleared'
+        || type==='message.updated'
+        || type==='message.deleted'
       ){
         void loadConversation(true)
         void loadUnread()
@@ -265,6 +277,29 @@ export function MessagesPage(){
       }
     }
   },[audioDraft])
+
+  useEffect(()=>{
+    if(!lightbox)return
+
+    function onKey(event:KeyboardEvent){
+      if(event.key==='Escape')setLightbox(null)
+      if(event.key==='ArrowLeft'){
+        setLightbox(current=>current&&{
+          ...current,
+          index:(current.index-1+current.images.length)%current.images.length,
+        })
+      }
+      if(event.key==='ArrowRight'){
+        setLightbox(current=>current&&{
+          ...current,
+          index:(current.index+1)%current.images.length,
+        })
+      }
+    }
+
+    window.addEventListener('keydown',onKey)
+    return ()=>window.removeEventListener('keydown',onKey)
+  },[lightbox])
 
   async function send(event:FormEvent){
     event.preventDefault()
@@ -552,8 +587,51 @@ export function MessagesPage(){
     }
   }
 
+  function startEdit(message:Msg){
+    setEditingId(message.id)
+    setEditBody(message.body)
+  }
+
+  function cancelEdit(){
+    setEditingId(null)
+    setEditBody('')
+  }
+
+  async function saveEdit(message:Msg){
+    const clean=editBody.trim()
+    if(!clean){
+      toast('Nachricht darf nicht leer sein','error')
+      return
+    }
+    try{
+      await api(`/messages/${message.id}`,{
+        method:'PATCH',
+        body:JSON.stringify({body:clean}),
+      })
+      cancelEdit()
+      await loadConversation(false)
+    }catch(error){
+      toast(error instanceof Error?error.message:'Nachricht konnte nicht bearbeitet werden.','error')
+    }
+  }
+
+  async function deleteMessage(message:Msg){
+    if(!window.confirm('Diese Nachricht wirklich löschen?\n\nSie wird für alle Gesprächsteilnehmer durch einen Hinweis ersetzt.'))return
+    try{
+      await api(`/messages/${message.id}`,{method:'DELETE'})
+      await loadConversation(false)
+    }catch(error){
+      toast(error instanceof Error?error.message:'Nachricht konnte nicht gelöscht werden.','error')
+    }
+  }
+
+  function openLightbox(images:Attachment[],index:number){
+    setLightbox({images,index})
+  }
+
   function renderAttachment(
     attachment:Attachment,
+    onOpen?:()=>void,
   ){
     if(
       attachment.kind==='image'
@@ -563,17 +641,17 @@ export function MessagesPage(){
         className="chat-attachment-image"
         key={attachment.id}
       >
-        <a
-          href={attachment.content_url}
-          target="_blank"
-          rel="noreferrer"
+        <button
+          type="button"
+          className="chat-image-open"
+          onClick={onOpen}
         >
           <img
             src={attachment.content_url}
             alt={attachment.file_name||'Chat-Bild'}
             loading="lazy"
           />
-        </a>
+        </button>
 
         {attachment.download_url&&
           <a
@@ -946,27 +1024,82 @@ export function MessagesPage(){
               }
 
               <div className="chat-v2-bubble">
-                {images.length>0&&
-                  <div className={
-                    `chat-image-grid count-${Math.min(
-                      images.length,
-                      5
-                    )}`
-                  }>
-                    {images.map(renderAttachment)}
+                {mine&&!message.deleted&&editingId!==message.id&&
+                  <div className="chat-v2-message-actions">
+                    <button
+                      type="button"
+                      title="Bearbeiten"
+                      onClick={()=>startEdit(message)}
+                    >
+                      <Pencil size={13}/>
+                    </button>
+                    <button
+                      type="button"
+                      title="Löschen"
+                      onClick={()=>deleteMessage(message)}
+                    >
+                      <Trash2 size={13}/>
+                    </button>
                   </div>
                 }
 
-                {others.map(renderAttachment)}
+                {message.deleted?
+                  <p className="chat-deleted">
+                    <Trash2 size={13}/> Nachricht gelöscht
+                  </p>
+                :<>
+                  {images.length>0&&
+                    <div className={
+                      `chat-image-grid count-${Math.min(
+                        images.length,
+                        5
+                      )}`
+                    }>
+                      {images.map((attachment,index)=>
+                        renderAttachment(attachment,()=>openLightbox(images,index))
+                      )}
+                    </div>
+                  }
 
-                {!!message.body&&
-                  <p>{message.body}</p>
-                }
+                  {others.map(attachment=>renderAttachment(attachment))}
+
+                  {editingId===message.id?
+                    <div className="chat-edit-box">
+                      <textarea
+                        rows={2}
+                        value={editBody}
+                        onChange={e=>setEditBody(e.target.value)}
+                        autoFocus
+                        onKeyDown={e=>{
+                          if(e.key==='Enter'&&!e.shiftKey){
+                            e.preventDefault()
+                            void saveEdit(message)
+                          }
+                          if(e.key==='Escape')cancelEdit()
+                        }}
+                      />
+                      <div className="chat-edit-actions">
+                        <button type="button" onClick={cancelEdit}>Abbrechen</button>
+                        <button type="button" className="primary" onClick={()=>saveEdit(message)}>Speichern</button>
+                      </div>
+                    </div>
+                  :<>
+                    {!!message.body&&
+                      <p>{message.body}</p>
+                    }
+                  </>}
+                </>}
 
                 <small>
                   {formatDateTime(
                     message.created_at
                   )}
+
+                  {message.edited_at&&!message.deleted&&
+                    <span className="chat-edited-marker" title={`Bearbeitet: ${formatDateTime(message.edited_at)}`}>
+                      {' '}· bearbeitet
+                    </span>
+                  }
 
                   {/* Zustellstatus nur bei eigenen Nachrichten - beim
                       Empfaenger waere die Angabe sinnlos. */}
@@ -1230,5 +1363,75 @@ export function MessagesPage(){
         </div>
       </section>
     </div>
+
+    {lightbox&&
+      <div
+        className="chat-lightbox"
+        onMouseDown={()=>setLightbox(null)}
+      >
+        <button
+          type="button"
+          className="chat-lightbox-close"
+          onClick={()=>setLightbox(null)}
+        >
+          <X size={22}/>
+        </button>
+
+        {lightbox.images.length>1&&
+          <button
+            type="button"
+            className="chat-lightbox-nav prev"
+            onClick={event=>{
+              event.stopPropagation()
+              setLightbox(current=>current&&{
+                ...current,
+                index:(current.index-1+current.images.length)%current.images.length,
+              })
+            }}
+          >
+            <ChevronLeft size={28}/>
+          </button>
+        }
+
+        <img
+          src={lightbox.images[lightbox.index].content_url||''}
+          alt={lightbox.images[lightbox.index].file_name||'Chat-Bild'}
+          onMouseDown={event=>event.stopPropagation()}
+        />
+
+        {lightbox.images.length>1&&
+          <button
+            type="button"
+            className="chat-lightbox-nav next"
+            onClick={event=>{
+              event.stopPropagation()
+              setLightbox(current=>current&&{
+                ...current,
+                index:(current.index+1)%current.images.length,
+              })
+            }}
+          >
+            <ChevronRight size={28}/>
+          </button>
+        }
+
+        {lightbox.images[lightbox.index].download_url&&
+          <a
+            className="chat-lightbox-download"
+            href={lightbox.images[lightbox.index].download_url||''}
+            onMouseDown={event=>event.stopPropagation()}
+            title="Bild speichern"
+          >
+            <Download size={18}/>
+          </a>
+        }
+
+        {lightbox.images.length>1&&
+          <div className="chat-lightbox-count">
+            {lightbox.index+1} / {lightbox.images.length}
+          </div>
+        }
+      </div>
+    }
   </div>
 }

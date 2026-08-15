@@ -231,6 +231,8 @@ class Appointment(Base):
     # Ergebnis der Durchfuehrung: sale | rental | none. Wurde bisher nur
     # ausgewertet und verworfen; Trichter und Nachfassvorschlag brauchen es.
     outcome: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    # Nur gesetzt, wenn outcome == "none": warum es nicht zum Abschluss kam.
+    no_result_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
 
@@ -306,6 +308,8 @@ class Message(Base):
     body: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, index=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class MessageHidden(Base):

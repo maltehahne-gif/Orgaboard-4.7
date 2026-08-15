@@ -7,12 +7,14 @@ import {
   MapPin,
   Phone,
   Plus,
+  Search,
   X,
 } from 'lucide-react'
 import {Link} from 'react-router-dom'
 import {api} from '../lib/api'
 import {useToast} from '../components/Toast'
 import {connectRealtime} from '../lib/realtime'
+import type {Customer} from '../types'
 
 type FollowUp = {
   id: string
@@ -54,6 +56,11 @@ function formatDate(value: string) {
   }).format(new Date(`${value}T12:00:00`))
 }
 
+function todayIso() {
+  const now = new Date()
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
+}
+
 export function FollowUpsPage() {
   const [scope, setScope] = useState<Scope>('today')
   const [items, setItems] = useState<FollowUp[]>([])
@@ -62,6 +69,14 @@ export function FollowUpsPage() {
   const [completing, setCompleting] = useState<FollowUp | null>(null)
   const [completeNote, setCompleteNote] = useState('')
   const toast = useToast()
+
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [creating, setCreating] = useState(false)
+  const [creatingBusy, setCreatingBusy] = useState(false)
+  const [newCustomerId, setNewCustomerId] = useState('')
+  const [newCustomerSearch, setNewCustomerSearch] = useState('')
+  const [newDueOn, setNewDueOn] = useState(todayIso())
+  const [newNote, setNewNote] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -88,6 +103,55 @@ export function FollowUpsPage() {
       if (event?.entity === 'followup') load()
     })
   }, [load])
+
+  useEffect(() => {
+    api<Customer[]>('/customers').then(setCustomers).catch(() => {})
+  }, [])
+
+  const customerMatches = useMemo(() => {
+    const query = newCustomerSearch.trim().toLowerCase()
+    if (!query) return customers.slice(0, 8)
+    return customers
+      .filter(c => `${c.full_name} ${c.address}`.toLowerCase().includes(query))
+      .slice(0, 8)
+  }, [customers, newCustomerSearch])
+
+  function openCreate() {
+    setNewCustomerId('')
+    setNewCustomerSearch('')
+    setNewDueOn(todayIso())
+    setNewNote('')
+    setCreating(true)
+  }
+
+  async function createFollowUp() {
+    if (!newCustomerId) {
+      toast('Bitte einen Kunden auswählen', 'error')
+      return
+    }
+    const customer = customers.find(c => c.id === newCustomerId)
+    if (!customer) return
+    setCreatingBusy(true)
+    try {
+      await api('/followups', {
+        method: 'POST',
+        body: JSON.stringify({
+          customer_id: newCustomerId,
+          employee_id: customer.employee_id,
+          due_on: newDueOn,
+          reason: 'manual',
+          note: newNote.trim() || null,
+        }),
+      })
+      toast('Wiedervorlage angelegt')
+      setCreating(false)
+      load()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Fehler', 'error')
+    } finally {
+      setCreatingBusy(false)
+    }
+  }
 
   async function complete() {
     if (!completing) return
@@ -185,6 +249,9 @@ export function FollowUpsPage() {
           <h1>Nachfassen</h1>
           <p>Wiedervorlagen, die heute anstehen oder liegengeblieben sind.</p>
         </div>
+        <button className="primary" onClick={openCreate}>
+          <Plus size={18} /> Neue Wiedervorlage
+        </button>
       </div>
 
       {summary && (
@@ -284,6 +351,73 @@ export function FollowUpsPage() {
                 <button onClick={() => setCompleting(null)}>Abbrechen</button>
                 <button className="primary" onClick={complete}>
                   <Check size={16} /> Als erledigt markieren
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {creating && (
+        <div className="modal-backdrop" onMouseDown={() => setCreating(false)}>
+          <div className="modal" onMouseDown={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>Neue Wiedervorlage</h3>
+              <button className="icon-button" onClick={() => setCreating(false)}>
+                <X />
+              </button>
+            </div>
+            <div className="form-grid">
+              <label className="span-2">
+                Kunde
+                <div className="search-field">
+                  <Search size={16} />
+                  <input
+                    value={newCustomerId ? customers.find(c => c.id === newCustomerId)?.full_name || '' : newCustomerSearch}
+                    onChange={e => {
+                      setNewCustomerId('')
+                      setNewCustomerSearch(e.target.value)
+                    }}
+                    placeholder="Kunde suchen…"
+                  />
+                </div>
+                {!newCustomerId && newCustomerSearch.trim() && (
+                  <div className="followup-customer-results">
+                    {customerMatches.length === 0 && <div className="followup-customer-empty">Keine Treffer</div>}
+                    {customerMatches.map(c => (
+                      <button
+                        type="button"
+                        key={c.id}
+                        className="followup-customer-result"
+                        onClick={() => {
+                          setNewCustomerId(c.id)
+                          setNewCustomerSearch('')
+                        }}
+                      >
+                        <strong>{c.full_name}</strong>
+                        <small>{c.address}</small>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </label>
+              <label className="span-2">
+                Nachfassdatum
+                <input type="date" value={newDueOn} onChange={e => setNewDueOn(e.target.value)} />
+              </label>
+              <label className="span-2">
+                Notiz (optional)
+                <textarea
+                  rows={3}
+                  value={newNote}
+                  onChange={e => setNewNote(e.target.value)}
+                  placeholder="Worum geht es?"
+                />
+              </label>
+              <div className="form-actions span-2">
+                <button onClick={() => setCreating(false)}>Abbrechen</button>
+                <button className="primary" disabled={creatingBusy || !newCustomerId} onClick={createFollowUp}>
+                  <Plus size={16} /> Anlegen
                 </button>
               </div>
             </div>

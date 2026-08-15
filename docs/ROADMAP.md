@@ -1,6 +1,6 @@
 # Roadmap
 
-Stand: 14.08.2026
+Stand: 15.08.2026
 
 Legende: ✅ fertig · 🟡 teilweise vorhanden · ❌ offen
 
@@ -25,6 +25,7 @@ Datengrundlage zweimal.
 | ✅ Kunden-Notizen | `Customer.notes` – Feld vorhanden, eigene Notizhistorie fehlt noch |
 | 🟡 Verleih-Seriennummern | `Rental.serial_number` vorhanden, Gerätehistorie fehlt |
 | 🟡 Chat gelesen-Status | `MessageRead` serverseitig vorhanden, Anzeige im Chat fehlt |
+| ✅ Changelog / Versionsanzeige | `/profil`, Versionsnummer zusätzlich in der Seitenleiste (seit 15.08.2026) |
 
 ---
 
@@ -46,6 +47,10 @@ Umgesetzt am 14.08.2026.
 - ✅ überfällige Nachfassaktionen, mit Anzahl der Tage
 - ✅ nach Termin mit Ergebnis „Nichts" Nachfassen anbieten
 - ✅ Nachbetreuung nach Verkauf
+- ✅ Wiedervorlage manuell anlegen, unabhängig von Termin oder Verkauf
+  (seit 15.08.2026)
+- ✅ Grund erfassen, wenn ein Termin ohne Abschluss endet – wird in der
+  Kundenhistorie angezeigt (seit 15.08.2026)
 - 🟡 Erinnerung an Nachfassaktionen – Zähler in der Oberfläche vorhanden,
   Push-Benachrichtigung braucht Phase 5.1
 
@@ -82,6 +87,19 @@ Umgesetzt am 14.08.2026.
 > Sache mehrere Mitarbeiter, werden die Hinweise zu einer Zeile
 > zusammengefasst, sonst verdeckt Wiederholung das Besondere.
 
+### 2.3 Dashboard-Politur ✅
+
+Umgesetzt am 15.08.2026 – Reste aus der ersten Dashboard-Fassung, die nach
+Phase 2 liegen geblieben waren.
+
+- ✅ Schnellzugriff „Neuer Kunde“, „Termin planen“, „Neuer Verkauf“,
+  „Route erstellen“ – waren nur Attrappen ohne Funktion
+- ✅ Wochenwechsel bei den Terminen repariert – Anzeige und geladene Daten
+  liefen über zwei getrennte Zustände auseinander
+- ✅ „Umsatz heute“-Karte zeigt die echte Entwicklung gegenüber gestern statt
+  eines festen Platzhalterwerts
+- ✅ Rollenanzeige zeigt „Teamleiter“ korrekt statt immer „Vertriebspartner“
+
 ---
 
 ## Phase 3 – Fachliche Lücken
@@ -97,6 +115,9 @@ Unabhängig voneinander, jeweils in sich abgeschlossen.
 - ❌ Verkauf bearbeiten
 - ✅ nach Mitarbeiter filtern (war bereits vorhanden, nur für Teamleiter sichtbar)
 - ✅ Storno statt Löschen (Verkauf bleibt mit Stornokennzeichen erhalten)
+- ✅ Storno rückgängig machen – Backend gab es schon, Teamleiter-Oberfläche
+  seit 15.08.2026
+- ✅ Excel-Export der Verkaufsdaten (berücksichtigt die aktiven Filter)
 
 ### 3.3 Produkte
 - ✅ archivieren/deaktivieren
@@ -141,8 +162,8 @@ Unabhängig voneinander, jeweils in sich abgeschlossen.
 ### 4.3 Import / Export
 - ❌ Kunden-Import aus CSV/Excel
 - ❌ Produktimport
-- ❌ Verkaufs-Export nach Excel
-- ❌ Teamstatistik-Export
+- ✅ Verkaufs-Export nach Excel (`/verkaeufe`, seit 15.08.2026)
+- ✅ Teamstatistik-Export (`/teamstatistiken`, seit 15.08.2026)
 - ❌ automatische Wochen- und Monatsberichte
 
 ---
@@ -150,10 +171,12 @@ Unabhängig voneinander, jeweils in sich abgeschlossen.
 ## Phase 5 – App und Betrieb
 
 ### 5.1 PWA
-- ❌ installierbare PWA mit Manifest und Service Worker
-- ❌ App-Icon und Splashscreen
+- ✅ installierbare PWA mit Manifest und Service Worker (seit 15.08.2026)
+- ✅ App-Icon und Splashscreen (Android automatisch aus dem Manifest;
+  iOS über `apple-touch-startup-image` für die gängigsten Gerätegrößen)
 - ❌ Push für Termine, Nachrichten, Verleih, Nachfassen
-- ❌ Offline-Modus
+- 🟡 Offline-Modus – Service Worker liefert bereits besuchte Seiten/Assets
+  weiter aus, wenn das Netz kurz weg ist; kein Offline-Arbeiten mit Sync
 - ❌ Offline-Synchronisation
 
 > Offline-Synchronisation ist der aufwendigste Punkt der gesamten Liste.
@@ -163,9 +186,11 @@ Unabhängig voneinander, jeweils in sich abgeschlossen.
 ### 5.2 Chat
 - ✅ Gesendet-Status
 - ✅ Gelesen-Status (inkl. Leserzahl bei Team-Nachrichten)
-- ❌ einzelne Nachricht löschen
-- ❌ Nachricht bearbeiten
-- ❌ bessere Bild-Vollbildansicht
+- ✅ einzelne Nachricht löschen (weiches Löschen, für alle sichtbar ersetzt
+  durch Platzhalter; seit 15.08.2026)
+- ✅ Nachricht bearbeiten, mit „bearbeitet“-Kennzeichnung (seit 15.08.2026)
+- ✅ bessere Bild-Vollbildansicht mit Galerie (Pfeiltasten, mehrere Bilder;
+  seit 15.08.2026)
 - ❌ Push bei neuer Nachricht
 
 ### 5.3 Betrieb

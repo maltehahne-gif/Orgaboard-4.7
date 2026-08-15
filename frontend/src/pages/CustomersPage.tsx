@@ -1,6 +1,6 @@
 import {FormEvent,useEffect,useState} from 'react'
 import {Mail,Phone,Pencil,Plus,Search,Trash2} from 'lucide-react'
-import {Link} from 'react-router-dom'
+import {Link,useLocation,useNavigate} from 'react-router-dom'
 import {api} from '../lib/api'
 import type {Customer} from '../types'
 import {Modal} from '../components/Modal'
@@ -9,9 +9,16 @@ import {useToast} from '../components/Toast'
 const blank={first_name:'',last_name:'',street:'',house_number:'',postal_code:'',city:'',phone:'',email:'',notes:''}
 export function CustomersPage(){
   const [rows,setRows]=useState<Customer[]>([]);const [q,setQ]=useState('');const [open,setOpen]=useState(false);const [editId,setEditId]=useState<string|null>(null);const [form,setForm]=useState(blank);const toast=useToast();
+  const location=useLocation();const navigate=useNavigate();
   const load=()=>api<Customer[]>(`/customers${q?`?q=${encodeURIComponent(q)}`:''}`).then(setRows)
   useEffect(()=>{const t=setTimeout(load,180);return()=>clearTimeout(t)},[q])
   function create(){setEditId(null);setForm(blank);setOpen(true)}
+  useEffect(()=>{
+    if((location.state as any)?.openCreate){
+      create()
+      navigate(location.pathname,{replace:true,state:null})
+    }
+  },[location.state])
   function edit(c:Customer){setEditId(c.id);setForm({first_name:c.first_name,last_name:c.last_name,street:c.street,house_number:c.house_number,postal_code:c.postal_code,city:c.city,phone:c.phone||'',email:c.email||'',notes:c.notes||''});setOpen(true)}
   async function removeCustomer(c:Customer){
     if(!window.confirm(`Kunde ${c.full_name} wirklich löschen?

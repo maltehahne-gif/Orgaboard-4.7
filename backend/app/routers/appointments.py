@@ -43,8 +43,23 @@ class CompletionSaleItemIn(BaseModel):
     unit_price_cents: int = Field(ge=0)
 
 
+NO_RESULT_REASONS = {
+    "no_interest": "Kein Interesse",
+    "no_budget": "Kein Budget",
+    "price_too_high": "Preis zu hoch",
+    "no_need": "Kein Bedarf",
+    "postponed": "Möchte später entscheiden",
+    "competitor": "Bei anderem Anbieter gekauft",
+    "not_reached": "Kunde nicht angetroffen",
+    "other": "Sonstiges",
+}
+
+
 class CompleteAppointmentIn(BaseModel):
     outcome: Literal["sale", "rental", "none"]
+
+    # Nur bei outcome == "none" relevant: warum kam kein Abschluss zustande.
+    no_result_reason: str | None = None
 
     # Wiedervorlage direkt beim Abschluss anlegen. Bleibt das Feld leer,
     # schlaegt die Antwort ein Datum vor, das die Oberflaeche anbieten kann.
@@ -80,6 +95,9 @@ def serialize(db: Session, a: Appointment):
         "address": a.address_snapshot,
         "phone": a.phone_snapshot,
         "email": a.email_snapshot,
+        "outcome": a.outcome,
+        "no_result_reason": a.no_result_reason,
+        "no_result_reason_label": NO_RESULT_REASONS.get(a.no_result_reason) if a.no_result_reason else None,
         "products": [{"id": p.id, "name": p.name} for p in products],
     }
 
@@ -225,6 +243,12 @@ async def complete_appointment(
         raise HTTPException(
             status_code=409,
             detail="Dieser Termin wurde bereits durchgeführt",
+        )
+
+    if data.outcome == "none" and data.no_result_reason not in NO_RESULT_REASONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Bitte einen Grund auswählen, warum es zu keinem Abschluss kam",
         )
 
     customer = (
@@ -384,6 +408,7 @@ async def complete_appointment(
     # unterscheiden, ob ein durchgefuehrter Termin ergebnislos blieb oder nie
     # nachbereitet wurde - der Trichter braucht genau diese Unterscheidung.
     a.outcome = data.outcome
+    a.no_result_reason = data.no_result_reason if data.outcome == "none" else None
 
     follow_up_id = None
     suggested_follow_up = None
@@ -434,6 +459,7 @@ async def complete_appointment(
         after={
             "status": AppointmentStatus.COMPLETED.value,
             "outcome": data.outcome,
+            "no_result_reason": a.no_result_reason,
             "sale_id": sale_id,
             "rental_id": rental_id,
             "follow_up_id": follow_up_id,

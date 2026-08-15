@@ -55,6 +55,17 @@ type Props={
   onDone:()=>Promise<void>|void
 }
 
+export const NO_RESULT_REASONS:{value:string;label:string}[]=[
+  {value:'no_interest',label:'Kein Interesse'},
+  {value:'no_budget',label:'Kein Budget'},
+  {value:'price_too_high',label:'Preis zu hoch'},
+  {value:'no_need',label:'Kein Bedarf'},
+  {value:'postponed',label:'Möchte später entscheiden'},
+  {value:'competitor',label:'Bei anderem Anbieter gekauft'},
+  {value:'not_reached',label:'Kunde nicht angetroffen'},
+  {value:'other',label:'Sonstiges'},
+]
+
 
 function localDateTime(
   value=new Date()
@@ -111,6 +122,9 @@ export function AppointmentCompletionModal({
 
   const [outcome,setOutcome]=
     useState<Outcome>(null)
+
+  const [noResultReason,setNoResultReason]=
+    useState('')
 
   const [busy,setBusy]=
     useState(false)
@@ -269,8 +283,17 @@ export function AppointmentCompletionModal({
       return
     }
 
+    if(outcome==='none'&&!noResultReason){
+      toast(
+        'Bitte einen Grund auswählen, warum es zu keinem Abschluss kam.',
+        'error',
+      )
+      return
+    }
+
     let payload:any={
       outcome,
+      ...(outcome==='none'?{no_result_reason:noResultReason}:{}),
     }
 
     if(outcome==='sale'){
@@ -1019,9 +1042,25 @@ export function AppointmentCompletionModal({
           </h3>
 
           <p>
-            Der Termin wird lediglich als
+            Der Termin wird als
             „durchgeführt“ markiert.
           </p>
+
+          <label className="completion-reason-label">
+            Grund
+            <select
+              value={noResultReason}
+              onChange={e=>setNoResultReason(e.target.value)}
+              required
+            >
+              <option value="">Bitte auswählen …</option>
+              {NO_RESULT_REASONS.map(reason=>
+                <option key={reason.value} value={reason.value}>
+                  {reason.label}
+                </option>
+              )}
+            </select>
+          </label>
 
           <div className="form-actions">
             <button
@@ -1034,7 +1073,7 @@ export function AppointmentCompletionModal({
             <button
               type="button"
               className="primary"
-              disabled={busy}
+              disabled={busy||!noResultReason}
               onClick={()=>
                 void finish()
               }

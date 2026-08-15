@@ -61,6 +61,17 @@ OUTCOME_LABELS = {
     "none": "ohne Abschluss",
 }
 
+NO_RESULT_REASON_LABELS = {
+    "no_interest": "Kein Interesse",
+    "no_budget": "Kein Budget",
+    "price_too_high": "Preis zu hoch",
+    "no_need": "Kein Bedarf",
+    "postponed": "Möchte später entscheiden",
+    "competitor": "Bei anderem Anbieter gekauft",
+    "not_reached": "Kunde nicht angetroffen",
+    "other": "Sonstiges",
+}
+
 
 @dataclass
 class TimelineEvent:
@@ -101,6 +112,8 @@ def customer_timeline(db: Session, customer_id: str) -> list[dict]:
         outcome_label = OUTCOME_LABELS.get(a.outcome or "")
         if outcome_label:
             parts.append(outcome_label)
+        if a.outcome == "none" and a.no_result_reason:
+            parts.append(NO_RESULT_REASON_LABELS.get(a.no_result_reason, a.no_result_reason))
         detail = " · ".join(parts)
         events.append(
             TimelineEvent(
@@ -113,6 +126,7 @@ def customer_timeline(db: Session, customer_id: str) -> list[dict]:
                     "status": a.status.value,
                     "appointment_type": a.appointment_type.value,
                     "outcome": a.outcome,
+                    "no_result_reason": a.no_result_reason,
                     "address": a.address_snapshot,
                 },
             )

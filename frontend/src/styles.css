@@ -6186,6 +6186,25 @@ body:has(.v7-login-scene) form {
   justify-content:center;
 }
 
+.completion-reason-label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  text-align:left;
+  max-width:320px;
+  margin:0 auto 18px;
+  color:#cbd2d1;
+  font-size:13px;
+}
+
+.completion-reason-label select{
+  background:#0d181d;
+  border:1px solid #2b3d42;
+  color:#f5f7f6;
+  border-radius:9px;
+  padding:10px 11px;
+}
+
 @media(max-width:700px){
   .completion-options{
     grid-template-columns:1fr;
@@ -11692,3 +11711,48 @@ to{
 
 
 
+
+/* Verkauf: Storno-Zelle mit Wiederherstellen-Button */
+.sale-cancelled-cell{display:flex;align-items:center;gap:6px}
+.sale-cancelled-flag{display:inline-flex;align-items:center;gap:6px;color:var(--danger);font-size:13px}
+
+/* Nachfassen: Kundensuche im "Neue Wiedervorlage"-Formular */
+.followup-customer-results{margin-top:8px;border:1px solid #23383d;border-radius:10px;overflow:hidden;max-height:220px;overflow-y:auto}
+.followup-customer-result{display:flex;flex-direction:column;width:100%;text-align:left;padding:10px 12px;border:0;border-bottom:1px solid #18272b;background:#0b1418;color:#f5f7f6}
+.followup-customer-result:last-child{border-bottom:0}
+.followup-customer-result:hover{background:#122127}
+.followup-customer-result small{color:var(--muted);margin-top:2px}
+.followup-customer-empty{padding:10px 12px;color:var(--muted)}
+
+/* Chat: eigene Nachricht bearbeiten/loeschen, Bild-Vollbildansicht */
+.chat-v2-message-actions{position:absolute;top:-26px;right:4px;display:flex;gap:4px;opacity:0;transition:opacity .12s}
+.chat-v2-message{position:relative}
+.chat-v2-message:hover .chat-v2-message-actions{opacity:1}
+.chat-v2-message-actions button{background:#111d21;border:1px solid #2a3d42;color:#b6c0c0;border-radius:7px;padding:5px;display:grid;place-items:center}
+.chat-v2-message-actions button:hover{color:#fff;border-color:#3f9455}
+.chat-deleted{display:flex;align-items:center;gap:6px;color:var(--muted);font-style:italic}
+.chat-edited-marker{color:var(--muted);font-size:11px}
+.chat-edit-box{display:flex;flex-direction:column;gap:8px}
+.chat-edit-box textarea{width:100%;background:#0d181d;border:1px solid #2b3d42;color:#f5f7f6;border-radius:9px;padding:8px 10px;resize:vertical}
+.chat-edit-actions{display:flex;justify-content:flex-end;gap:8px}
+.chat-image-open{border:0;background:transparent;padding:0;display:block;cursor:zoom-in;width:100%;height:100%}
+.chat-lightbox{position:fixed;inset:0;background:rgba(2,6,5,.92);z-index:300;display:grid;place-items:center;padding:40px}
+.chat-lightbox img{max-width:min(90vw,900px);max-height:85vh;object-fit:contain;border-radius:8px;box-shadow:0 30px 100px #000}
+.chat-lightbox-close{position:fixed;top:18px;right:22px;background:rgba(255,255,255,.08);border:0;color:#fff;border-radius:50%;width:40px;height:40px;display:grid;place-items:center}
+.chat-lightbox-nav{position:fixed;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.08);border:0;color:#fff;border-radius:50%;width:48px;height:48px;display:grid;place-items:center}
+.chat-lightbox-nav.prev{left:18px}
+.chat-lightbox-nav.next{right:18px}
+.chat-lightbox-download{position:fixed;bottom:22px;right:22px;background:rgba(255,255,255,.08);border:0;color:#fff;border-radius:50%;width:44px;height:44px;display:grid;place-items:center}
+.chat-lightbox-count{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);color:#dfe6e4;font-size:13px;background:rgba(0,0,0,.4);padding:5px 12px;border-radius:999px}
+
+/* Kopfzeile mit mehreren Aktionen (z.B. Export + Anlegen) */
+.page-head-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* Profil: Changelog / Versionsuebersicht */
+.changelog-card{padding:20px 22px}
+.changelog-card>h2{margin:0 0 14px;font-size:17px}
+.changelog-entry{padding:14px 0;border-top:1px solid #182a2f}
+.changelog-entry:first-of-type{border-top:0;padding-top:0}
+.changelog-entry h3{margin:0 0 8px;font-size:14px;display:flex;align-items:baseline;gap:8px}
+.changelog-entry h3 small{color:var(--muted);font-weight:400;font-size:12px}
+.changelog-entry ul{margin:0;padding-left:18px;color:#cbd2d1;font-size:13px;display:flex;flex-direction:column;gap:5px}

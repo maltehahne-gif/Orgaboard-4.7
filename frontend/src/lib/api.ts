@@ -21,6 +21,22 @@ export async function api<T>(path:string, options:RequestInit = {}):Promise<T> {
   return ct.includes('application/json') ? response.json() : (response as unknown as T)
 }
 
+export async function downloadFile(path:string, fallbackName:string) {
+  const response = await api<Response>(path)
+  const blob = await response.blob()
+  const disposition = response.headers.get('content-disposition') || ''
+  const match = /filename="?([^"]+)"?/.exec(disposition)
+  const filename = match ? match[1] : fallbackName
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 export function money(cents:number|null|undefined) {
   if (cents === null || cents === undefined) return '–'
   return new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(cents/100)

@@ -8,16 +8,19 @@ import {
 import {
   Check,
   ChevronDown,
+  Download,
   Package,
   Plus,
   Search,
   Ban,
+  RotateCcw,
   Trash2,
   X,
 } from 'lucide-react'
 
 import {
   api,
+  downloadFile,
   formatDateTime,
   money,
 } from '../lib/api'
@@ -31,6 +34,7 @@ import type {
 import {Modal} from '../components/Modal'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
+import {useLocation,useNavigate} from 'react-router-dom'
 
 
 type CatalogProduct = Product & {
@@ -155,6 +159,8 @@ export function SalesPage(){
   const isTeamLeader=
     me?.role==='TEAM_LEADER'
 
+  const location=useLocation()
+  const navigate=useNavigate()
 
   const [rows,setRows]=
     useState<Sale[]>([])
@@ -192,6 +198,9 @@ export function SalesPage(){
     useState(false)
 
   const [busy,setBusy]=
+    useState(false)
+
+  const [exporting,setExporting]=
     useState(false)
 
   const [customerSearch,setCustomerSearch]=
@@ -284,6 +293,15 @@ export function SalesPage(){
     setCustomerSearch('')
     setCustomerSearchOpen(false)
   }
+
+
+  useEffect(()=>{
+    if((location.state as any)?.openCreate){
+      resetForm()
+      setOpen(true)
+      navigate(location.pathname,{replace:true,state:null})
+    }
+  },[location.state])
 
 
   function addItem(){
@@ -867,6 +885,60 @@ export function SalesPage(){
   }
 
 
+  async function exportExcel(){
+    setExporting(true)
+    try{
+      const query=filteredSales
+        .map(sale=>`ids=${encodeURIComponent(sale.id)}`)
+        .join('&')
+      await downloadFile(
+        `/sales/export.xlsx${query?`?${query}`:''}`,
+        'Verkaufsdaten.xlsx',
+      )
+    }catch(error){
+      toast(
+        error instanceof Error
+          ? error.message
+          : 'Export fehlgeschlagen.',
+        'error'
+      )
+    }finally{
+      setExporting(false)
+    }
+  }
+
+
+  async function wiederherstellen(
+    sale:Sale
+  ){
+
+    if(!window.confirm(
+      'Storno zurücknehmen?\n\n'
+      +'Der Verkauf zählt danach wieder in allen Auswertungen.'
+    ))return
+
+    try{
+
+      await api(
+        `/sales/${sale.id}/restore`,
+        {method:'POST'}
+      )
+
+      toast('Storno wurde zurückgenommen.')
+      await load()
+
+    }catch(error){
+
+      toast(
+        error instanceof Error
+          ? error.message
+          : 'Der Verkauf konnte nicht wiederhergestellt werden.',
+        'error'
+      )
+    }
+  }
+
+
   async function stornieren(
     sale:Sale
   ){
@@ -925,17 +997,31 @@ export function SalesPage(){
         </div>
 
 
-        <button
-          className="primary"
-          type="button"
-          onClick={()=>{
-            resetForm()
-            setOpen(true)
-          }}
-        >
-          <Plus size={18}/>
-          Verkauf erfassen
-        </button>
+        <div className="page-head-actions">
+
+          <button
+            type="button"
+            disabled={exporting}
+            onClick={exportExcel}
+            title="Aktuell gefilterte Verkäufe als Excel-Datei herunterladen"
+          >
+            <Download size={18}/>
+            {exporting?'Export läuft …':'Excel exportieren'}
+          </button>
+
+          <button
+            className="primary"
+            type="button"
+            onClick={()=>{
+              resetForm()
+              setOpen(true)
+            }}
+          >
+            <Plus size={18}/>
+            Verkauf erfassen
+          </button>
+
+        </div>
 
       </div>
 
@@ -1187,14 +1273,29 @@ export function SalesPage(){
 
                   <td>
                     {sale.cancelled ? (
-                      <span
-                        className="sale-cancelled-flag"
-                        title={
-                          sale.cancellation_reason
-                          || 'Ohne Angabe eines Grundes'
+                      <span className="sale-cancelled-cell">
+                        <span
+                          className="sale-cancelled-flag"
+                          title={
+                            sale.cancellation_reason
+                            || 'Ohne Angabe eines Grundes'
+                          }
+                        >
+                          <Ban size={14}/> Storniert
+                        </span>
+
+                        {isTeamLeader&&
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={()=>
+                              wiederherstellen(sale)
+                            }
+                            title="Storno zurücknehmen"
+                          >
+                            <RotateCcw size={16}/>
+                          </button>
                         }
-                      >
-                        <Ban size={14}/> Storniert
                       </span>
                     ) : (
                       <button

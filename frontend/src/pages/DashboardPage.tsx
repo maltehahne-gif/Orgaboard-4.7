@@ -1,7 +1,7 @@
 import {DashboardInsights} from '../components/DashboardInsights'
 import {BadgeEuro,CalendarClock,CalendarDays,CalendarRange,Clock3,Info,Mail,MapPinned,PackageCheck,Target} from 'lucide-react'
 import {useCallback,useEffect,useState} from 'react'
-import {Link} from 'react-router-dom'
+import {Link,useNavigate} from 'react-router-dom'
 import {api,formatDateTime,money} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
 import {StatCard} from '../components/StatCard'
@@ -15,13 +15,15 @@ import {useToast} from '../components/Toast'
 type Dash={revenue_today_cents:number;revenue_week_cents:number;revenue_month_cents:number;k70_revenue_today_cents:number;k70_revenue_week_cents:number;k70_revenue_month_cents:number;units_week:number;units_month:number;units_target:number;units_missing:number;units_percent:number;next_appointment:Appointment|null;today_appointments:Appointment[];active_rentals:number;unread_messages:number}
 type TeamEmployee={id:string;display_name:string}
 type Editor={appointment?:Appointment;initialDay?:Date}
+type DayTrend={revenue_change_percent:number|null}
 
 export function DashboardPage(){
   const {me}=useAuth()
+  const navigate=useNavigate()
 
-  const [current,setCurrent]=useState(new Date())
   const toast=useToast()
   const [dashboard,setDashboard]=useState<Dash|null>(null)
+  const [todayTrend,setTodayTrend]=useState<DayTrend|null>(null)
   const [appointments,setAppointments]=useState<Appointment[]>([])
   const [customers,setCustomers]=useState<Customer[]>([])
   const [products,setProducts]=useState<Product[]>([])
@@ -35,14 +37,15 @@ export function DashboardPage(){
     const end=addDays(weekStart,7)
     const query=`?start=${encodeURIComponent(weekStart.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
     try{
-      const [dash,appointmentRows,customerRows,productRows,employeeRows]=await Promise.all([
+      const [dash,appointmentRows,customerRows,productRows,employeeRows,trend]=await Promise.all([
         api<Dash>('/dashboard'),
         api<Appointment[]>(`/appointments${query}`),
         api<Customer[]>('/customers'),
         api<Product[]>('/products'),
         isTeamLeader?api<TeamEmployee[]>('/team/employees'):Promise.resolve([]),
+        api<DayTrend>('/dashboard/trend?period=day'),
       ])
-      setDashboard(dash);setAppointments(appointmentRows);setCustomers(customerRows);setProducts(productRows);setEmployees(employeeRows)
+      setDashboard(dash);setAppointments(appointmentRows);setCustomers(customerRows);setProducts(productRows);setEmployees(employeeRows);setTodayTrend(trend)
     }catch(error){toast(error instanceof Error?error.message:'Dashboard konnte nicht geladen werden','error')}
   },[isTeamLeader,toast,weekStart])
 
@@ -90,10 +93,10 @@ export function DashboardPage(){
 
 
       <AppointmentWeek
-        weekStart={current}
+        weekStart={weekStart}
         appointments={appointments}
-        onShiftWeek={(days)=>setCurrent(addDays(current,days))}
-        onToday={()=>setCurrent(new Date())}
+        onShiftWeek={(days)=>setWeekStart(current=>addDays(current,days))}
+        onToday={()=>setWeekStart(startOfWorkWeek())}
         onCreate={(day)=>setEditor({initialDay:day})}
         onEdit={(appointment)=>setEditor({appointment})}
         onToggleCompleted={toggleCompleted}
@@ -189,7 +192,7 @@ export function DashboardPage(){
         </h2>
 
         <p>
-          Vertriebspartner
+          {isTeamLeader?'Teamleiter':'Vertriebspartner'}
         </p>
 
         <span>
@@ -212,9 +215,17 @@ export function DashboardPage(){
           {money(dashboard.revenue_today_cents)}
         </strong>
 
-        <span className="green">
-          ↗ +12%
-        </span>
+        {todayTrend&&todayTrend.revenue_change_percent!==null?(
+          <span className={todayTrend.revenue_change_percent>=0?'green':'orange'}>
+            {todayTrend.revenue_change_percent>=0?'↗ +':'↘ '}
+            {todayTrend.revenue_change_percent}%
+            {' '}ggü. gestern
+          </span>
+        ):(
+          <span className="muted">
+            Kein Vergleichswert für gestern
+          </span>
+        )}
 
       </div>
 
@@ -255,19 +266,19 @@ export function DashboardPage(){
 
         <div className="apple-actions">
 
-          <button>
+          <button onClick={()=>navigate('/kunden',{state:{openCreate:true}})}>
             Neuer Kunde
           </button>
 
-          <button>
+          <button onClick={()=>setEditor({initialDay:new Date()})}>
             Termin planen
           </button>
 
-          <button>
+          <button onClick={()=>navigate('/verkaeufe',{state:{openCreate:true}})}>
             Neuer Verkauf
           </button>
 
-          <button>
+          <button onClick={()=>navigate('/routenplanung')}>
             Route erstellen
           </button>
 

@@ -330,6 +330,8 @@ def serialize(
         )
     )
 
+    deleted = message.deleted_at is not None
+
     return {
         "id": message.id,
         "sender_user_id": message.sender_user_id,
@@ -340,12 +342,15 @@ def serialize(
             if recipient
             else "Team"
         ),
-        "body": message.body,
+        "body": "" if deleted else message.body,
         "created_at": message.created_at,
         "read_at": message.read_at,
         "is_read": is_read,
+        "edited_at": message.edited_at,
+        "deleted_at": message.deleted_at,
+        "deleted": deleted,
         "delivery": delivery_state(db, message, user_id, read_count),
-        "attachments": [
+        "attachments": [] if deleted else [
             serialize_attachment(a)
             for a in attachments
         ],
@@ -1026,6 +1031,54 @@ async def mark_read(
     return {"ok": True}
 
 
+class MessageEditIn(BaseModel):
+    body: str
+
+
+async def notify_conversation(message: Message, event: dict):
+    """Beide Seiten einer Unterhaltung informieren; bei Team-Nachrichten alle."""
+    if message.recipient_user_id:
+        await manager.publish(event, user_id=message.sender_user_id)
+        await manager.publish(event, user_id=message.recipient_user_id)
+    else:
+        await manager.publish(event)
+
+
+@router.patch(
+    "/{message_id}",
+    dependencies=[Depends(require_csrf)],
+)
+async def edit_message(
+    message_id: str,
+    data: MessageEditIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    message = db.get(Message, message_id)
+
+    if not message or message.sender_user_id != user.id:
+        raise HTTPException(status_code=404, detail="Nachricht nicht gefunden")
+
+    if message.deleted_at:
+        raise HTTPException(status_code=409, detail="Gelöschte Nachrichten können nicht bearbeitet werden")
+
+    body = data.body.strip()
+    if not body:
+        raise HTTPException(status_code=400, detail="Nachricht ist leer")
+
+    before = {"body": message.body}
+    message.body = body
+    message.edited_at = datetime.now(timezone.utc)
+    db.flush()
+
+    audit(db, user, "message.edited", "message", message.id, before=before, after={"body": body})
+    db.commit()
+
+    await notify_conversation(message, {"type": "message.updated", "message_id": message.id})
+
+    return serialize(db, message, user.id)
+
+
 @router.delete(
     "/clear",
     status_code=204,
@@ -1111,3 +1164,31 @@ async def clear_messages(
     )
 
     return None
+
+
+@router.delete(
+    "/{message_id}",
+    dependencies=[Depends(require_csrf)],
+)
+async def delete_message(
+    message_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    message = db.get(Message, message_id)
+
+    if not message or message.sender_user_id != user.id:
+        raise HTTPException(status_code=404, detail="Nachricht nicht gefunden")
+
+    if message.deleted_at:
+        return serialize(db, message, user.id)
+
+    message.deleted_at = datetime.now(timezone.utc)
+    db.flush()
+
+    audit(db, user, "message.deleted", "message", message.id)
+    db.commit()
+
+    await notify_conversation(message, {"type": "message.deleted", "message_id": message.id})
+
+    return serialize(db, message, user.id)

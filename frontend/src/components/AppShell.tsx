@@ -27,6 +27,7 @@ import {useAuth} from '../lib/auth'
 import {api} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
 import {GlobalSearch} from './GlobalSearch'
+import {APP_VERSION} from '../lib/changelog'
 
 type NavItem = {
   to: string
@@ -236,6 +237,10 @@ export function AppShell() {
           <LogOut size={18} strokeWidth={1.9} aria-hidden="true" />
           <span className="ob-nav-label">Abmelden</span>
         </button>
+
+        <NavLink to="/profil" className="ob-version">
+          OrgaBoard v{APP_VERSION}
+        </NavLink>
       </aside>
 
       {/* ---------- Inhalt ---------- */}
