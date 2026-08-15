@@ -10976,3 +10976,17 @@ to{
     min-width:0;
   }
 }
+
+
+/* Hinweis unter den Zielvorgaben im Profil */
+
+.profil-hinweis{
+  margin:0;
+
+  font-size:12.5px;
+  line-height:1.55;
+}
+
+.profil-hinweis strong{
+  color:#eef7f2;
+}
