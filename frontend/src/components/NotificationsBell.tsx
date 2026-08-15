@@ -65,7 +65,7 @@ export function NotificationsBell() {
         aria-expanded={open}
       >
         <Bell size={19} strokeWidth={1.9} />
-        {unread > 0 && <span className="ob-notif-dot">{badge}</span>}
+        {unread > 0 && <span className="ob-notif-dot" aria-label={`${badge} ungelesen`} />}
       </button>
 
       {open && (

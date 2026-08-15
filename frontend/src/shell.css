@@ -174,18 +174,15 @@ body.ob-scroll-locked {
   scrollbar-color: #24383a transparent;
 }
 
+/* Die Referenzvorlage zeigt die Navigation als eine durchgehende Liste ohne
+   Gruppenkopfzeilen - die Titel bleiben im Markup (Screenreader, spaetere
+   Wiederverwendung), sind auf der vollen Seitenleiste aber unsichtbar. */
 .ob-nav-group + .ob-nav-group {
-  margin-top: 14px;
+  margin-top: 2px;
 }
 
 .ob-nav-title {
-  margin: 0 0 5px;
-  padding: 0 10px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: #647a72;
+  display: none;
 }
 
 .ob-nav-link,
@@ -427,18 +424,13 @@ body.ob-scroll-locked {
 
 .ob-notif-dot {
   position: absolute;
-  top: 3px;
-  right: 3px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 999px;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   background: #ff5a5a;
-  color: #200404;
-  font-size: 10px;
-  font-weight: 700;
-  display: grid;
-  place-items: center;
+  box-shadow: 0 0 0 2px #060d0f;
 }
 
 .ob-topbar-tools .ob-icon-button {
@@ -1963,6 +1955,60 @@ body.ob-scroll-locked {
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* Mini-Kalenderkarte unten in der Seitenleiste - zeigt das echte Datum. */
+.ob-today {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 11px;
+  border-radius: var(--ob-radius);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--ob-line);
+}
+
+.ob-today-icon {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(52, 215, 105, 0.12);
+  color: var(--ob-accent);
+}
+
+.ob-today-text {
+  min-width: 0;
+}
+
+.ob-today-text strong {
+  display: block;
+  font-size: 12.5px;
+}
+
+.ob-today-text small {
+  display: block;
+  font-size: 11px;
+  color: var(--ob-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1179px) {
+  .ob-today-text {
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+
+  .ob-sidebar:hover .ob-today-text,
+  .ob-sidebar:focus-within .ob-today-text {
+    opacity: 1;
+  }
 }
 
 /* Versionsanzeige unten in der Seitenleiste, fuehrt zum Profil-Changelog */

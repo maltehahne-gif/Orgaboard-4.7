@@ -9297,14 +9297,15 @@ a.dash-kpi.dash-kpi-link:hover { border-color: #2f4a44; transform: translateY(-2
 .dash-kpi-top small { color: #c8d0cf; font-size: 12.5px; }
 
 .dash-kpi-icon {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   flex: none;
-  border-radius: 9px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
-  background: rgba(52, 215, 105, .14);
-  color: var(--green);
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid #223236;
+  color: #7fd79a;
 }
 
 .dash-kpi strong { font-size: 23px; font-variant-numeric: tabular-nums; }
@@ -9320,20 +9321,49 @@ a.dash-kpi.dash-kpi-link:hover { border-color: #2f4a44; transform: translateY(-2
 .dash-card-head a { flex: none; font-size: 12px; color: var(--muted); }
 .dash-card-head a:hover { color: var(--green); }
 
-.dash-quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+/* Fusszeile der dichten Dashboardkarten - immer am unteren Kartenrand,
+   auch wenn die Karte durch eine Nachbarkarte in der Reihe hoeher gezogen wird. */
+.dash-card-link {
+  margin-top: auto;
+  padding-top: 2px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--green);
+}
+
+.dash-card-link:hover { text-decoration: underline; }
+
+.dash-card-button {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px solid #22353a;
+  background: #0c171b;
+  color: #edf2f1;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.dash-card-button:hover { border-color: #3f9455; color: var(--green); }
+
+.dash-quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex: 1; align-content: center; }
 
 .dash-quick-grid button {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 14px 6px;
-  border-radius: 11px;
+  gap: 6px;
+  padding: 11px 6px;
+  border-radius: 10px;
   border: 1px solid #22353a;
   background: #0c171b;
   color: #edf2f1;
-  font-size: 12px;
+  font-size: 11.5px;
   text-align: center;
 }
 
@@ -9411,7 +9441,8 @@ a.dash-kpi.dash-kpi-link:hover { border-color: #2f4a44; transform: translateY(-2
 
 .dash-agenda-main { display: flex; flex-direction: column; min-width: 0; gap: 1px; padding-top: 1px; }
 .dash-agenda-main strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dash-agenda-main span { font-size: 11.5px; color: var(--muted); }
+.dash-agenda-main span { font-size: 12px; color: #c3cfcb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-agenda-main small { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Top Kunden / Nachrichten - Zeilen mit Initialen-Avatar. */
 .dash-people { display: flex; flex-direction: column; }
@@ -9445,6 +9476,7 @@ a.dash-kpi.dash-kpi-link:hover { border-color: #2f4a44; transform: translateY(-2
 .dash-people-main { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
 .dash-people-main strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dash-people-main span { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-people-main small { font-size: 10.5px; color: #5f746c; }
 
 .dash-k70-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 
@@ -9467,21 +9499,29 @@ a.dash-kpi.dash-kpi-link:hover { border-color: #2f4a44; transform: translateY(-2
    Stimmungsbild, solange keine Route berechnet wurde. */
 .dash-route-visual {
   position: relative;
-  min-height: 100px;
+  min-height: 130px;
   border-radius: 10px;
-  background: #0c171b;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(52, 215, 105, .07), transparent 45%),
+    radial-gradient(circle at 82% 78%, rgba(52, 215, 105, .05), transparent 45%),
+    #0c171b;
   border: 1px solid #21353a;
   overflow: hidden;
 }
 
-.dash-route-visual::before {
-  content: '';
+.dash-route-path {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 45%;
-  height: 1px;
-  background: repeating-linear-gradient(90deg, #2c9155 0 6px, transparent 6px 12px);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.dash-route-path path {
+  fill: none;
+  stroke: #2c9155;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 1 9;
 }
 
 .dash-route-dot {

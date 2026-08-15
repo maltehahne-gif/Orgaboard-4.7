@@ -17,6 +17,7 @@ import {
   Search,
   Settings,
   ShoppingCart,
+  Sun,
   Table2,
   Users,
   X,
@@ -193,6 +194,11 @@ export function AppShell() {
     .join('')
 
   const roleLabel = isTeamLeader ? 'Teamleiter' : 'Vertriebspartner'
+  const todayLabel = new Intl.DateTimeFormat('de-DE', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'long',
+  }).format(new Date())
 
   const navLink = (item: NavItem, onNavigate?: () => void) => (
     <NavLink
@@ -242,6 +248,16 @@ export function AppShell() {
           ))}
         </nav>
 
+        <div className="ob-today">
+          <span className="ob-today-icon" aria-hidden="true">
+            <Sun size={16} strokeWidth={2} />
+          </span>
+          <span className="ob-today-text">
+            <strong>Heute</strong>
+            <small>{todayLabel}</small>
+          </span>
+        </div>
+
         <NavLink to="/profil" className="ob-version">
           OrgaBoard v{APP_VERSION}
         </NavLink>
@@ -278,9 +294,8 @@ export function AppShell() {
           <div className="ob-topbar-tools">
             <NotificationsBell />
 
-            <NavLink to="/nachrichten" className="ob-icon-button" aria-label="Nachrichten">
+            <NavLink to="/nachrichten" className="ob-icon-button" aria-label={`Nachrichten${unread > 0 ? `, ${badge} ungelesen` : ''}`}>
               <Mail size={19} strokeWidth={1.9} />
-              {unread > 0 && <span className="ob-notif-dot">{badge}</span>}
             </NavLink>
 
             <div className="ob-topbar-profile-wrap" ref={profileMenuRef}>

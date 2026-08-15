@@ -1,8 +1,10 @@
 import {DashboardInsights} from '../components/DashboardInsights'
 import {
+  AlarmClock,
   ArrowDownRight,
   ArrowUpRight,
   BadgeEuro,
+  BarChart3,
   CalendarDays,
   CalendarRange,
   ContactRound,
@@ -60,6 +62,16 @@ function greeting() {
   return 'Guten Abend'
 }
 
+function relativeTime(value: string) {
+  const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60000)
+  if (minutes < 1) return 'gerade eben'
+  if (minutes < 60) return `vor ${minutes} Minute${minutes === 1 ? '' : 'n'}`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `vor ${hours} Stunde${hours === 1 ? '' : 'n'}`
+  const days = Math.round(hours / 24)
+  return `vor ${days} Tag${days === 1 ? '' : 'en'}`
+}
+
 function initials(name: string) {
   return name
     .split(' ')
@@ -78,7 +90,7 @@ function Delta({percent}: {percent: number | null | undefined}) {
     <span className={`delta ${up ? 'up' : 'down'}`}>
       <Icon size={13} />
       {up ? '+' : ''}
-      {percent}% ggü. Vorwoche
+      {percent.toLocaleString('de-DE')}% vs. letzte Woche
     </span>
   )
 }
@@ -281,11 +293,10 @@ export function DashboardPage() {
         <section className="card dash-card">
           <div className="dash-card-head">
             <h2>Heute – Termine</h2>
-            <Link to="/termine">Alle Termine anzeigen</Link>
           </div>
           {dashboard.today_appointments.length === 0 && <p className="dash-list-empty">Heute keine Termine geplant</p>}
           <div className="dash-agenda">
-            {dashboard.today_appointments.slice(0, 5).map(item => {
+            {dashboard.today_appointments.slice(0, 4).map(item => {
               const type = appointmentTypeOption(item.appointment_type)
               return (
                 <div className="dash-agenda-row" key={item.id}>
@@ -297,13 +308,18 @@ export function DashboardPage() {
                     <span className="dash-agenda-dot" style={{background: type.color}} />
                   </div>
                   <div className="dash-agenda-main">
-                    <strong>{item.customer_name || 'Termin'}</strong>
-                    <span>{type.label}</span>
+                    <strong>{type.label}</strong>
+                    <span>{item.customer_name || 'Termin'}</span>
+                    {(item.notes || item.address) && <small>{item.notes || item.address}</small>}
                   </div>
                 </div>
               )
             })}
           </div>
+          <Link to="/termine" className="dash-card-button">
+            <CalendarDays size={15} />
+            Alle Termine anzeigen
+          </Link>
         </section>
 
         <section className="card dash-card">
@@ -311,21 +327,29 @@ export function DashboardPage() {
             <h2>Schnellzugriff</h2>
           </div>
           <div className="dash-quick-grid">
+            <button onClick={() => setEditor({initialDay: new Date()})}>
+              <CalendarDays size={18} />
+              Neuer Termin
+            </button>
             <button onClick={() => navigate('/kunden', {state: {openCreate: true}})}>
-              <ContactRound size={19} />
+              <ContactRound size={18} />
               Neuer Kunde
             </button>
-            <button onClick={() => setEditor({initialDay: new Date()})}>
-              <CalendarDays size={19} />
-              Termin planen
-            </button>
-            <button onClick={() => navigate('/verkaeufe', {state: {openCreate: true}})}>
-              <ShoppingCart size={19} />
-              Neuer Verkauf
+            <button onClick={() => navigate('/nachfassen')}>
+              <AlarmClock size={18} />
+              Nachfassen
             </button>
             <button onClick={() => navigate('/routenplanung')}>
-              <RouteIcon size={19} />
+              <RouteIcon size={18} />
               Route planen
+            </button>
+            <button onClick={() => navigate('/verkaeufe', {state: {openCreate: true}})}>
+              <ShoppingCart size={18} />
+              Neuer Verkauf
+            </button>
+            <button onClick={() => navigate('/verkaufstabelle')}>
+              <BarChart3 size={18} />
+              Bericht öffnen
             </button>
           </div>
         </section>
@@ -333,7 +357,6 @@ export function DashboardPage() {
         <section className="card dash-card">
           <div className="dash-card-head">
             <h2>Top Kunden</h2>
-            <Link to="/kunden">Alle Kunden anzeigen</Link>
           </div>
           {topCustomers.length === 0 && <p className="dash-list-empty">Noch keine Verkäufe erfasst</p>}
           <div className="dash-people">
@@ -347,12 +370,14 @@ export function DashboardPage() {
               </Link>
             ))}
           </div>
+          <Link to="/kunden" className="dash-card-link">
+            Alle Kunden anzeigen
+          </Link>
         </section>
 
         <section className="card dash-card">
           <div className="dash-card-head">
             <h2>Nachrichten</h2>
-            <Link to="/nachrichten">Alle Nachrichten anzeigen</Link>
           </div>
           {messages.length === 0 && <p className="dash-list-empty">Noch keine Nachrichten</p>}
           <div className="dash-people">
@@ -362,10 +387,14 @@ export function DashboardPage() {
                 <span className="dash-people-main">
                   <strong>{item.sender_name}</strong>
                   <span>{item.body}</span>
+                  <small>{relativeTime(item.created_at)}</small>
                 </span>
               </Link>
             ))}
           </div>
+          <Link to="/nachrichten" className="dash-card-link">
+            Alle Nachrichten anzeigen
+          </Link>
         </section>
       </div>
 
@@ -376,10 +405,13 @@ export function DashboardPage() {
           </div>
           <div className="dash-route-body">
             <div className="dash-route-visual" aria-hidden="true">
-              <span className="dash-route-dot" style={{left: '10%', top: '68%'}} />
-              <span className="dash-route-dot" style={{left: '34%', top: '28%'}} />
-              <span className="dash-route-dot" style={{left: '60%', top: '60%'}} />
-              <span className="dash-route-dot" style={{left: '85%', top: '22%'}} />
+              <svg viewBox="0 0 260 100" preserveAspectRatio="none" className="dash-route-path">
+                <path d="M22 74 C48 30, 70 30, 92 46 S140 78, 168 50 S210 18, 238 24" />
+              </svg>
+              <span className="dash-route-dot" style={{left: '8.5%', top: '74%'}} />
+              <span className="dash-route-dot" style={{left: '35.4%', top: '46%'}} />
+              <span className="dash-route-dot" style={{left: '64.6%', top: '50%'}} />
+              <span className="dash-route-dot" style={{left: '91.5%', top: '24%'}} />
             </div>
             <div className="dash-route-stats">
               <div>
