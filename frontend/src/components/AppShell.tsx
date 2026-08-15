@@ -18,6 +18,7 @@ import {
   Route as RouteIcon,
   Search,
   Settings,
+  ServerCog,
   ShieldCheck,
   ShoppingCart,
   Sun,
@@ -29,7 +30,7 @@ import type {LucideIcon} from 'lucide-react'
 import {useEffect, useRef, useState} from 'react'
 import {NavLink, Outlet, useLocation} from 'react-router-dom'
 import {useAuth} from '../lib/auth'
-import {darfVerwalten} from '../lib/roles'
+import {darfVerwalten, istSystemAdmin, rolleBezeichnung} from '../lib/roles'
 import {api} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
 import {GlobalSearch} from './GlobalSearch'
@@ -41,6 +42,8 @@ type NavItem = {
   label: string
   icon: LucideIcon
   short?: string
+  // Der Betreiberbereich ist strenger als die uebrige Teamverwaltung.
+  systemAdminOnly?: boolean
 }
 
 type NavGroup = {
@@ -91,6 +94,7 @@ const NAV_GROUPS: NavGroup[] = [
       {to: '/team', label: 'Team', icon: Users},
       {to: '/teamstatistiken', label: 'Teamstatistiken', icon: BarChart3, short: 'Statistik'},
       {to: '/verwaltung', label: 'Verwaltung', icon: ShieldCheck},
+      {to: '/system', label: 'System', icon: ServerCog, systemAdminOnly: true},
     ],
   },
   {
@@ -144,8 +148,13 @@ function useUnreadMessages() {
   return unread
 }
 
-function visibleGroups(isTeamLeader: boolean) {
-  return NAV_GROUPS.filter(group => !group.teamLeaderOnly || isTeamLeader)
+function visibleGroups(isTeamLeader: boolean, isSystemAdmin: boolean) {
+  return NAV_GROUPS
+    .filter(group => !group.teamLeaderOnly || isTeamLeader)
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => !item.systemAdminOnly || isSystemAdmin),
+    }))
 }
 
 export function AppShell() {
@@ -159,7 +168,8 @@ export function AppShell() {
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
 
   const isTeamLeader = darfVerwalten(me?.role)
-  const groups = visibleGroups(isTeamLeader)
+  const isSystemAdmin = istSystemAdmin(me?.role)
+  const groups = visibleGroups(isTeamLeader, isSystemAdmin)
   const badge = unread > 99 ? '99+' : String(unread)
 
   // Beim Seitenwechsel schließen, sonst bleibt die Schublade über der neuen Seite.
@@ -200,7 +210,7 @@ export function AppShell() {
     .slice(0, 2)
     .join('')
 
-  const roleLabel = isTeamLeader ? 'Teamleiter' : 'Vertriebspartner'
+  const roleLabel = me?.role ? rolleBezeichnung(me.role) : 'Vertriebspartner'
   const todayLabel = new Intl.DateTimeFormat('de-DE', {
     weekday: 'short',
     day: '2-digit',
