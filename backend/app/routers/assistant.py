@@ -6,7 +6,10 @@ from app.core.database import get_db
 from app.core.rbac import scoped_employee_id
 from app.core.security import get_current_user, require_csrf
 from app.models import Conversation, ConversationMessage, User
+from app.core.audit import audit
 from app.services.assistant import chat
+from app.services.assistant_guard import einloesen, offene_anzahl
+from app.services.assistant_tools import execute_tool
 from app.services.briefing import day_briefing
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
@@ -44,6 +47,46 @@ def briefing(
 @router.post("/chat", dependencies=[Depends(require_csrf)])
 def assistant_chat(data: ChatIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return chat(db, user, data.message.strip(), data.conversation_id)
+
+
+class BestaetigungIn(BaseModel):
+    action_id: str = Field(min_length=1, max_length=200)
+
+
+@router.post("/actions/confirm", dependencies=[Depends(require_csrf)])
+def aktion_bestaetigen(
+    data: BestaetigungIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Fuehrt ein vorgemerktes Vorhaben aus.
+
+    Der einzige Weg, auf dem der Assistent etwas schreibt. Ausgefuehrt wird
+    genau das, was beim Vormerken hinterlegt wurde - nicht, was das Modell
+    inzwischen sagen wuerde. Die Rechtepruefung im Werkzeug laeuft trotzdem
+    noch einmal: zwischen Vormerken und Bestaetigen koennen Minuten liegen,
+    und in der Zeit kann sich eine Zustaendigkeit geaendert haben.
+    """
+    vorhaben = einloesen(user.id, data.action_id)
+
+    audit(db, user, "assistant.action_confirmed", "assistant", vorhaben.id,
+          after={"tool": vorhaben.werkzeug, "summary": vorhaben.beschreibung})
+    db.commit()
+
+    ergebnis = execute_tool(db, user, vorhaben.werkzeug, vorhaben.argumente, bestaetigt=True)
+
+    if isinstance(ergebnis, dict) and ergebnis.get("error"):
+        audit(db, user, "assistant.action_failed", "assistant", vorhaben.id,
+              after={"tool": vorhaben.werkzeug, "error": ergebnis["error"]})
+        db.commit()
+
+    return {"action": vorhaben.werkzeug, "summary": vorhaben.beschreibung, "result": ergebnis}
+
+
+@router.get("/actions/pending")
+def offene_aktionen(user: User = Depends(get_current_user)):
+    """Nur die Anzahl - der Inhalt steht bereits in der Chatantwort."""
+    return {"open": offene_anzahl(user.id)}
 
 
 @router.get("/conversations")

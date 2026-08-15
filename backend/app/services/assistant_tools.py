@@ -3,10 +3,11 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from app.core.permissions import sieht_fremde_daten
+from app.services.assistant_guard import SCHREIBENDE_WERKZEUGE, vormerken
 from app.core.audit import audit
 from app.core.rbac import current_employee, resolve_employee_by_name
 from app.core.timeutils import day_bounds, month_bounds, week_bounds
-from app.models import Appointment, AppointmentProduct, AppointmentStatus, AppointmentType, Customer, Employee, Message, Product, ProductPresentation, Rental, RentalStatus, Role, Sale, SaleChannel, SaleItem, User
+from app.models import Appointment, AppointmentProduct, AppointmentStatus, AppointmentType, Customer, CustomerNote, Employee, FollowUp, FollowUpReason, FollowUpStatus, Message, Product, ProductPresentation, Rental, RentalStatus, Role, Sale, SaleChannel, SaleItem, User
 from app.services.serializers import current_price, product_out, sale_units
 from app.services.stats import refresh_weekly_stat, revenue_between, units_between
 
@@ -97,6 +98,24 @@ TOOL_SPECS = [
         "strict": True,
     },
     {
+        "type": "function", "name": "create_follow_up",
+        "description": "Legt eine Wiedervorlage bei einem Kunden an. Wird erst nach Bestätigung durch den Benutzer ausgeführt.",
+        "parameters": {"type":"object","properties":{"customer_id":{"type":"string"},"due_on":{"type":"string","description":"JJJJ-MM-TT"},"note":{"type":["string","null"]}},"required":["customer_id","due_on","note"],"additionalProperties":False},
+        "strict": True,
+    },
+    {
+        "type": "function", "name": "complete_follow_up",
+        "description": "Markiert eine Wiedervorlage als erledigt. Wird erst nach Bestätigung ausgeführt.",
+        "parameters": {"type":"object","properties":{"follow_up_id":{"type":"string"}},"required":["follow_up_id"],"additionalProperties":False},
+        "strict": True,
+    },
+    {
+        "type": "function", "name": "create_customer_note",
+        "description": "Hinterlegt eine Notiz beim Kunden. Wird erst nach Bestätigung ausgeführt.",
+        "parameters": {"type":"object","properties":{"customer_id":{"type":"string"},"body":{"type":"string"}},"required":["customer_id","body"],"additionalProperties":False},
+        "strict": True,
+    },
+    {
         "type": "function", "name": "get_day_briefing",
         "description": (
             "Tagesbriefing: offene Wiedervorlagen, Termine heute, faellige Verleihgeraete, "
@@ -124,7 +143,63 @@ def _appointment_dict(db: Session, a: Appointment) -> dict:
     }
 
 
-def execute_tool(db: Session, user: User, name: str, args: dict) -> dict:
+def _beschreibung(db: Session, name: str, args: dict) -> str:
+    """Was der Benutzer vor der Bestaetigung zu lesen bekommt.
+
+    Bewusst aus den Daten gebaut und nicht vom Modell formuliert: der Text,
+    den jemand bestaetigt, muss das beschreiben, was tatsaechlich passiert.
+    """
+    if name == "create_appointment":
+        c = db.get(Customer, args.get("customer_id", ""))
+        wer = f"{c.first_name} {c.last_name}" if c else "unbekannter Kunde"
+        return f"Termin mit {wer} am {args.get('start_at', '?')} anlegen"
+
+    if name == "update_appointment_status":
+        a = db.get(Appointment, args.get("appointment_id", ""))
+        c = db.get(Customer, a.customer_id) if a and a.customer_id else None
+        wer = f"{c.first_name} {c.last_name}" if c else "Termin"
+        return f"{wer}: Status auf \"{args.get('status', '?')}\" setzen"
+
+    if name == "create_sale":
+        c = db.get(Customer, args.get("customer_id", ""))
+        wer = f"{c.first_name} {c.last_name}" if c else "unbekannter Kunde"
+        posten = args.get("items") or []
+        summe = sum((i.get("quantity") or 0) * (i.get("unit_price_cents") or 0) for i in posten)
+        return (f"Verkauf an {wer} mit {len(posten)} Position(en) über "
+                f"{summe / 100:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+                + " anlegen")
+
+    if name == "send_message":
+        return f"Nachricht an {args.get('recipient_name', '?')} senden"
+
+    if name == "create_follow_up":
+        c = db.get(Customer, args.get("customer_id", ""))
+        wer = f"{c.first_name} {c.last_name}" if c else "unbekannter Kunde"
+        return f"Wiedervorlage für {wer} am {args.get('due_on', '?')} anlegen"
+
+    if name == "complete_follow_up":
+        return "Wiedervorlage als erledigt markieren"
+
+    if name == "create_customer_note":
+        c = db.get(Customer, args.get("customer_id", ""))
+        wer = f"{c.first_name} {c.last_name}" if c else "unbekannter Kunde"
+        return f"Notiz bei {wer} hinterlegen"
+
+    return f"Aktion ausführen: {name}"
+
+
+def execute_tool(db: Session, user: User, name: str, args: dict,
+                 bestaetigt: bool = False) -> dict:
+    """Fuehrt ein Werkzeug aus.
+
+    `bestaetigt` setzt ausschliesslich der Bestaetigungs-Endpunkt. Das Modell
+    kann es nicht mitschicken - genau das ist der Punkt: sonst waere die
+    Rueckfrage eine Bitte an das Modell und keine Schranke.
+    """
+    if name in SCHREIBENDE_WERKZEUGE and not bestaetigt:
+        return vormerken(user.id, name, args, _beschreibung(db, name, args))
+
+
     if name == "get_day_briefing":
         # Import hier, weil briefing.py seinerseits Auswertungsdienste zieht -
         # ein Import auf Modulebene ergaebe einen Ringschluss.
@@ -232,18 +307,25 @@ def execute_tool(db: Session, user: User, name: str, args: dict) -> dict:
         e = resolve_employee_by_name(db, user, args.get("employee_name")); c=db.get(Customer,args["customer_id"])
         if not c or (not sieht_fremde_daten(user) and c.employee_id != e.id): return {"error":"Kunde nicht gefunden oder nicht berechtigt"}
         a=Appointment(customer_id=c.id,employee_id=e.id,start_at=datetime.fromisoformat(args["start_at"]),end_at=datetime.fromisoformat(args["end_at"]) if args.get("end_at") else None,appointment_type=AppointmentType(args["appointment_type"]),notes=args.get("notes"),address_snapshot=" ".join(x for x in [c.street,c.house_number,c.postal_code,c.city] if x),phone_snapshot=c.phone,email_snapshot=c.email)
-        db.add(a);db.commit();db.refresh(a);return {"created":True,"appointment":_appointment_dict(db,a)}
+        db.add(a);db.flush()
+        audit(db,user,"appointment.created_via_assistant","appointment",a.id,
+              after={"customer_id":c.id,"employee_id":e.id,"start_at":a.start_at.isoformat()})
+        db.commit();db.refresh(a);return {"created":True,"appointment":_appointment_dict(db,a)}
 
     if name == "update_appointment_status":
         a=db.get(Appointment,args["appointment_id"])
         if not a:return {"error":"Termin nicht gefunden"}
         e=current_employee(db,user)
         if not sieht_fremde_daten(user) and a.employee_id!=e.id:return {"error":"Nicht berechtigt"}
-        a.status=AppointmentStatus(args["status"]);db.commit();return {"updated":True,"appointment":_appointment_dict(db,a)}
+        vorher=a.status.value
+        a.status=AppointmentStatus(args["status"])
+        audit(db,user,"appointment.status_via_assistant","appointment",a.id,
+              before={"status":vorher},after={"status":a.status.value})
+        db.commit();return {"updated":True,"appointment":_appointment_dict(db,a)}
 
     if name == "create_sale":
-        if not args.get("confirm"):
-            return {"requires_confirmation":True,"message":"Bitte den Verkauf mit Produkten, Stückzahlen und Preisen bestätigen."}
+        # Das frühere confirm-Argument wird nicht mehr ausgewertet: es kam
+        # vom Modell und sagte damit nichts über eine Zustimmung aus.
         e=resolve_employee_by_name(db,user,args.get("employee_name"));c=db.get(Customer,args["customer_id"])
         if not c or c.deleted_at or (not sieht_fremde_daten(user) and c.employee_id!=e.id):return {"error":"Kunde nicht gefunden oder nicht berechtigt"}
         resolved=[]
@@ -266,6 +348,55 @@ def execute_tool(db: Session, user: User, name: str, args: dict) -> dict:
     if name == "send_message":
         term=f"%{args['recipient_name']}%"; users=db.scalars(select(User).where(User.full_name.ilike(term),User.is_active.is_(True))).all()
         if len(users)!=1:return {"error":"Empfänger ist nicht eindeutig"}
-        m=Message(sender_user_id=user.id,recipient_user_id=users[0].id,body=args["body"].strip());db.add(m);db.commit();return {"sent":True,"recipient":users[0].full_name}
+        m=Message(sender_user_id=user.id,recipient_user_id=users[0].id,body=args["body"].strip())
+        db.add(m);db.flush()
+        # Der Nachrichtentext steht bewusst nicht im Protokoll - protokolliert
+        # wird, dass gesendet wurde, nicht was drinstand.
+        audit(db,user,"message.sent_via_assistant","message",m.id,
+              after={"recipient_user_id":users[0].id})
+        db.commit();return {"sent":True,"recipient":users[0].full_name}
+
+    if name == "create_follow_up":
+        e=current_employee(db,user);c=db.get(Customer,args["customer_id"])
+        if not c or c.deleted_at or (not sieht_fremde_daten(user) and c.employee_id!=e.id):
+            return {"error":"Kunde nicht gefunden oder nicht berechtigt"}
+        try: faellig=date.fromisoformat(args["due_on"])
+        except (ValueError,TypeError): return {"error":"Datum unlesbar; erwartet JJJJ-MM-TT"}
+        f=FollowUp(customer_id=c.id,employee_id=c.employee_id,due_on=faellig,
+                   reason=FollowUpReason.MANUAL,note=(args.get("note") or None))
+        db.add(f);db.flush()
+        audit(db,user,"followup.created_via_assistant","follow_up",f.id,
+              after={"customer_id":c.id,"due_on":str(faellig)})
+        db.commit()
+        return {"created":True,"follow_up_id":f.id,"due_on":str(faellig)}
+
+    if name == "complete_follow_up":
+        f=db.get(FollowUp,args["follow_up_id"])
+        if not f: return {"error":"Wiedervorlage nicht gefunden"}
+        e=current_employee(db,user)
+        if not sieht_fremde_daten(user) and f.employee_id!=e.id:
+            return {"error":"Nicht berechtigt"}
+        if f.status!=FollowUpStatus.OPEN:
+            return {"error":"Diese Wiedervorlage ist nicht mehr offen"}
+        f.status=FollowUpStatus.DONE;f.completed_at=datetime.now(timezone.utc)
+        audit(db,user,"followup.completed_via_assistant","follow_up",f.id,
+              before={"status":"open"},after={"status":"done"})
+        db.commit()
+        return {"completed":True,"follow_up_id":f.id}
+
+    if name == "create_customer_note":
+        e=current_employee(db,user);c=db.get(Customer,args["customer_id"])
+        if not c or c.deleted_at or (not sieht_fremde_daten(user) and c.employee_id!=e.id):
+            return {"error":"Kunde nicht gefunden oder nicht berechtigt"}
+        text=(args.get("body") or "").strip()
+        if not text: return {"error":"Die Notiz ist leer"}
+        n=CustomerNote(customer_id=c.id,employee_id=e.id,body=text)
+        db.add(n);db.flush()
+        # Der Notiztext steht nicht im Protokoll - protokolliert wird, dass
+        # eine Notiz entstand, nicht was drinsteht.
+        audit(db,user,"customer_note.created_via_assistant","customer",c.id,
+              after={"note_id":n.id})
+        db.commit()
+        return {"created":True,"note_id":n.id}
 
     return {"error": f"Unbekanntes Tool: {name}"}
