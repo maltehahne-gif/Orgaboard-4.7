@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     openai_timeout_seconds: float = 45.0
     ai_enabled: bool = True
     seed_default_password: str | None = None
+    # E-Mail des Betreiberkontos. Beim Start wird genau dieses Konto auf
+    # SYSTEM_ADMIN gehoben - der einzige Weg, wie die hoechste Stufe entsteht.
+    # Bewusst nicht ueber die Oberflaeche: das erste Konto muss aus einer
+    # Quelle kommen, die selbst schon geschuetzt ist.
+    system_admin_email: str | None = None
     seed_allow_demo_business_data: bool = False
     auto_create_schema: bool = True
     business_timezone: str = "Europe/Berlin"

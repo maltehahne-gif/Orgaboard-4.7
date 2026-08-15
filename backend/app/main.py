@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,7 +7,8 @@ from app.core.config import get_settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import decode_session_token
 from app.models import Employee, User
-from app.routers import admin, appointments, assistant, auth, buntewoche, customers, dashboard, directory, followups, history, messages, notifications, presentations, products, profile, rentals, reports, sales, search, team, tradeins
+from app.routers import admin, appointments, assistant, auth, buntewoche, customers, dashboard, directory, followups, history, messages, notifications, presentations, products, profile, rentals, reports, sales, search, sysadmin, team, tradeins
+from app.services.bootstrap import betreiber_festlegen
 from app.services.realtime import SocketClient, manager
 
 settings=get_settings()
@@ -16,13 +18,23 @@ settings=get_settings()
 async def lifespan(_: FastAPI):
     if settings.auto_create_schema:
         Base.metadata.create_all(bind=engine)
+    # Betreiberkonto festlegen. Fehler hier duerfen den Start nicht
+    # verhindern - eine Anlage ohne Systemadministrator laeuft weiter, sie
+    # hat nur keinen Verwaltungsbereich.
+    db = SessionLocal()
+    try:
+        betreiber_festlegen(db)
+    except Exception:  # noqa: BLE001
+        logging.getLogger("orgaboard").exception("Betreiberkonto konnte nicht gesetzt werden")
+    finally:
+        db.close()
     yield
 
 
 app=FastAPI(title="OrgaBoard API",version="1.1.0",lifespan=lifespan)
 app.add_middleware(CORSMiddleware,allow_origins=[settings.frontend_origin],allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
 
-for router in [auth.router,admin.router,dashboard.router,customers.router,appointments.router,sales.router,presentations.router,products.router,rentals.router,buntewoche.router,messages.router,assistant.router,search.router,history.router,team.router,profile.router,directory.router,notifications.router,followups.router,tradeins.router,reports.router]:
+for router in [auth.router,admin.router,dashboard.router,customers.router,appointments.router,sales.router,presentations.router,products.router,rentals.router,buntewoche.router,messages.router,assistant.router,search.router,history.router,team.router,profile.router,directory.router,notifications.router,followups.router,tradeins.router,reports.router,sysadmin.router]:
     app.include_router(router,prefix=settings.api_prefix)
 
 @app.get("/health")
