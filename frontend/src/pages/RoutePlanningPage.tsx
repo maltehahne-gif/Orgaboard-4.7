@@ -12,6 +12,8 @@ import {
   Apple,
   CalendarClock,
   Car,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   LocateFixed,
   MapPin,
@@ -69,6 +71,83 @@ type RoutePlan={
   totalDistanceKm:number
   totalTravelMinutes:number
   finishAt:string|null
+  /* Fahrzeit- und Streckenmatrix bleiben erhalten, damit ein von Hand
+     umsortierter Stopp seine Ankunftszeiten sofort neu berechnen kann,
+     ohne den Routing-Dienst erneut zu befragen. */
+  located:LocatedAppointment[]
+  durations:number[][]
+  distances:number[][]
+  order:number[]
+}
+
+
+/**
+ * Baut aus einer Reihenfolge den fertigen Tagesplan: Fahrzeit, Strecke,
+ * Ankunft, Wartezeit und Verspaetung je Stopp.
+ *
+ * Bewusst eine reine Funktion ohne Zustand - sie wird sowohl von der
+ * automatischen Berechnung als auch beim Verschieben von Hand benutzt.
+ */
+function scheduleStops(
+  order:number[],
+  located:LocatedAppointment[],
+  durations:number[][],
+  distances:number[][],
+){
+  let currentMatrixIndex=0
+  let currentTime=Date.now()
+  let totalTravel=0
+  let totalDistance=0
+
+  const stops:PlannedStop[]=[]
+
+  for(let sequence=0;sequence<order.length;sequence++){
+    const stopIndex=order[sequence]
+    const stop=located[stopIndex]
+    const matrixIndex=stopIndex+1
+
+    const travel=durations[currentMatrixIndex][matrixIndex]
+    const distance=distances[currentMatrixIndex][matrixIndex]
+
+    totalTravel+=travel
+    totalDistance+=distance
+
+    currentTime+=travel*60000
+
+    const appointmentTime=
+      new Date(stop.appointment.start_at).getTime()
+
+    const arrivalTime=currentTime
+
+    const lateMinutes=
+      Math.max(0,Math.round((arrivalTime-appointmentTime)/60000))
+
+    const waitMinutes=
+      Math.max(0,Math.round((appointmentTime-arrivalTime)/60000))
+
+    stops.push({
+      appointment:stop.appointment,
+      lat:stop.lat,
+      lon:stop.lon,
+      sequence:sequence+1,
+      travelMinutes:Math.max(0,Math.round(travel)),
+      distanceKm:Math.round(distance*10)/10,
+      arrivalAt:new Date(arrivalTime).toISOString(),
+      waitMinutes,
+      lateMinutes,
+    })
+
+    currentTime=Math.max(currentTime,appointmentTime)
+    currentTime+=appointmentDurationMinutes(stop.appointment)*60000
+    currentMatrixIndex=matrixIndex
+  }
+
+  return {
+    stops,
+    totalDistanceKm:Math.round(totalDistance*10)/10,
+    totalTravelMinutes:Math.round(totalTravel),
+    finishAt:stops.length?new Date(currentTime).toISOString():null,
+  }
 }
 
 
@@ -803,6 +882,10 @@ export function RoutePlanningPage(){
         totalDistanceKm:0,
         totalTravelMinutes:0,
         finishAt:null,
+        located:[],
+        durations:[],
+        distances:[],
+        order:[],
       })
       return
     }
@@ -832,122 +915,17 @@ export function RoutePlanningPage(){
         distances,
       )
 
-    let currentMatrixIndex=0
-    let currentTime=Date.now()
-    let totalTravel=0
-    let totalDistance=0
-
-    const stops:PlannedStop[]=[]
-
-    for(
-      let sequence=0;
-      sequence<order.length;
-      sequence++
-    ){
-      const stopIndex=
-        order[sequence]
-
-      const stop=
-        located[stopIndex]
-
-      const matrixIndex=
-        stopIndex+1
-
-      const travel=
-        durations[
-          currentMatrixIndex
-        ][matrixIndex]
-
-      const distance=
-        distances[
-          currentMatrixIndex
-        ][matrixIndex]
-
-      totalTravel+=travel
-      totalDistance+=distance
-
-      currentTime+=
-        travel*60000
-
-      const appointmentTime=
-        new Date(
-          stop.appointment.start_at
-        ).getTime()
-
-      const arrivalTime=
-        currentTime
-
-      const lateMinutes=
-        Math.max(
-          0,
-          Math.round(
-            (
-              arrivalTime
-              -appointmentTime
-            )/60000
-          )
-        )
-
-      const waitMinutes=
-        Math.max(
-          0,
-          Math.round(
-            (
-              appointmentTime
-              -arrivalTime
-            )/60000
-          )
-        )
-
-      stops.push({
-        appointment:
-          stop.appointment,
-
-        lat:stop.lat,
-        lon:stop.lon,
-
-        sequence:
-          sequence+1,
-
-        travelMinutes:
-          Math.max(
-            0,
-            Math.round(travel)
-          ),
-
-        distanceKm:
-          Math.round(
-            distance*10
-          )/10,
-
-        arrivalAt:
-          new Date(
-            arrivalTime
-          ).toISOString(),
-
-        waitMinutes,
-        lateMinutes,
-      })
-
-      currentTime=
-        Math.max(
-          currentTime,
-          appointmentTime
-        )
-
-      currentTime+=
-        appointmentDurationMinutes(
-          stop.appointment
-        )*60000
-
-      currentMatrixIndex=
-        matrixIndex
-    }
-
+    const schedule=
+      scheduleStops(
+        order,
+        located,
+        durations,
+        distances,
+      )
 
     const orderedPositions=[
       start,
-      ...stops.map(
+      ...schedule.stops.map(
         stop=>({
           lat:stop.lat,
           lon:stop.lon,
@@ -963,24 +941,57 @@ export function RoutePlanningPage(){
 
     setPlan({
       start,
-      stops,
       unresolved,
       geometry,
+      located,
+      durations,
+      distances,
+      order,
+      ...schedule,
+    })
+  }
 
-      totalDistanceKm:
-        Math.round(
-          totalDistance*10
-        )/10,
 
-      totalTravelMinutes:
-        Math.round(
-          totalTravel
-        ),
+  /**
+   * Einen Stopp von Hand nach oben oder unten schieben.
+   *
+   * Die Zeiten werden sofort aus der gespeicherten Matrix neu gerechnet, der
+   * Streckenverlauf auf der Karte danach nachgeladen - so bleibt die Liste
+   * ohne Wartezeit bedienbar, auch wenn der Routing-Dienst gerade langsam ist.
+   */
+  function moveStop(
+    position:number,
+    direction:-1|1,
+  ){
+    if(!plan)return
 
-      finishAt:
-        new Date(
-          currentTime
-        ).toISOString(),
+    const target=position+direction
+    if(target<0||target>=plan.order.length)return
+
+    const order=[...plan.order]
+    const merken=order[position]
+    order[position]=order[target]
+    order[target]=merken
+
+    const schedule=
+      scheduleStops(
+        order,
+        plan.located,
+        plan.durations,
+        plan.distances,
+      )
+
+    setPlan({...plan,order,...schedule})
+
+    void getGeometry([
+      plan.start,
+      ...schedule.stops.map(
+        stop=>({lat:stop.lat,lon:stop.lon})
+      ),
+    ]).then(geometry=>{
+      setPlan(current=>
+        current?{...current,geometry}:current
+      )
     })
   }
 
@@ -1579,7 +1590,7 @@ export function RoutePlanningPage(){
 
           <div className="route-stop-list">
 
-            {plan.stops.map(stop=>{
+            {plan.stops.map((stop,position)=>{
               const appointment=
                 stop.appointment
 
@@ -1595,8 +1606,32 @@ export function RoutePlanningPage(){
                 key={appointment.id}
               >
 
-                <div className="route-stop-number">
-                  {stop.sequence}
+                <div className="route-stop-order">
+                  <button
+                    type="button"
+                    className="route-move"
+                    onClick={()=>moveStop(position,-1)}
+                    disabled={position===0}
+                    aria-label="Stopp nach vorne verschieben"
+                    title="Stopp nach vorne verschieben"
+                  >
+                    <ChevronUp size={15}/>
+                  </button>
+
+                  <div className="route-stop-number">
+                    {stop.sequence}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="route-move"
+                    onClick={()=>moveStop(position,1)}
+                    disabled={position===plan.stops.length-1}
+                    aria-label="Stopp nach hinten verschieben"
+                    title="Stopp nach hinten verschieben"
+                  >
+                    <ChevronDown size={15}/>
+                  </button>
                 </div>
 
                 <div className="route-stop-content">

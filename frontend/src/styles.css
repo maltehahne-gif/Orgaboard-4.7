@@ -6888,6 +6888,39 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
   font-weight:900;
 }
 
+/* Nummer mit den Knoepfen zum Umsortieren darueber und darunter. Die
+   automatische Reihenfolge ist ein Vorschlag - wer die Strecke kennt, soll
+   sie von Hand anpassen koennen. */
+.route-stop-order{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  flex:0 0 auto;
+}
+
+.route-move{
+  width:26px;
+  height:22px;
+  display:grid;
+  place-items:center;
+  padding:0!important;
+  border:1px solid #2a3b3f!important;
+  border-radius:7px!important;
+  background:#10191d!important;
+  color:#9fb0aa!important;
+}
+
+.route-move:hover:not(:disabled){
+  border-color:#3f9455!important;
+  color:var(--green)!important;
+}
+
+.route-move:disabled{
+  opacity:.3;
+  cursor:default;
+}
+
 .route-stop-content{
   min-width:0;
   flex:1;

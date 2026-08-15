@@ -1,3 +1,5 @@
+import csv
+import io
 from datetime import datetime, timezone
 from pydantic import BaseModel, EmailStr, Field
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -84,6 +86,133 @@ def update_customer(customer_id: str, data: CustomerIn, user: User = Depends(get
     audit(db, user, "customer.updated", "customer", c.id, before=before, after=out(c))
     db.commit()
     return out(c)
+
+
+class CustomerImportIn(BaseModel):
+    """Rohtext einer CSV-Datei. Das Zerlegen passiert bewusst serverseitig -
+    so gelten dieselben Pflichtfelder und Rechte wie beim einzelnen Anlegen."""
+
+    csv: str = Field(min_length=1, max_length=2_000_000)
+    employee_id: str | None = None
+
+
+# Spaltennamen, die wir in der Kopfzeile akzeptieren. Mehrere Schreibweisen,
+# damit Exporte aus Excel und aus anderen Systemen ohne Nacharbeit passen.
+IMPORT_COLUMNS = {
+    "first_name": {"vorname", "first_name", "firstname"},
+    "last_name": {"nachname", "name", "last_name", "lastname"},
+    "street": {"strasse", "straße", "street"},
+    "house_number": {"hausnummer", "nr", "house_number"},
+    "postal_code": {"plz", "postleitzahl", "postal_code", "zip"},
+    "city": {"ort", "stadt", "city"},
+    "phone": {"telefon", "telefonnummer", "phone", "mobil"},
+    "email": {"email", "e-mail", "mail"},
+    "notes": {"notiz", "notizen", "bemerkung", "notes"},
+}
+
+
+@router.post("/import", dependencies=[Depends(require_csrf)])
+def import_customers(
+    data: CustomerImportIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Kunden aus einer CSV-Datei anlegen.
+
+    Bewusst konservativ: Zeilen ohne Nachnamen werden uebersprungen, bereits
+    vorhandene Kunden (gleicher Name beim selben Mitarbeiter) ebenfalls. Der
+    Import legt nur an und aendert nie einen bestehenden Datensatz - ein
+    Fehlimport laesst sich damit ohne Datenverlust wiederholen.
+    """
+    employee_id = scoped_employee_id(db, user, data.employee_id)
+    if employee_id is None:
+        raise HTTPException(status_code=400, detail="Teamleiter muss einen zuständigen Mitarbeiter auswählen")
+
+    text = data.csv.lstrip("﻿")
+    try:
+        dialect = csv.Sniffer().sniff(text[:2000], delimiters=";,\t")
+    except csv.Error:
+        # Deutsche Exporte nutzen ueberwiegend das Semikolon.
+        dialect = csv.excel
+        dialect.delimiter = ";"
+
+    reader = csv.DictReader(io.StringIO(text), dialect=dialect)
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="Die Datei enthält keine Kopfzeile")
+
+    # Kopfzeile auf unsere Feldnamen abbilden.
+    mapping: dict[str, str] = {}
+    for column in reader.fieldnames:
+        key = (column or "").strip().lower()
+        for field, aliases in IMPORT_COLUMNS.items():
+            if key in aliases:
+                mapping[column] = field
+                break
+
+    if "last_name" not in mapping.values():
+        raise HTTPException(
+            status_code=400,
+            detail="Spalte für den Nachnamen fehlt (erlaubt: Nachname, Name, last_name)",
+        )
+
+    vorhanden = {
+        (c.first_name.strip().lower(), c.last_name.strip().lower())
+        for c in db.scalars(
+            select(Customer).where(
+                Customer.deleted_at.is_(None),
+                Customer.employee_id == employee_id,
+            )
+        ).all()
+    }
+
+    angelegt = 0
+    uebersprungen = 0
+    hinweise: list[str] = []
+
+    for nummer, row in enumerate(reader, start=2):
+        werte = {"first_name": "", "last_name": "", "street": "", "house_number": "",
+                 "postal_code": "", "city": "", "phone": "", "email": "", "notes": ""}
+        for column, field in mapping.items():
+            werte[field] = (row.get(column) or "").strip()
+
+        if not werte["last_name"]:
+            uebersprungen += 1
+            if len(hinweise) < 20:
+                hinweise.append(f"Zeile {nummer}: kein Nachname")
+            continue
+
+        schluessel = (werte["first_name"].lower(), werte["last_name"].lower())
+        if schluessel in vorhanden:
+            uebersprungen += 1
+            if len(hinweise) < 20:
+                hinweise.append(f"Zeile {nummer}: {werte['first_name']} {werte['last_name']} gibt es bereits")
+            continue
+
+        kunde = Customer(
+            employee_id=employee_id,
+            first_name=werte["first_name"],
+            last_name=werte["last_name"],
+            street=werte["street"],
+            house_number=werte["house_number"],
+            postal_code=werte["postal_code"],
+            city=werte["city"],
+            phone=werte["phone"] or None,
+            # Offensichtlich kaputte Adressen lieber leer lassen, als den
+            # ganzen Import an einer einzelnen Zeile scheitern zu lassen.
+            email=werte["email"] if "@" in werte["email"] else None,
+            notes=werte["notes"] or None,
+        )
+        db.add(kunde)
+        vorhanden.add(schluessel)
+        angelegt += 1
+
+    if angelegt:
+        db.flush()
+        audit(db, user, "customer.imported", "customer", employee_id,
+              after={"angelegt": angelegt, "uebersprungen": uebersprungen})
+    db.commit()
+
+    return {"created": angelegt, "skipped": uebersprungen, "notes": hinweise}
 
 
 class NoteIn(BaseModel):
