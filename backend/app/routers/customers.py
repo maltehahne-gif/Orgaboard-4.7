@@ -10,7 +10,12 @@ from app.core.database import get_db
 from app.core.rbac import current_employee, require_team_leader, scoped_employee_id
 from app.core.security import get_current_user, require_csrf
 from app.models import Customer, CustomerNote, Employee, User
-from app.services.timeline import FUNNEL_LABELS, customer_timeline, funnel_stage
+from app.services.timeline import (
+    FUNNEL_LABELS,
+    customer_timeline,
+    funnel_stage,
+    next_open_follow_up,
+)
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 
@@ -306,6 +311,7 @@ def customer_timeline_view(
         "customer": out(c),
         "funnel_stage": stage.value,
         "funnel_label": FUNNEL_LABELS[stage],
+        "next_follow_up": next_open_follow_up(db, c.id),
         "events": customer_timeline(db, c.id),
     }
 

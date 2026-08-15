@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.timeutils import utc_aware
+from app.core.timeutils import local_today, utc_aware
 from app.services.stats import not_cancelled
 from app.models import (
     Appointment,
@@ -228,6 +228,36 @@ def customer_timeline(db: Session, customer_id: str) -> list[dict]:
 
     events.sort(key=lambda e: e.at, reverse=True)
     return [e.as_dict() for e in events]
+
+
+def next_open_follow_up(db: Session, customer_id: str) -> dict | None:
+    """Die naechste offene Wiedervorlage eines Kunden.
+
+    Die Zeitleiste zeigt, wann Wiedervorlagen angelegt wurden - beantwortet
+    aber nicht die Frage, die man vor einem Kundenbesuch tatsaechlich hat:
+    wann steht der naechste Kontakt an? Genau eine Zeile, die faelligste.
+    """
+    f = db.scalar(
+        select(FollowUp)
+        .where(
+            FollowUp.customer_id == customer_id,
+            FollowUp.status == FollowUpStatus.OPEN,
+        )
+        .order_by(FollowUp.due_on.asc())
+    )
+    if f is None:
+        return None
+
+    heute = local_today()
+    return {
+        "id": f.id,
+        "due_on": f.due_on,
+        "reason": f.reason.value,
+        "note": f.note,
+        "days_until": (f.due_on - heute).days,
+        "is_overdue": f.due_on < heute,
+        "is_today": f.due_on == heute,
+    }
 
 
 def funnel_stage(db: Session, customer_id: str) -> FunnelStage:

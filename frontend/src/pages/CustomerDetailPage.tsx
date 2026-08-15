@@ -1,7 +1,10 @@
 import {FormEvent, useCallback, useEffect, useState} from 'react'
 import {
+  AlarmClock,
   ArrowLeft,
+  CalendarClock,
   CalendarDays,
+  CheckCircle2,
   Download,
   ShieldOff,
   Mail,
@@ -38,11 +41,48 @@ type Event = {
   meta: Record<string, unknown>
 }
 
+type FollowUp = {
+  id: string
+  due_on: string
+  reason: string
+  note: string | null
+  days_until: number
+  is_overdue: boolean
+  is_today: boolean
+}
+
 type Timeline = {
   customer: Customer
   funnel_stage: string
   funnel_label: string
+  next_follow_up: FollowUp | null
   events: Event[]
+}
+
+const REASON_LABEL: Record<string, string> = {
+  no_result: 'Termin ohne Abschluss',
+  after_sale: 'Nachbetreuung nach Verkauf',
+  rental_return: 'Gerät zurückholen',
+  offer: 'Angebot nachfassen',
+  manual: 'Wiedervorlage',
+}
+
+/** Heute als JJJJ-MM-TT im lokalen Kalender. */
+function heute() {
+  const jetzt = new Date()
+  return new Date(jetzt.getTime() - jetzt.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+}
+
+function faelligkeitstext(f: FollowUp) {
+  const datum = new Date(`${f.due_on}T12:00:00`).toLocaleDateString('de-DE', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  })
+  if (f.is_today) return `heute fällig · ${datum}`
+  if (f.is_overdue) {
+    const tage = Math.abs(f.days_until)
+    return `seit ${tage} ${tage === 1 ? 'Tag' : 'Tagen'} überfällig · ${datum}`
+  }
+  return `in ${f.days_until} ${f.days_until === 1 ? 'Tag' : 'Tagen'} · ${datum}`
 }
 
 const FUNNEL_ORDER = [
@@ -80,6 +120,9 @@ export function CustomerDetailPage() {
   const [data, setData] = useState<Timeline | null>(null)
   const [noteBody, setNoteBody] = useState('')
   const [saving, setSaving] = useState(false)
+  const [nachfassOffen, setNachfassOffen] = useState(false)
+  const [nachfass, setNachfass] = useState({datum: heute(), notiz: ''})
+  const [nachfassBusy, setNachfassBusy] = useState(false)
   const toast = useToast()
   const {me} = useAuth()
   const isTeamLeader = me?.role === 'TEAM_LEADER'
@@ -131,6 +174,53 @@ export function CustomerDetailPage() {
       load()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Anonymisierung fehlgeschlagen', 'error')
+    }
+  }
+
+  /** Wiedervorlage anlegen oder verschieben - beides über dieselbe Maske. */
+  async function nachfassenSpeichern(e: FormEvent) {
+    e.preventDefault()
+    if (!customerId || !nachfass.datum) return
+
+    setNachfassBusy(true)
+    try {
+      if (data?.next_follow_up) {
+        await api(`/followups/${data.next_follow_up.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({due_on: nachfass.datum, note: nachfass.notiz || null}),
+        })
+        toast('Wiedervorlage verschoben')
+      } else {
+        await api('/followups', {
+          method: 'POST',
+          body: JSON.stringify({
+            customer_id: customerId,
+            due_on: nachfass.datum,
+            note: nachfass.notiz || null,
+          }),
+        })
+        toast('Wiedervorlage angelegt')
+      }
+      setNachfassOffen(false)
+      load()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Fehler', 'error')
+    } finally {
+      setNachfassBusy(false)
+    }
+  }
+
+  async function nachfassenErledigt() {
+    if (!data?.next_follow_up) return
+    try {
+      await api(`/followups/${data.next_follow_up.id}/complete`, {
+        method: 'POST',
+        body: JSON.stringify({completed_note: null}),
+      })
+      toast('Wiedervorlage erledigt')
+      load()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Fehler', 'error')
     }
   }
 
@@ -235,6 +325,85 @@ export function CustomerDetailPage() {
             </li>
           ))}
         </ol>
+      </section>
+
+      {/* Nächster Kontakt – die Frage, die man vor einem Besuch hat */}
+      <section
+        className={
+          data.next_follow_up?.is_overdue
+            ? 'card nachfass-karte is-overdue'
+            : data.next_follow_up?.is_today
+              ? 'card nachfass-karte is-today'
+              : 'card nachfass-karte'
+        }
+      >
+        <div className="nachfass-kopf">
+          <span className="nachfass-symbol">
+            {data.next_follow_up?.is_overdue ? <AlarmClock size={17} /> : <CalendarClock size={17} />}
+          </span>
+
+          <div className="nachfass-text">
+            {data.next_follow_up ? (
+              <>
+                <strong>Nachfassen {faelligkeitstext(data.next_follow_up)}</strong>
+                <span>
+                  {REASON_LABEL[data.next_follow_up.reason] ?? 'Wiedervorlage'}
+                  {data.next_follow_up.note && ` · ${data.next_follow_up.note}`}
+                </span>
+              </>
+            ) : (
+              <>
+                <strong>Kein Nachfassdatum gesetzt</strong>
+                <span>Ohne Termin für den nächsten Kontakt gerät ein Kunde leicht in Vergessenheit.</span>
+              </>
+            )}
+          </div>
+
+          <div className="nachfass-aktionen">
+            {data.next_follow_up && (
+              <button type="button" onClick={nachfassenErledigt}>
+                <CheckCircle2 size={15} /> Erledigt
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setNachfass({
+                  datum: data.next_follow_up?.due_on ?? heute(),
+                  notiz: data.next_follow_up?.note ?? '',
+                })
+                setNachfassOffen(v => !v)
+              }}
+            >
+              {data.next_follow_up ? 'Verschieben' : 'Nachfassen planen'}
+            </button>
+          </div>
+        </div>
+
+        {nachfassOffen && (
+          <form className="nachfass-form" onSubmit={nachfassenSpeichern}>
+            <label>
+              Nachfassen am
+              <input
+                type="date"
+                required
+                value={nachfass.datum}
+                onChange={e => setNachfass({...nachfass, datum: e.target.value})}
+              />
+            </label>
+            <label className="nachfass-notiz">
+              Worum geht es?
+              <input
+                value={nachfass.notiz}
+                onChange={e => setNachfass({...nachfass, notiz: e.target.value})}
+                placeholder="z. B. Angebot VK7 nachfassen"
+              />
+            </label>
+            <button className="primary" disabled={nachfassBusy}>
+              {nachfassBusy ? 'Speichern…' : 'Speichern'}
+            </button>
+          </form>
+        )}
       </section>
 
       <form className="card note-compose" onSubmit={addNote}>
