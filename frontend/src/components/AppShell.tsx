@@ -29,6 +29,7 @@ import type {LucideIcon} from 'lucide-react'
 import {useEffect, useRef, useState} from 'react'
 import {NavLink, Outlet, useLocation} from 'react-router-dom'
 import {useAuth} from '../lib/auth'
+import {darfVerwalten} from '../lib/roles'
 import {api} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
 import {GlobalSearch} from './GlobalSearch'
@@ -157,7 +158,7 @@ export function AppShell() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
 
-  const isTeamLeader = me?.role === 'TEAM_LEADER'
+  const isTeamLeader = darfVerwalten(me?.role)
   const groups = visibleGroups(isTeamLeader)
   const badge = unread > 99 ? '99+' : String(unread)
 

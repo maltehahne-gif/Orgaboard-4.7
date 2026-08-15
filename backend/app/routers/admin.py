@@ -83,8 +83,17 @@ def _out(db: Session, user: User) -> dict:
 
 
 def _aktive_teamleiter(db: Session, ausser: str | None = None) -> int:
+    """Aktive Benutzer, die verwalten duerfen.
+
+    Seit es Regionalleiter und Systemadministratoren gibt, zaehlt nicht mehr
+    die Rolle "Teamleiter", sondern die Faehigkeit zu verwalten. Sonst
+    koennte der letzte Teamleiter nicht heruntergestuft werden, obwohl der
+    Betreiber selbst danebensteht - und umgekehrt liesse sich der letzte
+    Administrator entfernen, weil er als Teamleiter nicht mitgezaehlt wurde.
+    """
+    verwaltende = [r for r in Role if r.mindestens(Role.TEAM_LEADER)]
     stmt = select(func.count(User.id)).where(
-        User.role == Role.TEAM_LEADER, User.is_active.is_(True)
+        User.role.in_(verwaltende), User.is_active.is_(True)
     )
     if ausser:
         stmt = stmt.where(User.id != ausser)
@@ -93,7 +102,7 @@ def _aktive_teamleiter(db: Session, ausser: str | None = None) -> int:
 
 def _pruefe_letzter_teamleiter(db: Session, ziel: User) -> None:
     """Verhindert, dass der letzte handlungsfaehige Teamleiter wegfaellt."""
-    if ziel.role != Role.TEAM_LEADER or not ziel.is_active:
+    if not ziel.role.mindestens(Role.TEAM_LEADER) or not ziel.is_active:
         return
     if _aktive_teamleiter(db, ausser=ziel.id) == 0:
         raise HTTPException(
@@ -184,7 +193,7 @@ def aendern(
     if data.role is not None and data.role != ziel.role:
         if ziel.id == user.id:
             raise HTTPException(status_code=400, detail="Du kannst deine eigene Rolle nicht ändern")
-        if data.role != Role.TEAM_LEADER:
+        if not data.role.mindestens(Role.TEAM_LEADER):
             _pruefe_letzter_teamleiter(db, ziel)
 
     if data.full_name is not None:

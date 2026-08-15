@@ -4,6 +4,8 @@ import {api, money} from '../lib/api'
 import {Modal} from '../components/Modal'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
+import {darfVerwalten, rolleBezeichnung} from '../lib/roles'
+import type {Role} from '../types'
 
 type EmployeeProfile = {
   id: string
@@ -17,7 +19,7 @@ type AdminUser = {
   id: string
   email: string
   full_name: string
-  role: 'EMPLOYEE' | 'TEAM_LEADER'
+  role: Role
   is_active: boolean
   must_change_password: boolean
   created_at: string
@@ -60,7 +62,7 @@ export function AdminPage() {
     laden()
   }, [])
 
-  const aktiveLeiter = rows.filter(row => row.role === 'TEAM_LEADER' && row.is_active).length
+  const aktiveLeiter = rows.filter(row => darfVerwalten(row.role) && row.is_active).length
 
   /** Warum ein Knopf gesperrt ist - als Titel am Knopf, damit es erklärt ist. */
   function gesperrtWeil(row: AdminUser, aktion: 'deaktivieren' | 'rolle'): string | null {
@@ -69,7 +71,7 @@ export function AdminPage() {
         ? 'Die eigene Rolle lässt sich nicht ändern'
         : 'Das eigene Konto lässt sich nicht deaktivieren'
     }
-    if (row.role === 'TEAM_LEADER' && row.is_active && aktiveLeiter <= 1) {
+    if (darfVerwalten(row.role) && row.is_active && aktiveLeiter <= 1) {
       return 'Letzter aktiver Teamleiter – sonst kann niemand mehr verwalten'
     }
     return null
@@ -198,8 +200,8 @@ export function AdminPage() {
                   </td>
                   <td>{row.email}</td>
                   <td>
-                    <span className={row.role === 'TEAM_LEADER' ? 'admin-rolle is-leiter' : 'admin-rolle'}>
-                      {row.role === 'TEAM_LEADER' ? 'Teamleiter' : 'Mitarbeiter'}
+                    <span className={darfVerwalten(row.role) ? 'admin-rolle is-leiter' : 'admin-rolle'}>
+                      {rolleBezeichnung(row.role)}
                     </span>
                   </td>
                   <td>

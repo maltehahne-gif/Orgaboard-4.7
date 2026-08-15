@@ -1,5 +1,6 @@
 import {Navigate,Route,Routes} from 'react-router-dom'
 import {useAuth} from './lib/auth'
+import {darfVerwalten} from './lib/roles'
 import {AppShell} from './components/AppShell'
 import {LoginPage} from './pages/LoginPage'
 import {DashboardPage} from './pages/DashboardPage'
@@ -24,5 +25,5 @@ import {TradeInsPage} from './pages/TradeInsPage'
 import {ReportsPage} from './pages/ReportsPage'
 
 function Guard(){const {me,loading}=useAuth();if(loading)return <div className="splash">OrgaBoard wird geladen…</div>;if(!me)return <Navigate to="/login" replace/>;return <AppShell/>}
-function TL({children}:{children:React.ReactNode}){const {me}=useAuth();return me?.role==='TEAM_LEADER'?<>{children}</>:<Navigate to="/" replace/>}
+function TL({children}:{children:React.ReactNode}){const {me}=useAuth();return darfVerwalten(me?.role)?<>{children}</>:<Navigate to="/" replace/>}
 export default function App(){const {me}=useAuth();return <Routes><Route path="/login" element={me?<Navigate to="/" replace/>:<LoginPage/>}/><Route element={<Guard/>}><Route index element={<DashboardPage/>}/><Route path="ki" element={<AIPage/>}/><Route path="termine" element={<AppointmentsPage/>}/><Route path="routenplanung" element={<RoutePlanningPage/>}/><Route path="kunden" element={<CustomersPage/>}/><Route path="kunden/:customerId" element={<CustomerDetailPage/>}/><Route path="nachfassen" element={<FollowUpsPage/>}/><Route path="verlauf" element={<HistoryPage/>}/><Route path="produkte" element={<ProductsPage/>}/><Route path="verkaeufe" element={<SalesPage/>}/><Route path="verkaufstabelle" element={<SalesReportPage/>}/><Route path="berichte" element={<ReportsPage/>}/><Route path="verleih" element={<RentalsPage/>}/><Route path="altgeraete" element={<TradeInsPage/>}/><Route path="buntewoche" element={<BuntewochePage/>}/><Route path="nachrichten" element={<MessagesPage/>}/><Route path="profil" element={<ProfilePage/>}/><Route path="team" element={<TL><TeamPage/></TL>}/><Route path="teamstatistiken" element={<TL><TeamStatsPage/></TL>}/><Route path="verwaltung" element={<TL><AdminPage/></TL>}/></Route><Route path="*" element={<Navigate to="/" replace/>}/></Routes>}

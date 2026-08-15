@@ -5,6 +5,7 @@ from pydantic import BaseModel, HttpUrl
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from app.core.permissions import sieht_fremde_daten
 from app.core.audit import audit
 from app.core.database import get_db
 from app.core.rbac import require_team_leader
@@ -54,7 +55,7 @@ class ProductImport(BaseModel):
 @router.get("")
 def list_products(q: str | None = Query(default=None), include_unverified: bool = False, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     stmt = select(Product).where(Product.active.is_(True)).order_by(Product.category, Product.name)
-    if not include_unverified or user.role.value != "TEAM_LEADER":
+    if not include_unverified or not sieht_fremde_daten(user):
         stmt = stmt.where(Product.verified.is_(True))
     if q:
         stmt = stmt.where(Product.name.ilike(f"%{q}%"))
@@ -102,7 +103,7 @@ def price_overview(user: User = Depends(get_current_user), db: Session = Depends
     oeffnen. Teamleiter sehen auch unbestaetigte Produkte, sonst faellt
     genau die Luecke nicht auf, die geschlossen werden soll.
     """
-    teamleiter = user.role.value == "TEAM_LEADER"
+    teamleiter = sieht_fremde_daten(user)
     stmt = select(Product).where(Product.active.is_(True)).order_by(Product.category, Product.name)
     if not teamleiter:
         stmt = stmt.where(Product.verified.is_(True))
@@ -142,7 +143,7 @@ class PriceIn(BaseModel):
 def list_prices(product_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Preisverlauf eines Produkts."""
     p = db.get(Product, product_id)
-    if not p or (not p.verified and user.role.value != "TEAM_LEADER"):
+    if not p or (not p.verified and not sieht_fremde_daten(user)):
         raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
     return [_preis_out(x) for x in _preisverlauf(db, product_id)]
 
@@ -413,7 +414,7 @@ def import_prices(
 @router.get("/{product_id}")
 def product_detail(product_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = db.get(Product, product_id)
-    if not p or not p.active or (not p.verified and user.role.value != "TEAM_LEADER"):
+    if not p or not p.active or (not p.verified and not sieht_fremde_daten(user)):
         raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
     return product_out(db, p)
 

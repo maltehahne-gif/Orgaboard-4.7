@@ -32,6 +32,8 @@ import {
   formatDateTime,
   money,
 } from '../lib/api'
+import {darfVerwalten} from '../lib/roles'
+import type {Role} from '../types'
 import {connectRealtime} from '../lib/realtime'
 import {useAuth} from '../lib/auth'
 import {useToast} from '../components/Toast'
@@ -922,7 +924,7 @@ export function MessagesPage(){
                   {user.full_name}
                 </strong>
                 <small>
-                  {user.role==='TEAM_LEADER'
+                  {darfVerwalten(user.role as Role)
                     ? 'Teamleiter'
                     : 'Privater Chat'}
                 </small>

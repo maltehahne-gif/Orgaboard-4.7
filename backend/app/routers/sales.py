@@ -7,6 +7,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from app.core.permissions import sieht_fremde_daten
 from app.core.audit import audit
 from app.core.database import get_db
 from app.core.rbac import require_team_leader, scoped_employee_id
@@ -136,7 +137,7 @@ async def create_sale(data: SaleIn, user: User = Depends(get_current_user), db: 
     c = db.get(Customer, data.customer_id)
     if not c or c.deleted_at:
         raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
-    if user.role.value != "TEAM_LEADER" and c.employee_id != employee_id:
+    if not sieht_fremde_daten(user) and c.employee_id != employee_id:
         raise HTTPException(status_code=403, detail="Kunde gehört nicht zu diesem Mitarbeiter")
     if not data.items:
         raise HTTPException(status_code=400, detail="Ein Verkauf benötigt mindestens ein Produkt")
@@ -177,7 +178,7 @@ async def cancel_sale(
     if not sale:
         raise HTTPException(status_code=404, detail="Verkauf nicht gefunden")
 
-    if user.role.value != "TEAM_LEADER":
+    if not sieht_fremde_daten(user):
         eigener = scoped_employee_id(db, user, None)
         if sale.employee_id != eigener:
             raise HTTPException(

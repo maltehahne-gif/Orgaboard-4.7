@@ -22,6 +22,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.permissions import sieht_fremde_daten
 from app.core.timeutils import local_today, month_bounds, utc_aware, week_bounds
 from app.models import (
     Employee,
@@ -273,7 +274,7 @@ def build_report(
 
     # Teamsicht nur fuer die Teamleitung und nur ohne Einschraenkung auf eine
     # Person - eine "Teamtabelle" mit einer Zeile waere irrefuehrend.
-    if user.role.value == "TEAM_LEADER" and employee_id is None:
+    if sieht_fremde_daten(user) and employee_id is None:
         bericht["team"] = _team(db, start, ende)
         if kind == "month" and offset == 0:
             bericht["goals"] = employee_goal_progress(db)

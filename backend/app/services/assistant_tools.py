@@ -2,6 +2,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
+from app.core.permissions import sieht_fremde_daten
 from app.core.audit import audit
 from app.core.rbac import current_employee, resolve_employee_by_name
 from app.core.timeutils import day_bounds, month_bounds, week_bounds
@@ -155,7 +156,7 @@ def execute_tool(db: Session, user: User, name: str, args: dict) -> dict:
         if not c:
             return {"error":"Kunde nicht gefunden"}
         own = current_employee(db, user)
-        if user.role != Role.TEAM_LEADER and c.employee_id != own.id:
+        if not sieht_fremde_daten(user) and c.employee_id != own.id:
             return {"error":"Nicht berechtigt"}
         sales = db.scalars(select(Sale).where(Sale.customer_id == c.id).order_by(Sale.sold_at.desc())).all()
         purchases = []
@@ -229,7 +230,7 @@ def execute_tool(db: Session, user: User, name: str, args: dict) -> dict:
 
     if name == "create_appointment":
         e = resolve_employee_by_name(db, user, args.get("employee_name")); c=db.get(Customer,args["customer_id"])
-        if not c or (user.role != Role.TEAM_LEADER and c.employee_id != e.id): return {"error":"Kunde nicht gefunden oder nicht berechtigt"}
+        if not c or (not sieht_fremde_daten(user) and c.employee_id != e.id): return {"error":"Kunde nicht gefunden oder nicht berechtigt"}
         a=Appointment(customer_id=c.id,employee_id=e.id,start_at=datetime.fromisoformat(args["start_at"]),end_at=datetime.fromisoformat(args["end_at"]) if args.get("end_at") else None,appointment_type=AppointmentType(args["appointment_type"]),notes=args.get("notes"),address_snapshot=" ".join(x for x in [c.street,c.house_number,c.postal_code,c.city] if x),phone_snapshot=c.phone,email_snapshot=c.email)
         db.add(a);db.commit();db.refresh(a);return {"created":True,"appointment":_appointment_dict(db,a)}
 
@@ -237,14 +238,14 @@ def execute_tool(db: Session, user: User, name: str, args: dict) -> dict:
         a=db.get(Appointment,args["appointment_id"])
         if not a:return {"error":"Termin nicht gefunden"}
         e=current_employee(db,user)
-        if user.role!=Role.TEAM_LEADER and a.employee_id!=e.id:return {"error":"Nicht berechtigt"}
+        if not sieht_fremde_daten(user) and a.employee_id!=e.id:return {"error":"Nicht berechtigt"}
         a.status=AppointmentStatus(args["status"]);db.commit();return {"updated":True,"appointment":_appointment_dict(db,a)}
 
     if name == "create_sale":
         if not args.get("confirm"):
             return {"requires_confirmation":True,"message":"Bitte den Verkauf mit Produkten, Stückzahlen und Preisen bestätigen."}
         e=resolve_employee_by_name(db,user,args.get("employee_name"));c=db.get(Customer,args["customer_id"])
-        if not c or c.deleted_at or (user.role!=Role.TEAM_LEADER and c.employee_id!=e.id):return {"error":"Kunde nicht gefunden oder nicht berechtigt"}
+        if not c or c.deleted_at or (not sieht_fremde_daten(user) and c.employee_id!=e.id):return {"error":"Kunde nicht gefunden oder nicht berechtigt"}
         resolved=[]
         for item in args["items"]:
             p=db.get(Product,item["product_id"])

@@ -1,4 +1,4 @@
-export type Role = 'EMPLOYEE' | 'TEAM_LEADER'
+export type Role = 'EMPLOYEE' | 'TEAM_LEADER' | 'REGIONAL_LEAD' | 'SYSTEM_ADMIN'
 export interface Employee { id:string; display_name:string; position:string; monthly_units_target:number; weekly_revenue_target_cents:number|null }
 export interface Me { id:string; email:string; full_name:string; role:Role; must_change_password:boolean; employee:Employee|null }
 export interface Customer { id:string; employee_id:string; first_name:string; last_name:string; full_name:string; street:string; house_number:string; postal_code:string; city:string; phone:string|null; email:string|null; notes:string|null; created_at?:string; address:string }

@@ -16,8 +16,46 @@ def now_utc() -> datetime:
 
 
 class Role(str, enum.Enum):
+    """Berechtigungsstufen, aufsteigend.
+
+    Die Reihenfolge ist die Aussage: eine hoehere Stufe darf alles, was eine
+    niedrigere darf. Geprueft wird deshalb nirgends auf Gleichheit, sondern
+    ueber rang() - sonst muesste jede neue Rolle in jeder einzelnen Abfrage
+    nachgetragen werden, und die eine vergessene Stelle faellt niemandem auf.
+
+    Die beiden urspruenglichen Werte behalten ihre Schreibweise. Ein
+    bestehender Datensatz bleibt damit gueltig, ohne angefasst zu werden.
+    """
+
     EMPLOYEE = "EMPLOYEE"
     TEAM_LEADER = "TEAM_LEADER"
+    REGIONAL_LEAD = "REGIONAL_LEAD"
+    SYSTEM_ADMIN = "SYSTEM_ADMIN"
+
+    @property
+    def rang(self) -> int:
+        return _ROLLEN_RANG[self]
+
+    def mindestens(self, andere: "Role") -> bool:
+        """Ob diese Rolle mindestens so weit reicht wie die andere."""
+        return self.rang >= andere.rang
+
+
+# Getrennt von der Enum, damit sich die Rangfolge aendern laesst, ohne die
+# gespeicherten Werte anzufassen.
+_ROLLEN_RANG: dict[Role, int] = {
+    Role.EMPLOYEE: 0,
+    Role.TEAM_LEADER: 10,
+    Role.REGIONAL_LEAD: 20,
+    Role.SYSTEM_ADMIN: 100,
+}
+
+ROLLEN_BEZEICHNUNG: dict[Role, str] = {
+    Role.EMPLOYEE: "Mitarbeiter",
+    Role.TEAM_LEADER: "Teamleiter",
+    Role.REGIONAL_LEAD: "Regionalleiter",
+    Role.SYSTEM_ADMIN: "Systemadministrator",
+}
 
 
 class AppointmentStatus(str, enum.Enum):
@@ -85,11 +123,127 @@ class FunnelStage(str, enum.Enum):
     AFTERCARE = "aftercare"
 
 
+class Region(Base):
+    """Oberste Ebene der Vertriebsstruktur unterhalb des Unternehmens."""
+
+    __tablename__ = "regions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    name: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    # Die Leitung ist ein Benutzer, kein Mitarbeiterprofil: ein Regionalleiter
+    # muss nicht selbst im Aussendienst arbeiten.
+    lead_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class District(Base):
+    """Bezirk innerhalb einer Region."""
+
+    __tablename__ = "districts"
+    __table_args__ = (UniqueConstraint("region_id", "name", name="uq_district_name_in_region"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    region_id: Mapped[str] = mapped_column(ForeignKey("regions.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(160), index=True)
+    lead_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class Team(Base):
+    """Team innerhalb eines Bezirks - die Ebene, an der Mitarbeiter haengen."""
+
+    __tablename__ = "teams"
+    __table_args__ = (UniqueConstraint("district_id", "name", name="uq_team_name_in_district"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    district_id: Mapped[str] = mapped_column(ForeignKey("districts.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(160), index=True)
+    lead_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class Permission(str, enum.Enum):
+    """Einzelrechte, die sich je Benutzer abweichend von der Rolle setzen lassen.
+
+    Die Rolle legt fest, was ueblich ist. Ein Eintrag in user_permissions
+    weicht davon bewusst ab - in beide Richtungen. Ohne Eintrag gilt die
+    Rolle, damit eine neue Rolle nicht bedeutet, dass jeder Benutzer einzeln
+    nachgepflegt werden muss.
+    """
+
+    KUNDEN_SEHEN = "customers.view"
+    KUNDEN_BEARBEITEN = "customers.edit"
+    KUNDEN_LOESCHEN = "customers.delete"
+
+    TERMINE_SEHEN = "appointments.view"
+    TERMINE_ERSTELLEN = "appointments.create"
+    TERMINE_BEARBEITEN = "appointments.edit"
+    TERMINE_LOESCHEN = "appointments.delete"
+
+    VERKAEUFE_SEHEN = "sales.view"
+    VERKAEUFE_ERSTELLEN = "sales.create"
+    VERKAEUFE_LOESCHEN = "sales.delete"
+
+    PRODUKTE_VERWALTEN = "products.manage"
+    CHAT_NUTZEN = "chat.use"
+    DASHBOARD_SEHEN = "dashboard.view"
+    STATISTIK_SEHEN = "stats.view"
+    EXPORT = "export.run"
+
+
+class UserPermission(Base):
+    """Abweichung vom Rollenstandard fuer einen einzelnen Benutzer."""
+
+    __tablename__ = "user_permissions"
+    __table_args__ = (UniqueConstraint("user_id", "permission", name="uq_user_permission"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    permission: Mapped[Permission] = mapped_column(Enum(Permission), index=True)
+    # True = ausdruecklich erlaubt, False = ausdruecklich entzogen. Kein
+    # Eintrag heisst: es gilt, was die Rolle vorsieht.
+    allowed: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class SystemSetting(Base):
+    """Betreibereinstellungen als Schluessel-Wert-Paare.
+
+    Bewusst keine Spalte je Einstellung: eine neue Einstellung soll keine
+    Migration brauchen. Der Wert liegt als JSON, damit auch Listen und
+    Zahlen ohne Umwege hineinpassen.
+    """
+
+    __tablename__ = "system_settings"
+    key: Mapped[str] = mapped_column(String(120), primary_key=True)
+    value_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    updated_by_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+
 class User(Base):
     __tablename__ = "users"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    # full_name bleibt die eine Quelle fuer die Anzeige - jede Liste, jede
+    # Nachricht und jeder Bericht liest sie. Vor- und Nachname stehen
+    # zusaetzlich fuer die Verwaltungsmaske; beim Speichern dort wird
+    # full_name daraus zusammengesetzt, damit beide nicht auseinanderlaufen.
     full_name: Mapped[str] = mapped_column(String(255))
+    first_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(500))
     role: Mapped[Role] = mapped_column(Enum(Role), default=Role.EMPLOYEE, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -108,6 +262,17 @@ class Employee(Base):
     weekly_revenue_target_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     daily_area_target_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     daily_total_target_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Nur das Team wird gespeichert. Bezirk und Region ergeben sich daraus -
+    # zwei Angaben, die dasselbe meinen, laufen sonst frueher oder spaeter
+    # auseinander.
+    team_id: Mapped[str | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    employee_number: Mapped[str | None] = mapped_column(String(60), nullable=True, index=True)
+    hired_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    location: Mapped[str | None] = mapped_column(String(160), nullable=True)
+
     user: Mapped[User] = relationship(back_populates="employee")
 
 

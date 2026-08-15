@@ -5,6 +5,7 @@ import hashlib
 from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from app.core.permissions import sieht_fremde_daten
 from app.core.config import get_settings
 from app.core.rbac import current_employee
 from app.core.timeutils import day_bounds, local_today, month_bounds, to_business_tz, week_bounds
@@ -118,7 +119,7 @@ def _local_answer(db: Session, user: User, c: Conversation, text: str) -> str:
 
     if "adresse" in lower and c.last_entity_type=="appointment" and c.last_entity_id:
         a=db.get(Appointment,c.last_entity_id)
-        if a and (user.role==Role.TEAM_LEADER or a.employee_id==e.id): return f"Die hinterlegte Adresse lautet: {a.address_snapshot or 'keine Adresse hinterlegt'}."
+        if a and (sieht_fremde_daten(user) or a.employee_id==e.id): return f"Die hinterlegte Adresse lautet: {a.address_snapshot or 'keine Adresse hinterlegt'}."
 
     if "morgen" in lower and "termin" in lower:
         d=local_today()+timedelta(days=1);ds,de=day_bounds(d);rows=db.scalars(select(Appointment).where(Appointment.employee_id==e.id,Appointment.start_at>=ds,Appointment.start_at<de).order_by(Appointment.start_at)).all()
