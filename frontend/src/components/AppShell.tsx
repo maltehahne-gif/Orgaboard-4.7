@@ -16,6 +16,7 @@ import {
   Route as RouteIcon,
   Search,
   Settings,
+  ShieldCheck,
   ShoppingCart,
   Sun,
   Table2,
@@ -84,6 +85,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       {to: '/team', label: 'Team', icon: Users},
       {to: '/teamstatistiken', label: 'Teamstatistiken', icon: BarChart3, short: 'Statistik'},
+      {to: '/verwaltung', label: 'Verwaltung', icon: ShieldCheck},
     ],
   },
   {

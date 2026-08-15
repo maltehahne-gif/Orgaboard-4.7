@@ -9924,6 +9924,77 @@ to{
   .linechart { grid-template-columns: 40px minmax(0, 1fr); }
 }
 
+/* ============================================================================
+   Verwaltung: Benutzer, Rollen und Ziele
+   ========================================================================== */
+
+.admin-rolle {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #1b2b30;
+  color: #9fb0aa;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.admin-rolle.is-leiter {
+  background: rgba(52, 215, 105, .13);
+  color: var(--green);
+}
+
+/* Deaktivierte Konten bleiben lesbar, treten aber zurueck. Die Aktionsspalte
+   bleibt bewusst voll sichtbar - sonst wirkt der Knopf zum Reaktivieren
+   gesperrt, obwohl er es nicht ist. */
+.admin-inaktiv td:not(:last-child) { opacity: .55; }
+
+.admin-aktionen {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.admin-aktionen button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0 !important;
+}
+
+.admin-aktionen button:disabled {
+  opacity: .3;
+  cursor: default;
+}
+
+.admin-hinweis {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Einmalig angezeigtes Startpasswort - gross und eindeutig lesbar, damit es
+   sich fehlerfrei abschreiben laesst. */
+.admin-passwort {
+  margin: 14px 0;
+  padding: 14px 16px;
+  border: 1px solid #2c6c3d;
+  border-radius: 10px;
+  background: #0c171b;
+  color: #dff9e7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 19px;
+  letter-spacing: .06em;
+  text-align: center;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+@media (max-width: 767px) {
+  .admin-aktionen { justify-content: flex-start; flex-wrap: wrap; }
+  .admin-aktionen button { width: 40px; height: 40px; }
+}
+
 /* Verkauf: Storno-Zelle mit Wiederherstellen-Button */
 .sale-cancelled-cell{display:flex;align-items:center;gap:6px}
 .sale-cancelled-flag{display:inline-flex;align-items:center;gap:6px;color:var(--danger);font-size:13px}
