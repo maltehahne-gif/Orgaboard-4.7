@@ -92,14 +92,14 @@ async function save(e:FormEvent){e.preventDefault();try{await api('/rentals',{me
 }<div className="rental-tabs">
 <button
 type="button"
-className={ansicht==='vorgaenge'?'is-active':undefined}
+className={ansicht==='vorgaenge'?'plain-button is-active':'plain-button'}
 onClick={()=>setAnsicht('vorgaenge')}
 >
 Vorgänge
 </button>
 <button
 type="button"
-className={ansicht==='geraete'?'is-active':undefined}
+className={ansicht==='geraete'?'plain-button is-active':'plain-button'}
 onClick={()=>setAnsicht('geraete')}
 >
 Geräte

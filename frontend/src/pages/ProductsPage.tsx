@@ -8,12 +8,14 @@ import {
 import {
   Archive,
   ArchiveRestore,
+  Euro,
   Plus,
   Search,
   Package,
   X,
 } from 'lucide-react'
 
+import {ProductPrices} from '../components/ProductPrices'
 import {useAuth} from '../lib/auth'
 import {api} from '../lib/api'
 
@@ -59,10 +61,14 @@ export function ProductsPage(){
   const {me}=useAuth()
   const istTeamleiter=me?.role==='TEAM_LEADER'
 
+  // Katalog, Archiv und Preisverwaltung teilen sich die Seite.
   // Archivierte Produkte bleiben erhalten, weil Verkaeufe auf sie verweisen.
   // Sie verschwinden nur aus den Auswahllisten.
-  const [zeigeArchiv,setZeigeArchiv]=
-    useState(false)
+  const [ansicht,setAnsicht]=
+    useState<'katalog'|'archiv'|'preise'>('katalog')
+
+  const zeigeArchiv=
+    ansicht==='archiv'
 
   const [products,setProducts]=
     useState<ProductRecord[]>([])
@@ -76,6 +82,16 @@ export function ProductsPage(){
 
   const [priceFilter,setPriceFilter]=
     useState('all')
+
+  // Preisspanne in Euro, als Text, damit ein leeres Feld auch leer bleibt.
+  const [priceFrom,setPriceFrom]=
+    useState('')
+
+  const [priceTo,setPriceTo]=
+    useState('')
+
+  const [sortierung,setSortierung]=
+    useState('name')
 
   const [showForm,setShowForm]=
     useState(false)
@@ -123,8 +139,8 @@ export function ProductsPage(){
 
 
   useEffect(()=>{
-    load()
-  },[zeigeArchiv])
+    if(ansicht!=='preise')load()
+  },[ansicht])
 
 
   async function setzeAktiv(
@@ -249,6 +265,29 @@ export function ProductsPage(){
         }
 
 
+        // Preisspanne. Ein Produkt ohne Preis faellt heraus, sobald eine
+        // Grenze gesetzt ist - sonst taeuscht die Liste Treffer vor.
+        const von=
+          priceFrom.trim()
+            ? Number(priceFrom.replace(',','.'))
+            : null
+
+        const bis=
+          priceTo.trim()
+            ? Number(priceTo.replace(',','.'))
+            : null
+
+        if(von!==null&&Number.isFinite(von)){
+          const preis=getPrice(product)
+          if(preis===null||preis<von)return false
+        }
+
+        if(bis!==null&&Number.isFinite(bis)){
+          const preis=getPrice(product)
+          if(preis===null||preis>bis)return false
+        }
+
+
         return true
       })
 
@@ -256,7 +295,41 @@ export function ProductsPage(){
       filtered,
       categoryFilter,
       priceFilter,
+      priceFrom,
+      priceTo,
     ])
+
+
+  const sortierteProdukte=
+    useMemo(()=>{
+
+      const liste=[...visibleProducts]
+
+      // Produkte ohne Preis stehen beim Sortieren nach Preis am Ende -
+      // sie sind keine "0 Euro".
+      const nachPreis=(richtung:number)=>
+        (a:ProductRecord,b:ProductRecord)=>{
+          const pa=getPrice(a)
+          const pb=getPrice(b)
+          if(pa===null&&pb===null)return 0
+          if(pa===null)return 1
+          if(pb===null)return -1
+          return (pa-pb)*richtung
+        }
+
+      if(sortierung==='preis-auf')return liste.sort(nachPreis(1))
+      if(sortierung==='preis-ab')return liste.sort(nachPreis(-1))
+
+      if(sortierung==='kategorie'){
+        return liste.sort((a,b)=>
+          (a.category||'').localeCompare(b.category||'','de')
+          ||a.name.localeCompare(b.name,'de')
+        )
+      }
+
+      return liste.sort((a,b)=>a.name.localeCompare(b.name,'de'))
+
+    },[visibleProducts,sortierung])
 
 
   function resetProductFilters(){
@@ -264,6 +337,9 @@ export function ProductsPage(){
     setSearch('')
     setCategoryFilter('')
     setPriceFilter('all')
+    setPriceFrom('')
+    setPriceTo('')
+    setSortierung('name')
   }
 
 
@@ -379,44 +455,67 @@ export function ProductsPage(){
 
         <div>
           <h1>
-            {zeigeArchiv
+            {ansicht==='archiv'
               ? 'Archivierte Produkte'
-              : 'Produktkatalog'}
+              : ansicht==='preise'
+                ? 'Preisverwaltung'
+                : 'Produktkatalog'}
           </h1>
 
           <p>
-            {zeigeArchiv
+            {ansicht==='archiv'
               ? 'Nicht mehr in Auswahllisten. Bisherige Verkäufe bleiben erhalten.'
-              : 'Produkte schnell finden und für Verkäufe verwenden.'}
+              : ansicht==='preise'
+                ? 'Alle Preise an einer Stelle – mit Verlauf und CSV-Import.'
+                : 'Produkte schnell finden und für Verkäufe verwenden.'}
           </p>
 
           {istTeamleiter&&
-            <button
-              type="button"
-              className="archive-toggle"
-              onClick={()=>setZeigeArchiv(v=>!v)}
-            >
-              {zeigeArchiv
-                ? <><Package size={15}/> Zum Katalog</>
-                : <><Archive size={15}/> Archiv ansehen</>}
-            </button>
+            <div className="rental-tabs produkt-tabs">
+              <button
+                type="button"
+                className={ansicht==='katalog'?'plain-button is-active':'plain-button'}
+                onClick={()=>setAnsicht('katalog')}
+              >
+                <Package size={15}/> Katalog
+              </button>
+              <button
+                type="button"
+                className={ansicht==='preise'?'plain-button is-active':'plain-button'}
+                onClick={()=>setAnsicht('preise')}
+              >
+                <Euro size={15}/> Preise
+              </button>
+              <button
+                type="button"
+                className={ansicht==='archiv'?'plain-button is-active':'plain-button'}
+                onClick={()=>setAnsicht('archiv')}
+              >
+                <Archive size={15}/> Archiv
+              </button>
+            </div>
           }
         </div>
 
 
-        <button
-          className="primary"
-          type="button"
-          onClick={()=>{
-            resetForm()
-            setShowForm(true)
-          }}
-        >
-          <Plus size={18}/>
-          Neues Produkt
-        </button>
+        {ansicht!=='preise'&&
+          <button
+            className="primary"
+            type="button"
+            onClick={()=>{
+              resetForm()
+              setShowForm(true)
+            }}
+          >
+            <Plus size={18}/>
+            Neues Produkt
+          </button>
+        }
 
       </div>
+
+
+      {ansicht==='preise'?<ProductPrices/>:<>
 
 
       <div className="simple-product-search">
@@ -491,6 +590,61 @@ export function ProductsPage(){
         </label>
 
 
+        <label className="preisspanne">
+          Preis von – bis
+
+          <span>
+            <input
+              value={priceFrom}
+              onChange={event=>
+                setPriceFrom(event.target.value)
+              }
+              inputMode="decimal"
+              placeholder="0"
+              aria-label="Preis ab"
+            />
+
+            <input
+              value={priceTo}
+              onChange={event=>
+                setPriceTo(event.target.value)
+              }
+              inputMode="decimal"
+              placeholder="ohne Grenze"
+              aria-label="Preis bis"
+            />
+          </span>
+        </label>
+
+
+        <label>
+          Sortierung
+
+          <select
+            value={sortierung}
+            onChange={event=>
+              setSortierung(event.target.value)
+            }
+          >
+            <option value="name">
+              Name A–Z
+            </option>
+
+            <option value="kategorie">
+              Kategorie
+            </option>
+
+            <option value="preis-auf">
+              Preis aufsteigend
+            </option>
+
+            <option value="preis-ab">
+              Preis absteigend
+            </option>
+          </select>
+        </label>
+
+
         <button
           type="button"
           onClick={resetProductFilters}
@@ -503,15 +657,15 @@ export function ProductsPage(){
 
 
       <div className="simple-product-count">
-        {visibleProducts.length}
+        {sortierteProdukte.length}
         {' '}
-        Produkte
+        {sortierteProdukte.length===1?'Produkt':'Produkte'}
       </div>
 
 
       <div className="simple-product-grid">
 
-        {visibleProducts.map(product=>{
+        {sortierteProdukte.map(product=>{
 
           const price=
             getPrice(product)
@@ -599,6 +753,8 @@ export function ProductsPage(){
         })}
 
       </div>
+
+      </>}
 
 
       {showForm && (

@@ -144,7 +144,7 @@ export function RentalDevices() {
 
           return (
             <div className={`card geraet-card${g.in_use ? ' in-use' : ''}`} key={g.key}>
-              <button type="button" className="geraet-kopf" onClick={() => aufklappen(g)}>
+              <button type="button" className="plain-button geraet-kopf" onClick={() => aufklappen(g)}>
                 {aufgeklappt ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                 <div className="geraet-titel">
                   <strong>{g.serial_number}</strong>
