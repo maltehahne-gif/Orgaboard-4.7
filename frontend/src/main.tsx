@@ -4,10 +4,11 @@ import {BrowserRouter} from 'react-router-dom'
 import App from './App'
 import {AuthProvider} from './lib/auth'
 import {ToastProvider} from './components/Toast'
+import {ErrorBoundary} from './components/ErrorBoundary'
 import './styles.css'
 import './shell.css'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><BrowserRouter><AuthProvider><ToastProvider><App/></ToastProvider></AuthProvider></BrowserRouter></React.StrictMode>)
+ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><BrowserRouter><AuthProvider><ToastProvider><ErrorBoundary bereich="OrgaBoard"><App/></ErrorBoundary></ToastProvider></AuthProvider></BrowserRouter></React.StrictMode>)
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

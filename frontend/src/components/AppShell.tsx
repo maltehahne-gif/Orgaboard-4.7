@@ -35,6 +35,7 @@ import {api} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
 import {GlobalSearch} from './GlobalSearch'
 import {NotificationsBell} from './NotificationsBell'
+import {ErrorBoundary} from './ErrorBoundary'
 import {APP_VERSION} from '../lib/changelog'
 
 type NavItem = {
@@ -353,7 +354,12 @@ export function AppShell() {
         )}
 
         <main className="ob-content">
-          <Outlet />
+          {/* Die Grenze sitzt innerhalb der Hülle: Stürzt eine Seite ab,
+              bleiben Menü und Suche bedienbar, und der nächste Seitenwechsel
+              setzt sie von selbst zurück. */}
+          <ErrorBoundary zuruecksetzenBei={location.pathname} bereich="Diese Seite">
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
 
