@@ -36,7 +36,7 @@ jobs:
         run: pytest -q backend/tests
 
   frontend:
-    name: Frontend (tsc + build)
+    name: Frontend (tsc + Tests + Build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +49,10 @@ jobs:
 
       - name: Abhaengigkeiten installieren
         run: npm ci --no-audit --no-fund
+        working-directory: frontend
+
+      - name: Tests
+        run: npm test
         working-directory: frontend
 
       - name: Typpruefung und Build
