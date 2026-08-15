@@ -1,18 +1,27 @@
-import {useEffect,useState} from 'react'
+import {useCallback,useEffect,useState} from 'react'
 import {Download} from 'lucide-react'
 import {api,downloadFile,money} from '../lib/api'
 import {StatCard} from '../components/StatCard'
 import {TeamOverview} from '../components/TeamOverview'
+import {LoadError} from '../components/LoadError'
 import {useToast} from '../components/Toast'
 
 type S={revenue_today_cents:number;revenue_week_cents:number;revenue_month_cents:number;units_week:number;employees:number;average_units_per_employee:number;units_target:number;units_percent:number}
 
 export function TeamStatsPage(){
   const [s,setS]=useState<S|null>(null)
+  const [fehler,setFehler]=useState<string|null>(null)
   const [exporting,setExporting]=useState(false)
   const toast=useToast()
 
-  useEffect(()=>{api<S>('/team/stats').then(setS)},[])
+  const laden=useCallback(()=>{
+    setFehler(null)
+    api<S>('/team/stats')
+      .then(setS)
+      .catch(err=>setFehler(err instanceof Error?err.message:'Die Teamstatistiken sind gerade nicht erreichbar.'))
+  },[])
+
+  useEffect(()=>{laden()},[laden])
 
   async function exportExcel(){
     setExporting(true)
@@ -24,6 +33,11 @@ export function TeamStatsPage(){
       setExporting(false)
     }
   }
+
+  if(fehler)return <div className="page">
+    <div className="page-head"><div><h1>Teamstatistiken</h1><p>Aggregierte Teamkennzahlen aus Verkäufen.</p></div></div>
+    <LoadError meldung={fehler} onRetry={laden}/>
+  </div>
 
   if(!s)return <div className="loading">Teamstatistiken werden geladen…</div>
 
