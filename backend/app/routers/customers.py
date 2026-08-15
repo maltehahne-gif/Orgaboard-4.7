@@ -7,7 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 from app.core.audit import audit
 from app.core.database import get_db
-from app.core.rbac import current_employee, scoped_employee_id
+from app.core.rbac import current_employee, require_team_leader, scoped_employee_id
 from app.core.security import get_current_user, require_csrf
 from app.models import Customer, CustomerNote, Employee, User
 from app.services.timeline import FUNNEL_LABELS, customer_timeline, funnel_stage
@@ -86,6 +86,72 @@ def update_customer(customer_id: str, data: CustomerIn, user: User = Depends(get
     audit(db, user, "customer.updated", "customer", c.id, before=before, after=out(c))
     db.commit()
     return out(c)
+
+
+@router.get("/{customer_id}/export")
+def export_customer_data(
+    customer_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Auskunft nach Art. 15 DSGVO: alle gespeicherten Daten zu einer Person."""
+    from app.services.privacy import export_customer
+
+    c = db.get(Customer, customer_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    scoped_employee_id(db, user, c.employee_id)
+
+    daten = export_customer(db, c)
+    # Die Auskunft selbst ist ein Vorgang, der nachvollziehbar sein muss.
+    audit(db, user, "customer.exported", "customer", c.id)
+    db.commit()
+    return daten
+
+
+@router.post("/{customer_id}/anonymize", dependencies=[Depends(require_csrf)])
+def anonymize_customer_data(
+    customer_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Loeschung nach Art. 17 DSGVO.
+
+    Nur Teamleiter: der Schritt ist unwiderruflich und betrifft mehr als den
+    eigenen Arbeitsbereich.
+    """
+    from app.services.privacy import anonymize_customer
+
+    require_team_leader(user)
+
+    c = db.get(Customer, customer_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+
+    ergebnis = anonymize_customer(db, c)
+    if ergebnis["already"]:
+        raise HTTPException(status_code=400, detail="Dieser Kunde ist bereits anonymisiert")
+
+    # Bewusst ohne before-Abbild: das wuerde die geloeschten Daten im
+    # Audit-Log konservieren und die Loeschung damit aushebeln.
+    audit(db, user, "customer.anonymized", "customer", c.id, after=ergebnis)
+    db.commit()
+    return {"ok": True, **ergebnis}
+
+
+@router.get("/privacy/retention")
+def retention_view(
+    jahre: int = Query(default=3, ge=1, le=30),
+    employee_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Kunden ohne Aktivitaet seit `jahre` - Vorschlagsliste zum Aufraeumen."""
+    from app.services.privacy import retention_candidates
+
+    require_team_leader(user)
+    scope = scoped_employee_id(db, user, employee_id)
+    return {"jahre": jahre, "kandidaten": retention_candidates(db, jahre, scope)}
 
 
 class CustomerImportIn(BaseModel):

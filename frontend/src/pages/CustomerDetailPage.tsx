@@ -2,6 +2,8 @@ import {FormEvent, useCallback, useEffect, useState} from 'react'
 import {
   ArrowLeft,
   CalendarDays,
+  Download,
+  ShieldOff,
   Mail,
   MapPin,
   MessageSquarePlus,
@@ -16,6 +18,7 @@ import {
 import {Link, useParams} from 'react-router-dom'
 import {api, formatDateTime} from '../lib/api'
 import {useToast} from '../components/Toast'
+import {useAuth} from '../lib/auth'
 
 type Customer = {
   id: string
@@ -78,6 +81,58 @@ export function CustomerDetailPage() {
   const [noteBody, setNoteBody] = useState('')
   const [saving, setSaving] = useState(false)
   const toast = useToast()
+  const {me} = useAuth()
+  const isTeamLeader = me?.role === 'TEAM_LEADER'
+
+  /**
+   * Auskunft nach Art. 15 DSGVO: alle gespeicherten Daten als Datei.
+   * Die Datei entsteht im Browser aus der Antwort - so wandert nichts über
+   * einen zusätzlichen Umweg.
+   */
+  async function datenauskunft() {
+    if (!customerId) return
+    try {
+      const daten = await api<Record<string, unknown>>(`/customers/${customerId}/export`)
+      const blob = new Blob([JSON.stringify(daten, null, 2)], {type: 'application/json'})
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Datenauskunft-${customerId}.json`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      toast('Datenauskunft heruntergeladen')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Auskunft fehlgeschlagen', 'error')
+    }
+  }
+
+  /** Löschung nach Art. 17 DSGVO - unwiderruflich, deshalb zweistufig. */
+  async function anonymisieren() {
+    if (!customerId || !data) return
+    const name = data.customer.full_name
+    if (!window.confirm(
+      `Personenbezogene Daten von ${name} unwiderruflich entfernen?\n\n` +
+      'Name, Adresse, Telefon, E-Mail und alle Notizen werden gelöscht – auch in ' +
+      'Terminen und im Protokoll.\n\n' +
+      'Verkäufe und Umsatzzahlen bleiben erhalten, ohne Personenbezug.\n\n' +
+      'Das lässt sich nicht rückgängig machen.'
+    )) return
+
+    if (window.prompt('Zur Bestätigung bitte ANONYMISIEREN eintippen:') !== 'ANONYMISIEREN') {
+      toast('Abgebrochen – nichts geändert')
+      return
+    }
+
+    try {
+      await api(`/customers/${customerId}/anonymize`, {method: 'POST'})
+      toast('Kunde wurde anonymisiert')
+      load()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Anonymisierung fehlgeschlagen', 'error')
+    }
+  }
 
   const load = useCallback(async () => {
     if (!customerId) return
@@ -126,6 +181,18 @@ export function CustomerDetailPage() {
           </Link>
           <h1>{customer.full_name}</h1>
           <p>{customer.address || 'Keine Adresse hinterlegt'}</p>
+        </div>
+
+        <div className="page-head-actions">
+          <button type="button" onClick={datenauskunft} title="Alle gespeicherten Daten als Datei (Art. 15 DSGVO)">
+            <Download size={16} /> Datenauskunft
+          </button>
+          {isTeamLeader && (
+            <button type="button" className="danger-button" onClick={anonymisieren}
+              title="Personenbezug unwiderruflich entfernen (Art. 17 DSGVO)">
+              <ShieldOff size={16} /> Anonymisieren
+            </button>
+          )}
         </div>
       </div>
 

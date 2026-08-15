@@ -126,6 +126,10 @@ class Customer(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Gesetzt, sobald die personenbezogenen Felder unwiderruflich entfernt
+    # wurden (Loeschanfrage nach Art. 17 DSGVO). Der Datensatz selbst bleibt,
+    # damit Verkaeufe und Umsatzzahlen nicht nachtraeglich verschwinden.
+    anonymized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class CustomerNote(Base):
