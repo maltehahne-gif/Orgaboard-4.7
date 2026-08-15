@@ -4,9 +4,9 @@ import {
   ArrowUpRight,
   BadgeEuro,
   CalendarDays,
+  CalendarRange,
   ContactRound,
   Mail,
-  MapPinned,
   Package,
   PackageCheck,
   Route as RouteIcon,
@@ -18,13 +18,14 @@ import {Link, useNavigate} from 'react-router-dom'
 import {api, formatDateTime, money} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
 import {useAuth} from '../lib/auth'
-import type {Appointment, Customer, Product} from '../types'
+import type {Appointment, Customer, Product, Sale} from '../types'
 import {AppointmentWeek} from '../components/AppointmentWeek'
 import {AppointmentModal} from '../components/AppointmentModal'
-import {addDays, appointmentPayload, downloadCalendarFile, startOfWorkWeek, type AppointmentDraft} from '../lib/appointments'
+import {addDays, appointmentPayload, appointmentTypeOption, downloadCalendarFile, startOfWorkWeek, type AppointmentDraft} from '../lib/appointments'
 import {useToast} from '../components/Toast'
 
 type RentalRow = {id: string; product_id: string; due_at: string | null; status: string}
+type MessageRow = {id: string; sender_name: string; body: string; created_at: string}
 
 type Dash = {
   revenue_today_cents: number
@@ -50,12 +51,23 @@ type TeamEmployee = {id: string; display_name: string}
 type Editor = {appointment?: Appointment; initialDay?: Date}
 
 const weekFormatter = new Intl.DateTimeFormat('de-DE', {day: '2-digit', month: 'short'})
+const timeFormatter = new Intl.DateTimeFormat('de-DE', {hour: '2-digit', minute: '2-digit'})
 
 function greeting() {
   const hour = new Date().getHours()
   if (hour < 11) return 'Guten Morgen'
   if (hour < 18) return 'Guten Tag'
   return 'Guten Abend'
+}
+
+function initials(name: string) {
+  return name
+    .split(' ')
+    .map(part => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
 }
 
 function Delta({percent}: {percent: number | null | undefined}) {
@@ -82,6 +94,8 @@ export function DashboardPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [employees, setEmployees] = useState<TeamEmployee[]>([])
+  const [sales, setSales] = useState<Sale[]>([])
+  const [messages, setMessages] = useState<MessageRow[]>([])
   const [weekStart, setWeekStart] = useState(() => startOfWorkWeek())
   const [editor, setEditor] = useState<Editor | null>(null)
   const [saving, setSaving] = useState(false)
@@ -91,20 +105,25 @@ export function DashboardPage() {
     const end = addDays(weekStart, 7)
     const query = `?start=${encodeURIComponent(weekStart.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
     try {
-      const [dash, appointmentRows, customerRows, productRows, employeeRows, trend] = await Promise.all([
-        api<Dash>('/dashboard'),
-        api<Appointment[]>(`/appointments${query}`),
-        api<Customer[]>('/customers'),
-        api<Product[]>('/products'),
-        isTeamLeader ? api<TeamEmployee[]>('/team/employees') : Promise.resolve([]),
-        api<WeekTrend>('/dashboard/trend?period=week'),
-      ])
+      const [dash, appointmentRows, customerRows, productRows, employeeRows, trend, saleRows, messageRows] =
+        await Promise.all([
+          api<Dash>('/dashboard'),
+          api<Appointment[]>(`/appointments${query}`),
+          api<Customer[]>('/customers'),
+          api<Product[]>('/products'),
+          isTeamLeader ? api<TeamEmployee[]>('/team/employees') : Promise.resolve([]),
+          api<WeekTrend>('/dashboard/trend?period=week'),
+          api<Sale[]>('/sales'),
+          api<MessageRow[]>('/messages'),
+        ])
       setDashboard(dash)
       setAppointments(appointmentRows)
       setCustomers(customerRows)
       setProducts(productRows)
       setEmployees(employeeRows)
       setWeekTrend(trend)
+      setSales(saleRows)
+      setMessages(messageRows)
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Dashboard konnte nicht geladen werden', 'error')
     }
@@ -175,6 +194,20 @@ export function DashboardPage() {
     [dashboard],
   )
 
+  const topCustomers = useMemo(() => {
+    const totals = new Map<string, {name: string; cents: number}>()
+    for (const sale of sales) {
+      if (sale.cancelled) continue
+      const entry = totals.get(sale.customer_id) ?? {name: sale.customer_name, cents: 0}
+      entry.cents += sale.counts_total_cents
+      totals.set(sale.customer_id, entry)
+    }
+    return [...totals.entries()]
+      .map(([customerId, value]) => ({customerId, ...value}))
+      .sort((a, b) => b.cents - a.cents)
+      .slice(0, 4)
+  }, [sales])
+
   if (!dashboard) return <div className="loading">Dashboard wird geladen…</div>
 
   const firstName = me?.full_name?.split(' ')[0]
@@ -244,18 +277,33 @@ export function DashboardPage() {
         </Link>
       </div>
 
-      <AppointmentWeek
-        weekStart={weekStart}
-        appointments={appointments}
-        onShiftWeek={days => setWeekStart(current => addDays(current, days))}
-        onToday={() => setWeekStart(startOfWorkWeek())}
-        onCreate={day => setEditor({initialDay: day})}
-        onEdit={appointment => setEditor({appointment})}
-        onToggleCompleted={toggleCompleted}
-        onDelete={appointment => remove(appointment, true)}
-      />
-
       <div className="dash-grid-4">
+        <section className="card dash-card">
+          <div className="dash-card-head">
+            <h2>Heute – Termine</h2>
+            <Link to="/termine">Alle Termine anzeigen</Link>
+          </div>
+          {dashboard.today_appointments.length === 0 && <p className="dash-list-empty">Heute keine Termine geplant</p>}
+          <div className="dash-agenda">
+            {dashboard.today_appointments.slice(0, 5).map(item => {
+              const type = appointmentTypeOption(item.appointment_type)
+              return (
+                <div className="dash-agenda-row" key={item.id}>
+                  <div className="dash-agenda-time">
+                    <strong>{timeFormatter.format(new Date(item.start_at))}</strong>
+                    {item.end_at && <span>{timeFormatter.format(new Date(item.end_at))}</span>}
+                  </div>
+                  <span className="dash-agenda-bar" style={{background: type.color}} />
+                  <div className="dash-agenda-main">
+                    <strong>{item.customer_name || 'Termin'}</strong>
+                    <span>{type.label}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
         <section className="card dash-card">
           <div className="dash-card-head">
             <h2>Schnellzugriff</h2>
@@ -275,32 +323,107 @@ export function DashboardPage() {
             </button>
             <button onClick={() => navigate('/routenplanung')}>
               <RouteIcon size={19} />
-              Route erstellen
+              Route planen
             </button>
           </div>
         </section>
 
         <section className="card dash-card">
           <div className="dash-card-head">
-            <h2>Nächster Termin</h2>
-            <Link to="/termine">Alle Termine</Link>
+            <h2>Top Kunden</h2>
+            <Link to="/kunden">Alle Kunden anzeigen</Link>
           </div>
-          {dashboard.next_appointment ? (
-            <div className="dash-next">
-              <strong>{formatDateTime(dashboard.next_appointment.start_at)}</strong>
-              <span>{dashboard.next_appointment.customer_name || 'Termin'}</span>
-              {dashboard.next_appointment.address && (
-                <small>
-                  <MapPinned size={13} />
-                  {dashboard.next_appointment.address}
-                </small>
-              )}
-            </div>
-          ) : (
-            <p className="dash-list-empty">Kein anstehender Termin</p>
-          )}
+          {topCustomers.length === 0 && <p className="dash-list-empty">Noch keine Verkäufe erfasst</p>}
+          <div className="dash-people">
+            {topCustomers.map(entry => (
+              <Link to={`/kunden/${entry.customerId}`} className="dash-people-row" key={entry.customerId}>
+                <span className="dash-people-avatar">{initials(entry.name)}</span>
+                <span className="dash-people-main">
+                  <strong>{entry.name}</strong>
+                  <span>Umsatz: {money(entry.cents)}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
         </section>
 
+        <section className="card dash-card">
+          <div className="dash-card-head">
+            <h2>Nachrichten</h2>
+            <Link to="/nachrichten">Alle Nachrichten anzeigen</Link>
+          </div>
+          {messages.length === 0 && <p className="dash-list-empty">Noch keine Nachrichten</p>}
+          <div className="dash-people">
+            {messages.slice(0, 4).map(item => (
+              <Link to="/nachrichten" className="dash-people-row" key={item.id}>
+                <span className="dash-people-avatar">{initials(item.sender_name)}</span>
+                <span className="dash-people-main">
+                  <strong>{item.sender_name}</strong>
+                  <span>{item.body}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <div className="dash-grid-2">
+        <section className="card dash-card dash-route-card">
+          <div className="dash-card-head">
+            <h2>Routenplanung – Heute</h2>
+          </div>
+          <div className="dash-route-visual" aria-hidden="true">
+            <span className="dash-route-dot" style={{left: '10%', top: '65%'}} />
+            <span className="dash-route-dot" style={{left: '35%', top: '30%'}} />
+            <span className="dash-route-dot" style={{left: '58%', top: '58%'}} />
+            <span className="dash-route-dot" style={{left: '84%', top: '25%'}} />
+          </div>
+          <p>
+            {dashboard.today_appointments.length > 0
+              ? `${dashboard.today_appointments.length} Kundentermin${dashboard.today_appointments.length === 1 ? '' : 'e'} heute warten auf eine optimale Route.`
+              : 'Für heute sind noch keine Kundentermine geplant.'}
+          </p>
+          <Link to="/routenplanung" className="primary">
+            <RouteIcon size={16} />
+            Route planen
+          </Link>
+        </section>
+
+        <section className="card dash-card dash-goal-card">
+          <div className="dash-card-head">
+            <h2>Monatsziel</h2>
+            <span className="dash-goal-percent">{dashboard.units_percent}%</span>
+          </div>
+          <strong className="dash-goal-number">
+            {dashboard.units_month} <span>/ {dashboard.units_target} Einheiten</span>
+          </strong>
+          <div className="progress">
+            <span style={{width: `${Math.min(100, dashboard.units_percent)}%`}} />
+          </div>
+          <p>{dashboard.units_missing > 0 ? `Noch ${dashboard.units_missing} Einheiten offen` : 'Monatsziel erreicht'}</p>
+        </section>
+      </div>
+
+      <div className="dash-section-head">
+        <CalendarRange size={18} />
+        <div>
+          <h2>Wochenplaner</h2>
+          <p>Termine der Woche planen, bestätigen und dokumentieren.</p>
+        </div>
+      </div>
+
+      <AppointmentWeek
+        weekStart={weekStart}
+        appointments={appointments}
+        onShiftWeek={days => setWeekStart(current => addDays(current, days))}
+        onToday={() => setWeekStart(startOfWorkWeek())}
+        onCreate={day => setEditor({initialDay: day})}
+        onEdit={appointment => setEditor({appointment})}
+        onToggleCompleted={toggleCompleted}
+        onDelete={appointment => remove(appointment, true)}
+      />
+
+      <div className="dash-grid-2">
         <section className="card dash-card">
           <div className="dash-card-head">
             <h2>K70-Material</h2>
@@ -340,37 +463,6 @@ export function DashboardPage() {
               </div>
             ))}
           </div>
-        </section>
-      </div>
-
-      <div className="dash-grid-2">
-        <section className="card dash-card dash-route-card">
-          <div className="dash-card-head">
-            <h2>Routenplanung</h2>
-          </div>
-          <p>
-            {dashboard.today_appointments.length > 0
-              ? `${dashboard.today_appointments.length} Kundentermin${dashboard.today_appointments.length === 1 ? '' : 'e'} heute warten auf eine optimale Route.`
-              : 'Für heute sind noch keine Kundentermine geplant.'}
-          </p>
-          <Link to="/routenplanung" className="primary">
-            <RouteIcon size={16} />
-            Route planen
-          </Link>
-        </section>
-
-        <section className="card dash-card dash-goal-card">
-          <div className="dash-card-head">
-            <h2>Monatsziel</h2>
-            <span className="dash-goal-percent">{dashboard.units_percent}%</span>
-          </div>
-          <div className="progress">
-            <span style={{width: `${Math.min(100, dashboard.units_percent)}%`}} />
-          </div>
-          <p>
-            {dashboard.units_month} von {dashboard.units_target} Einheiten ·{' '}
-            {dashboard.units_missing > 0 ? `noch ${dashboard.units_missing} offen` : 'Ziel erreicht'}
-          </p>
         </section>
       </div>
 

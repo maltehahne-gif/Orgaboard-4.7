@@ -9275,17 +9275,17 @@ to{
 
 .dash-week-pill svg { color: var(--green); }
 
-.dash-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.dash-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 
 .dash-kpi {
   background: linear-gradient(180deg, rgba(13, 24, 29, .96), rgba(9, 17, 21, .96));
   border: 1px solid #21353a;
   border-radius: var(--radius);
   box-shadow: 0 18px 45px rgba(0, 0, 0, .18);
-  padding: 20px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -9293,46 +9293,46 @@ a.dash-kpi.dash-kpi-link { color: inherit; transition: border-color .15s ease, t
 a.dash-kpi.dash-kpi-link:hover { border-color: #2f4a44; transform: translateY(-2px); }
 
 .dash-kpi-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.dash-kpi-top small { color: #c8d0cf; font-size: 13px; }
+.dash-kpi-top small { color: #c8d0cf; font-size: 12.5px; }
 
 .dash-kpi-icon {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex: none;
-  border-radius: 10px;
+  border-radius: 9px;
   display: grid;
   place-items: center;
   background: rgba(52, 215, 105, .14);
   color: var(--green);
 }
 
-.dash-kpi strong { font-size: 26px; font-variant-numeric: tabular-nums; }
-.dash-kpi-sub { font-size: 12.5px; color: var(--muted); }
+.dash-kpi strong { font-size: 23px; font-variant-numeric: tabular-nums; }
+.dash-kpi-sub { font-size: 12px; color: var(--muted); }
 
-.dash-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-.dash-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.dash-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.dash-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
-.dash-card { padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.dash-card { padding: 16px 17px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
 .dash-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.dash-card-head h2 { margin: 0; font-size: 15px; }
-.dash-card-head a { font-size: 12.5px; color: var(--muted); }
+.dash-card-head h2 { margin: 0; font-size: 14.5px; }
+.dash-card-head a { flex: none; font-size: 12px; color: var(--muted); }
 .dash-card-head a:hover { color: var(--green); }
 
-.dash-quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.dash-quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 
 .dash-quick-grid button {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 16px 8px;
-  border-radius: 12px;
+  gap: 7px;
+  padding: 14px 6px;
+  border-radius: 11px;
   border: 1px solid #22353a;
   background: #0c171b;
   color: #edf2f1;
-  font-size: 12.5px;
+  font-size: 12px;
   text-align: center;
 }
 
@@ -9346,20 +9346,78 @@ a.dash-kpi.dash-kpi-link:hover { border-color: #2f4a44; transform: translateY(-2
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 9px 0;
+  padding: 8px 0;
   border-bottom: 1px solid #16241f;
 }
 
 .dash-list-row:last-child { border-bottom: 0; }
-.dash-list-empty { padding: 6px 0 2px; color: var(--muted); font-size: 13px; }
+.dash-list-empty { padding: 4px 0 2px; color: var(--muted); font-size: 12.5px; }
 
-.dash-rental-name { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 13.5px; }
+.dash-rental-name { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 13px; }
 .dash-rental-name svg { flex: none; color: var(--muted); }
 
-.dash-next { display: flex; flex-direction: column; gap: 4px; }
-.dash-next strong { color: var(--green); font-size: 13px; font-variant-numeric: tabular-nums; }
-.dash-next span { font-size: 15px; }
-.dash-next small { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+/* Terminvorschau "Heute" - schmale Zeile statt der grossen Wochenkarten. */
+.dash-agenda { display: flex; flex-direction: column; }
+
+.dash-agenda-row {
+  display: grid;
+  grid-template-columns: 44px 3px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #16241f;
+}
+
+.dash-agenda-row:last-child { border-bottom: 0; }
+
+.dash-agenda-time {
+  display: flex;
+  flex-direction: column;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.dash-agenda-time strong { font-size: 12.5px; }
+.dash-agenda-time span { font-size: 10.5px; color: var(--muted); }
+
+.dash-agenda-bar { align-self: stretch; border-radius: 999px; min-height: 26px; }
+
+.dash-agenda-main { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.dash-agenda-main strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-agenda-main span { font-size: 11.5px; color: var(--muted); }
+
+/* Top Kunden / Nachrichten - Zeilen mit Initialen-Avatar. */
+.dash-people { display: flex; flex-direction: column; }
+
+.dash-people-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #16241f;
+  color: inherit;
+}
+
+.dash-people-row:last-child { border-bottom: 0; }
+.dash-people-row:hover .dash-people-main strong { color: var(--green); }
+
+.dash-people-avatar {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #16282c;
+  border: 1px solid #2a7843;
+  color: #dff9e7;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dash-people-main { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.dash-people-main strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-people-main span { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .dash-k70-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 
@@ -9374,11 +9432,49 @@ a.dash-kpi.dash-kpi-link:hover { border-color: #2f4a44; transform: translateY(-2
 .dash-k70-grid strong { display: block; margin-top: 4px; font-size: 15px; color: var(--orange); }
 
 .dash-route-card p,
-.dash-goal-card p { margin: 0; color: var(--muted); font-size: 13.5px; }
+.dash-goal-card p { margin: 0; color: var(--muted); font-size: 13px; }
 
 .dash-route-card .primary { align-self: flex-start; }
 
-.dash-goal-percent { font-size: 15px; font-weight: 700; color: var(--green); }
+/* Rein dekorative Vorschau - ersetzt keine echte Karte, zeigt nur die
+   Wegpunkte als Stimmungsbild, solange keine Route berechnet wurde. */
+.dash-route-visual {
+  position: relative;
+  height: 84px;
+  border-radius: 10px;
+  background: #0c171b;
+  border: 1px solid #21353a;
+  overflow: hidden;
+}
+
+.dash-route-visual::before {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 12%;
+  top: 45%;
+  height: 1px;
+  background: repeating-linear-gradient(90deg, #2c9155 0 6px, transparent 6px 12px);
+}
+
+.dash-route-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 4px rgba(52, 215, 105, .16);
+}
+
+.dash-goal-percent { font-size: 14.5px; font-weight: 700; color: var(--green); }
+.dash-goal-number { font-size: 25px; font-variant-numeric: tabular-nums; }
+.dash-goal-number span { font-size: 13px; font-weight: 400; color: var(--muted); }
+
+.dash-section-head { display: flex; align-items: flex-start; gap: 10px; margin-top: 4px; }
+.dash-section-head svg { flex: none; margin-top: 2px; color: var(--green); }
+.dash-section-head h2 { margin: 0; font-size: 17px; }
+.dash-section-head p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
 
 @media (max-width: 1179px) {
   .dash-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -9388,8 +9484,8 @@ a.dash-kpi.dash-kpi-link:hover { border-color: #2f4a44; transform: translateY(-2
 
 @media (max-width: 767px) {
   .dash-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .dash-kpi { padding: 16px; }
-  .dash-kpi strong { font-size: 22px; }
+  .dash-kpi { padding: 14px; }
+  .dash-kpi strong { font-size: 20px; }
   .dash-grid-4 { grid-template-columns: minmax(0, 1fr); }
   .dash-head { flex-direction: column; align-items: stretch; }
 }
