@@ -17,6 +17,10 @@ export default defineConfig({
     // tatsaechlich entsteht.
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
-    restoreMocks: true
+    restoreMocks: true,
+    // Feste Zeitzone: Die Anwendung wird in Deutschland benutzt, und
+    // Datumsfehler zeigen sich nur, wenn die lokale Zeit von UTC abweicht.
+    // Auf einem Rechner mit TZ=UTC waeren die Datumstests wirkungslos.
+    env: {TZ: 'Europe/Berlin'}
   }
 })

@@ -2,6 +2,7 @@ import {ChangeEvent, FormEvent, useEffect, useRef, useState} from 'react'
 import {AlertTriangle, ChevronDown, ChevronRight, Trash2, Upload} from 'lucide-react'
 import {api} from '../lib/api'
 import {useToast} from './Toast'
+import {heuteIso} from '../lib/datum'
 
 type Preis = {
   id: string
@@ -39,13 +40,6 @@ function datum(wert: string | null) {
   return `${tag}.${monat}.${jahr}`
 }
 
-/** Heute im lokalen Kalender, als JJJJ-MM-TT für das Datumsfeld. */
-function heute() {
-  const jetzt = new Date()
-  const versetzt = new Date(jetzt.getTime() - jetzt.getTimezoneOffset() * 60000)
-  return versetzt.toISOString().slice(0, 10)
-}
-
 /**
  * Zentrale Preisverwaltung.
  *
@@ -60,7 +54,7 @@ export function ProductPrices() {
   const [nurOhnePreis, setNurOhnePreis] = useState(false)
   const [offen, setOffen] = useState<string | null>(null)
   const [verlauf, setVerlauf] = useState<Record<string, Preis[]>>({})
-  const [form, setForm] = useState({betrag: '', ab: heute(), quelle: ''})
+  const [form, setForm] = useState({betrag: '', ab: heuteIso(), quelle: ''})
   const [busy, setBusy] = useState(false)
   const [importiere, setImportiere] = useState(false)
   const dateiRef = useRef<HTMLInputElement>(null)
@@ -94,7 +88,7 @@ export function ProductPrices() {
       return
     }
     setOffen(zeile.product_id)
-    setForm({betrag: '', ab: heute(), quelle: ''})
+    setForm({betrag: '', ab: heuteIso(), quelle: ''})
     verlaufLaden(zeile.product_id)
   }
 
@@ -124,7 +118,7 @@ export function ProductPrices() {
         }),
       })
       toast('Preis gespeichert')
-      setForm({betrag: '', ab: heute(), quelle: ''})
+      setForm({betrag: '', ab: heuteIso(), quelle: ''})
       await Promise.all([laden(), verlaufLaden(produktId)])
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Speichern fehlgeschlagen', 'error')

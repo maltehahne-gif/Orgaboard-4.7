@@ -5,6 +5,7 @@ import {Modal} from '../components/Modal'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
 import type {Customer, TradeIn} from '../types'
+import {heuteIso} from '../lib/datum'
 
 type Summary = {total: number} & Record<string, number>
 
@@ -23,7 +24,6 @@ const STATUS = [
   ['sold', 'Weiterverkauft'],
 ] as const
 
-const heute = () => new Date().toISOString().slice(0, 10)
 
 const leer = {
   customer_id: '',
@@ -31,7 +31,7 @@ const leer = {
   serial_number: '',
   condition: 'unknown',
   status: 'received',
-  received_on: heute(),
+  received_on: heuteIso(),
   notes: '',
 }
 

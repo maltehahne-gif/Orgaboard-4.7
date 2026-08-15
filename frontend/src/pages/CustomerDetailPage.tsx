@@ -22,6 +22,7 @@ import {Link, useParams} from 'react-router-dom'
 import {api, formatDateTime} from '../lib/api'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
+import {ausIso, heuteIso} from '../lib/datum'
 
 type Customer = {
   id: string
@@ -67,14 +68,8 @@ const REASON_LABEL: Record<string, string> = {
   manual: 'Wiedervorlage',
 }
 
-/** Heute als JJJJ-MM-TT im lokalen Kalender. */
-function heute() {
-  const jetzt = new Date()
-  return new Date(jetzt.getTime() - jetzt.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
-}
-
 function faelligkeitstext(f: FollowUp) {
-  const datum = new Date(`${f.due_on}T12:00:00`).toLocaleDateString('de-DE', {
+  const datum = ausIso(f.due_on).toLocaleDateString('de-DE', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   })
   if (f.is_today) return `heute fällig · ${datum}`
@@ -121,7 +116,7 @@ export function CustomerDetailPage() {
   const [noteBody, setNoteBody] = useState('')
   const [saving, setSaving] = useState(false)
   const [nachfassOffen, setNachfassOffen] = useState(false)
-  const [nachfass, setNachfass] = useState({datum: heute(), notiz: ''})
+  const [nachfass, setNachfass] = useState({datum: heuteIso(), notiz: ''})
   const [nachfassBusy, setNachfassBusy] = useState(false)
   const toast = useToast()
   const {me} = useAuth()
@@ -369,7 +364,7 @@ export function CustomerDetailPage() {
               type="button"
               onClick={() => {
                 setNachfass({
-                  datum: data.next_follow_up?.due_on ?? heute(),
+                  datum: data.next_follow_up?.due_on ?? heuteIso(),
                   notiz: data.next_follow_up?.note ?? '',
                 })
                 setNachfassOffen(v => !v)

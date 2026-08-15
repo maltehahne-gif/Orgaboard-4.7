@@ -15,6 +15,7 @@ import {api} from '../lib/api'
 import {useToast} from '../components/Toast'
 import {connectRealtime} from '../lib/realtime'
 import type {Customer} from '../types'
+import {ausIso, heuteIso, isoDatum} from '../lib/datum'
 
 type FollowUp = {
   id: string
@@ -53,12 +54,7 @@ function formatDate(value: string) {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(new Date(`${value}T12:00:00`))
-}
-
-function todayIso() {
-  const now = new Date()
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
+  }).format(ausIso(value))
 }
 
 export function FollowUpsPage() {
@@ -75,7 +71,7 @@ export function FollowUpsPage() {
   const [creatingBusy, setCreatingBusy] = useState(false)
   const [newCustomerId, setNewCustomerId] = useState('')
   const [newCustomerSearch, setNewCustomerSearch] = useState('')
-  const [newDueOn, setNewDueOn] = useState(todayIso())
+  const [newDueOn, setNewDueOn] = useState(heuteIso())
   const [newNote, setNewNote] = useState('')
 
   const load = useCallback(async () => {
@@ -119,7 +115,7 @@ export function FollowUpsPage() {
   function openCreate() {
     setNewCustomerId('')
     setNewCustomerSearch('')
-    setNewDueOn(todayIso())
+    setNewDueOn(heuteIso())
     setNewNote('')
     setCreating(true)
   }
@@ -170,14 +166,14 @@ export function FollowUpsPage() {
   }
 
   async function postpone(item: FollowUp, days: number) {
-    const next = new Date(`${item.due_on}T12:00:00`)
+    const next = ausIso(item.due_on)
     next.setDate(next.getDate() + days)
     try {
       await api(`/followups/${item.id}`, {
         method: 'PUT',
-        body: JSON.stringify({due_on: next.toISOString().slice(0, 10)}),
+        body: JSON.stringify({due_on: isoDatum(next)}),
       })
-      toast(`Auf ${formatDate(next.toISOString().slice(0, 10))} verschoben`)
+      toast(`Auf ${formatDate(isoDatum(next))} verschoben`)
       load()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Fehler', 'error')
