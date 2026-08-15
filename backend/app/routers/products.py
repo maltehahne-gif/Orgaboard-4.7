@@ -1,7 +1,7 @@
 import csv
 import io
 from datetime import date, datetime, timedelta
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,8 +18,14 @@ from app.services.serializers import current_price, product_out
 router = APIRouter(prefix="/products", tags=["products"])
 
 
+# Ein Geraetepreis bewegt sich im vierstelligen Bereich. Die Obergrenze von
+# 100.000 Euro faengt eine verrutschte Null ab, bevor der Preis in Angebote,
+# Verkaufsvorschlaege und Auswertungen einflieszt.
+MAX_PREIS_CENT = 10_000_000
+
+
 class PricePayload(BaseModel):
-    amount_cents: int
+    amount_cents: int = Field(ge=0, le=MAX_PREIS_CENT)
     currency: str = "EUR"
     source_url: str
     verified: bool = False
@@ -131,7 +137,7 @@ def price_overview(user: User = Depends(get_current_user), db: Session = Depends
 
 
 class PriceIn(BaseModel):
-    amount_cents: int
+    amount_cents: int = Field(ge=0, le=MAX_PREIS_CENT)
     currency: str = "EUR"
     source_url: str
     verified: bool = True

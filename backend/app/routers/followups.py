@@ -2,7 +2,7 @@
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,7 @@ from app.core.audit import audit
 from app.core.database import get_db
 from app.core.rbac import scoped_employee_id
 from app.core.security import get_current_user, require_csrf
-from app.core.timeutils import local_today
+from app.core.timeutils import datum_plausibel, fruehestes_datum, local_today, spaetestes_datum
 from app.models import (
     Customer,
     Employee,
@@ -24,6 +24,21 @@ from app.services.realtime import manager
 router = APIRouter(prefix="/followups", tags=["followups"])
 
 
+def _faelligkeit_pruefen(wert: date) -> date:
+    """Haelt Tippfehler in der Jahreszahl aus der Wiedervorlage heraus.
+
+    Eine Wiedervorlage aus dem Jahr 1990 waere ab dem ersten Tag ueberfaellig
+    und stuende von da an dauerhaft ganz oben in den Tagesprioritaeten - dort,
+    wo die Arbeit von heute stehen soll.
+    """
+    if not datum_plausibel(wert):
+        raise ValueError(
+            f"Das Datum muss zwischen {fruehestes_datum():%d.%m.%Y} und "
+            f"{spaetestes_datum():%d.%m.%Y} liegen"
+        )
+    return wert
+
+
 class FollowUpIn(BaseModel):
     customer_id: str
     due_on: date
@@ -33,10 +48,20 @@ class FollowUpIn(BaseModel):
     appointment_id: str | None = None
     sale_id: str | None = None
 
+    @field_validator("due_on")
+    @classmethod
+    def faelligkeit(cls, wert: date) -> date:
+        return _faelligkeit_pruefen(wert)
+
 
 class FollowUpUpdate(BaseModel):
     due_on: date | None = None
     note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("due_on")
+    @classmethod
+    def faelligkeit(cls, wert: date | None) -> date | None:
+        return None if wert is None else _faelligkeit_pruefen(wert)
 
 
 class FollowUpComplete(BaseModel):

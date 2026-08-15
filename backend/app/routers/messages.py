@@ -15,7 +15,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -61,9 +61,15 @@ BLOCKED_SUFFIXES = {
 }
 
 
+# Eine Chatnachricht ist keine Datei. Ohne Grenze laesst sich ein
+# Textdokument in den Verlauf kippen, das danach in jedem Client bei jedem
+# Laden mitgerendert wird.
+MAX_NACHRICHT_ZEICHEN = 5000
+
+
 class MessageIn(BaseModel):
     recipient_user_id: str | None = None
-    body: str
+    body: str = Field(max_length=MAX_NACHRICHT_ZEICHEN)
 
 
 class ConversationReadIn(BaseModel):
@@ -1032,7 +1038,7 @@ async def mark_read(
 
 
 class MessageEditIn(BaseModel):
-    body: str
+    body: str = Field(max_length=MAX_NACHRICHT_ZEICHEN)
 
 
 async def notify_conversation(message: Message, event: dict):

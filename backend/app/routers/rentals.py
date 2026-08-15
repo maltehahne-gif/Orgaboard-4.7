@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -24,12 +24,26 @@ class RentalIn(BaseModel):
     product_id: str
     customer_id: str
     employee_id: str | None = None
-    serial_number: str | None = None
+    serial_number: str | None = Field(default=None, max_length=120)
     issued_at: datetime
     due_at: datetime | None = None
     returned_at: datetime | None = None
     status: RentalStatus = RentalStatus.RENTED
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=10_000)
+
+    @model_validator(mode="after")
+    def zeitfolge_pruefen(self):
+        """Ausgabe, Faelligkeit und Rueckgabe muessen in dieser Reihenfolge liegen.
+
+        Eine Faelligkeit vor der Ausgabe macht das Geraet im selben Moment
+        ueberfaellig: Es taucht sofort in der Mahnliste, im Zaehler und in den
+        Tagesprioritaeten auf, obwohl es gerade erst herausgegeben wurde.
+        """
+        if self.due_at is not None and self.due_at <= self.issued_at:
+            raise ValueError("Die Rückgabefrist muss nach der Ausgabe liegen")
+        if self.returned_at is not None and self.returned_at < self.issued_at:
+            raise ValueError("Die Rückgabe kann nicht vor der Ausgabe liegen")
+        return self
 
 
 # Ab so vielen Tagen vor der Rueckgabe wird erinnert.

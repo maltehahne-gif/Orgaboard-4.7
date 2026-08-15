@@ -42,3 +42,35 @@ def month_bounds(day: date | None = None) -> tuple[datetime, datetime]:
     else:
         nxt = first.replace(month=first.month + 1)
     return _local_midnight_to_utc(first), _local_midnight_to_utc(nxt)
+
+
+# Ein Vertriebssystem verwaltet die naechsten Jahre, nicht die naechsten
+# Jahrhunderte. Diese Fenster fangen Tippfehler in Jahreszahlen ab -
+# "2206" statt "2026" legte sonst einen Termin an, der nie wieder auftaucht,
+# und eine Wiedervorlage aus dem Jahr 1990 waere ab dem ersten Tag
+# ueberfaellig und stuende dauerhaft ganz oben in den Tagesprioritaeten.
+JAHRE_RUECKWIRKEND = 10
+JAHRE_VORAUS = 10
+
+
+def _jahre_versetzt(tag: date, jahre: int) -> date:
+    # Nicht ueber replace(year=...): am 29. Februar gaebe es das Zieldatum in
+    # einem Nicht-Schaltjahr nicht, und die Pruefung wuerde ausgerechnet an
+    # diesem Tag mit einem Fehler abbrechen.
+    try:
+        return tag.replace(year=tag.year + jahre)
+    except ValueError:
+        return tag.replace(year=tag.year + jahre, day=28)
+
+
+def fruehestes_datum() -> date:
+    return _jahre_versetzt(local_today(), -JAHRE_RUECKWIRKEND)
+
+
+def spaetestes_datum() -> date:
+    return _jahre_versetzt(local_today(), JAHRE_VORAUS)
+
+
+def datum_plausibel(wert: date) -> bool:
+    """Liegt das Datum im Bereich, den dieses System sinnvoll abbildet?"""
+    return fruehestes_datum() <= wert <= spaetestes_datum()

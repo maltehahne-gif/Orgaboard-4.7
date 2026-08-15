@@ -8,7 +8,7 @@ from app.core.audit import audit
 from app.core.database import get_db
 from app.core.rbac import scoped_employee_id
 from app.core.security import get_current_user, require_csrf
-from app.core.timeutils import local_today, utc_aware
+from app.core.timeutils import datum_plausibel, fruehestes_datum, local_today, spaetestes_datum, utc_aware
 from app.models import Appointment, AppointmentProduct, AppointmentStatus, AppointmentType, Customer, Employee, FollowUp, FollowUpReason, Product, ProductPresentation, Rental, RentalStatus, Sale, SaleChannel, SaleItem, User
 from app.services.realtime import manager
 from app.services.stats import refresh_weekly_stat
@@ -23,13 +23,21 @@ class AppointmentIn(BaseModel):
     end_at: datetime | None = None
     appointment_type: AppointmentType = AppointmentType.CUSTOMER
     status: AppointmentStatus = AppointmentStatus.PLANNED
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=10_000)
     product_ids: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_period(self):
         if self.end_at is not None and self.end_at <= self.start_at:
             raise ValueError("Das Terminende muss nach dem Beginn liegen")
+        # Ein Tippfehler in der Jahreszahl ("2206" statt "2026") legte sonst
+        # einen Termin an, der in keiner Wochen- oder Monatsansicht mehr
+        # auftaucht und nur ueber die Datenbank wieder zu finden waere.
+        if not datum_plausibel(self.start_at.date()):
+            raise ValueError(
+                f"Der Termin muss zwischen {fruehestes_datum():%d.%m.%Y} und "
+                f"{spaetestes_datum():%d.%m.%Y} liegen"
+            )
         return self
 
 

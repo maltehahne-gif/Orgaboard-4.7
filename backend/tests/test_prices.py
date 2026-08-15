@@ -185,7 +185,20 @@ def test_negativer_preis_wird_abgelehnt(client, chefin, produkte):
     antwort = client.post(f"/api/v1/products/{produkte['vk7']}/prices", json={
         "amount_cents": -100, "source_url": QUELLE}, headers=kopf)
 
-    assert antwort.status_code == 400
+    # 422 aus der Feldpruefung, 400 aus der Pruefung im Endpunkt - abgewiesen
+    # ist abgewiesen. Entscheidend ist, dass kein Preis entsteht.
+    assert antwort.status_code in (400, 422)
+    preise = client.get(f"/api/v1/products/{produkte['vk7']}/prices", headers=kopf).json()
+    assert all(p["amount_cents"] >= 0 for p in preise)
+
+
+def test_unplausibel_hoher_preis_wird_abgelehnt(client, chefin, produkte):
+    """Eine verrutschte Null darf nicht als Preis in die Auswertungen wandern."""
+    kopf = _login(client, "chefin@example.com")
+    antwort = client.post(f"/api/v1/products/{produkte['vk7']}/prices", json={
+        "amount_cents": 100_000_000_000, "source_url": QUELLE}, headers=kopf)
+
+    assert antwort.status_code in (400, 422)
 
 
 def test_preis_ohne_quelle_wird_abgelehnt(client, chefin, produkte):

@@ -1,7 +1,7 @@
 import csv
 import io
 from datetime import datetime, timezone
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -21,16 +21,38 @@ router = APIRouter(prefix="/customers", tags=["customers"])
 
 
 class CustomerIn(BaseModel):
-    first_name: str
-    last_name: str
-    street: str = ""
-    house_number: str = ""
-    postal_code: str = ""
-    city: str = ""
-    phone: str | None = None
+    """Kundenstammdaten.
+
+    Die Laengenangaben entsprechen den Spalten in der Datenbank. Ohne sie
+    kaeme ein zu langer Name erst in PostgreSQL an und schluege dort als
+    Serverfehler auf, statt als verstaendliche Meldung im Formular.
+    """
+
+    first_name: str = Field(min_length=1, max_length=120)
+    last_name: str = Field(min_length=1, max_length=120)
+    street: str = Field(default="", max_length=180)
+    house_number: str = Field(default="", max_length=30)
+    postal_code: str = Field(default="", max_length=20)
+    city: str = Field(default="", max_length=120)
+    phone: str | None = Field(default=None, max_length=80)
     email: EmailStr | None = None
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=10_000)
     employee_id: str | None = None
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def kein_leerer_name(cls, wert: str) -> str:
+        # Ein Kunde aus lauter Leerzeichen taucht in jeder Liste als leere
+        # Zeile auf und ist spaeter nicht mehr zuzuordnen.
+        gekuerzt = wert.strip()
+        if not gekuerzt:
+            raise ValueError("Vor- und Nachname dürfen nicht leer sein")
+        return gekuerzt
+
+    @field_validator("street", "house_number", "postal_code", "city")
+    @classmethod
+    def ohne_randleerzeichen(cls, wert: str) -> str:
+        return wert.strip()
 
 
 def out(c: Customer):

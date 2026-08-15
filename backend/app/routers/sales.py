@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from io import BytesIO
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
@@ -12,7 +12,7 @@ from app.core.audit import audit
 from app.core.database import get_db
 from app.core.rbac import require_team_leader, scoped_employee_id
 from app.core.security import get_current_user, require_csrf
-from app.core.timeutils import local_today
+from app.core.timeutils import datum_plausibel, fruehestes_datum, local_today, spaetestes_datum
 from app.models import Customer, Product, Sale, SaleChannel, SaleItem, User
 from app.services.realtime import manager
 from app.services.serializers import employee_name, sale_total, sale_units
@@ -23,10 +23,17 @@ router = APIRouter(prefix="/sales", tags=["sales"])
 CHANNEL_LABELS = {"field": "Außendienst", "promotion": "Promotion", "k70": "K70", "other": "Sonstiges"}
 
 
+# Obergrenze fuer einen einzelnen Stueckpreis: 100.000 Euro. Kein Geraet im
+# Sortiment kommt in die Naehe; die Grenze faengt Tippfehler ab, bevor eine
+# zusaetzliche Null jede Umsatzzahl, jede Zielprognose und jede
+# Teamauswertung unbrauchbar macht.
+MAX_STUECKPREIS_CENT = 10_000_000
+
+
 class SaleItemIn(BaseModel):
     product_id: str
     quantity: int = Field(ge=1, le=999)
-    unit_price_cents: int = Field(ge=0)
+    unit_price_cents: int = Field(ge=0, le=MAX_STUECKPREIS_CENT)
 
 
 class SaleCancelIn(BaseModel):
@@ -39,8 +46,20 @@ class SaleIn(BaseModel):
     appointment_id: str | None = None
     sold_at: datetime
     channel: SaleChannel = SaleChannel.OTHER
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=10_000)
     items: list[SaleItemIn]
+
+    @field_validator("sold_at")
+    @classmethod
+    def verkaufsdatum(cls, wert: datetime) -> datetime:
+        # Ein Verkauf im Jahr 2206 zaehlt in keiner Woche, keinem Monat und
+        # keiner Zielprognose mit - er waere schlicht verschwunden.
+        if not datum_plausibel(wert.date()):
+            raise ValueError(
+                f"Das Verkaufsdatum muss zwischen {fruehestes_datum():%d.%m.%Y} und "
+                f"{spaetestes_datum():%d.%m.%Y} liegen"
+            )
+        return wert
 
 
 def serialize(db: Session, s: Sale):
