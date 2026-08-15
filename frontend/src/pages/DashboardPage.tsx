@@ -293,7 +293,9 @@ export function DashboardPage() {
                     <strong>{timeFormatter.format(new Date(item.start_at))}</strong>
                     {item.end_at && <span>{timeFormatter.format(new Date(item.end_at))}</span>}
                   </div>
-                  <span className="dash-agenda-bar" style={{background: type.color}} />
+                  <div className="dash-agenda-line">
+                    <span className="dash-agenda-dot" style={{background: type.color}} />
+                  </div>
                   <div className="dash-agenda-main">
                     <strong>{item.customer_name || 'Termin'}</strong>
                     <span>{type.label}</span>
@@ -372,35 +374,56 @@ export function DashboardPage() {
           <div className="dash-card-head">
             <h2>Routenplanung – Heute</h2>
           </div>
-          <div className="dash-route-visual" aria-hidden="true">
-            <span className="dash-route-dot" style={{left: '10%', top: '65%'}} />
-            <span className="dash-route-dot" style={{left: '35%', top: '30%'}} />
-            <span className="dash-route-dot" style={{left: '58%', top: '58%'}} />
-            <span className="dash-route-dot" style={{left: '84%', top: '25%'}} />
+          <div className="dash-route-body">
+            <div className="dash-route-visual" aria-hidden="true">
+              <span className="dash-route-dot" style={{left: '10%', top: '68%'}} />
+              <span className="dash-route-dot" style={{left: '34%', top: '28%'}} />
+              <span className="dash-route-dot" style={{left: '60%', top: '60%'}} />
+              <span className="dash-route-dot" style={{left: '85%', top: '22%'}} />
+            </div>
+            <div className="dash-route-stats">
+              <div>
+                <strong>{dashboard.today_appointments.length}</strong>
+                <span>Stopps</span>
+              </div>
+              <div>
+                <strong>–</strong>
+                <span>Gesamtdistanz</span>
+              </div>
+              <div>
+                <strong>–</strong>
+                <span>Fahrzeit</span>
+              </div>
+              <Link to="/routenplanung" className="primary">
+                <RouteIcon size={16} />
+                Route planen
+              </Link>
+            </div>
           </div>
-          <p>
-            {dashboard.today_appointments.length > 0
-              ? `${dashboard.today_appointments.length} Kundentermin${dashboard.today_appointments.length === 1 ? '' : 'e'} heute warten auf eine optimale Route.`
-              : 'Für heute sind noch keine Kundentermine geplant.'}
-          </p>
-          <Link to="/routenplanung" className="primary">
-            <RouteIcon size={16} />
-            Route planen
-          </Link>
         </section>
 
-        <section className="card dash-card dash-goal-card">
+        <section className="card dash-card">
           <div className="dash-card-head">
-            <h2>Monatsziel</h2>
-            <span className="dash-goal-percent">{dashboard.units_percent}%</span>
+            <h2>Umsatz – Entwicklung</h2>
           </div>
-          <strong className="dash-goal-number">
-            {dashboard.units_month} <span>/ {dashboard.units_target} Einheiten</span>
-          </strong>
-          <div className="progress">
-            <span style={{width: `${Math.min(100, dashboard.units_percent)}%`}} />
+          <div className="dash-revenue-chart">
+            {[
+              {label: 'Heute', cents: dashboard.revenue_today_cents},
+              {label: 'Woche', cents: dashboard.revenue_week_cents},
+              {label: 'Monat', cents: dashboard.revenue_month_cents},
+            ].map(bar => (
+              <div className="dash-revenue-bar" key={bar.label}>
+                <strong>{money(bar.cents)}</strong>
+                <span className="dash-revenue-track">
+                  <span
+                    className="dash-revenue-fill"
+                    style={{height: `${Math.max(6, (bar.cents / (dashboard.revenue_month_cents || 1)) * 100)}%`}}
+                  />
+                </span>
+                <small>{bar.label}</small>
+              </div>
+            ))}
           </div>
-          <p>{dashboard.units_missing > 0 ? `Noch ${dashboard.units_missing} Einheiten offen` : 'Monatsziel erreicht'}</p>
         </section>
       </div>
 
