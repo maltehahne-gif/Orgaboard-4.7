@@ -444,6 +444,66 @@ class SaleItem(Base):
     unit_price_cents: Mapped[int] = mapped_column(Integer)
 
 
+class OfferStatus(str, enum.Enum):
+    """Stationen eines Angebots, von der Erstellung bis zum Abschluss."""
+
+    DRAFT = "draft"
+    SENT = "sent"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+    CONVERTED = "converted"
+
+
+class Offer(Base):
+    """Angebot: Vorstufe eines Verkaufs mit eigener Nummer und Gueltigkeit.
+
+    Positionen liegen wie beim Verkauf in einer eigenen Tabelle
+    (OfferItem), mit Namens- und Preis-Schnappschuss - der Preis eines
+    Angebots darf sich nicht aendern, nur weil spaeter der Katalogpreis
+    des Produkts angepasst wird.
+    """
+
+    __tablename__ = "offers"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    number: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id"), index=True)
+    employee_id: Mapped[str] = mapped_column(ForeignKey("employees.id"), index=True)
+    appointment_id: Mapped[str | None] = mapped_column(ForeignKey("appointments.id"), nullable=True)
+    status: Mapped[OfferStatus] = mapped_column(Enum(OfferStatus), default=OfferStatus.DRAFT, index=True)
+    issued_on: Mapped[date] = mapped_column(Date)
+    valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Prozentualer Rabatt auf die Zwischensumme. Nur ein Wert, keine Spalte je
+    # Position: das deckt den ueblichen Fall (ein Rabatt fuers ganze Angebot)
+    # ohne dass jede Position einzeln gepflegt werden muss.
+    discount_percent: Mapped[int] = mapped_column(Integer, default=0)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Auf welchen Verkauf umgewandelt wurde. SET NULL statt CASCADE: wird der
+    # Verkauf spaeter storniert oder geloescht, soll das Angebot als Beleg
+    # erhalten bleiben.
+    converted_sale_id: Mapped[str | None] = mapped_column(
+        ForeignKey("sales.id", ondelete="SET NULL"), nullable=True
+    )
+    converted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class OfferItem(Base):
+    __tablename__ = "offer_items"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    offer_id: Mapped[str] = mapped_column(ForeignKey("offers.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+    product_name_snapshot: Mapped[str] = mapped_column(String(255))
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    unit_price_cents: Mapped[int] = mapped_column(Integer)
+
+
 class ProductPresentation(Base):
     __tablename__ = "product_presentations"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)

@@ -27,6 +27,8 @@ from app.models import (
     FollowUp,
     FollowUpStatus,
     FunnelStage,
+    Offer,
+    OfferItem,
     Product,
     ProductPresentation,
     Rental,
@@ -164,6 +166,22 @@ def customer_timeline(db: Session, customer_id: str) -> list[dict]:
             )
         )
 
+    offers = db.scalars(select(Offer).where(Offer.customer_id == customer_id)).all()
+    for o in offers:
+        items = db.scalars(select(OfferItem).where(OfferItem.offer_id == o.id)).all()
+        total = sum(i.quantity * i.unit_price_cents for i in items)
+        names = ", ".join(f"{i.quantity}× {i.product_name_snapshot}" for i in items)
+        events.append(
+            TimelineEvent(
+                kind="offer",
+                at=utc_aware(o.created_at),
+                title=f"Angebot {o.number} · {_money(total)}",
+                detail=names or None,
+                entity_id=o.id,
+                meta={"total_cents": total, "status": o.status.value, "valid_until": o.valid_until},
+            )
+        )
+
     rentals = db.scalars(select(Rental).where(Rental.customer_id == customer_id)).all()
     for r in rentals:
         product = db.get(Product, r.product_id)
@@ -280,6 +298,15 @@ def funnel_stage(db: Session, customer_id: str) -> FunnelStage:
             )
         )
         return FunnelStage.AFTERCARE if aftercare else FunnelStage.SALE
+
+    # Ein Angebot zaehlt unabhaengig von seinem Status als erreichte Stufe -
+    # auch ein abgelehntes Angebot war ein Angebot. Nur wer noch nie eines
+    # bekommen hat, faellt auf die Vorfuehrung zurueck.
+    has_offer = (
+        db.scalar(select(Offer.id).where(Offer.customer_id == customer_id)) is not None
+    )
+    if has_offer:
+        return FunnelStage.OFFER
 
     has_presentation = (
         db.scalar(
