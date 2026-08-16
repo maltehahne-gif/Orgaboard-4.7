@@ -42,6 +42,16 @@ def employee_filter(column, employee_id: EmployeeScope):
     return column == employee_id
 
 
+def as_employee_ids(employee_id: EmployeeScope) -> list[str] | None:
+    """Normiert einen EmployeeScope auf das, was employee_goal_progress()
+    und team_alerts() erwarten: eine Liste oder None, nie eine einzelne
+    Zeichenkette. scoped_employee_id() liefert bei einem einzelnen
+    Mitarbeiter genau diese Zeichenkette zurueck."""
+    if employee_id is None:
+        return None
+    return [employee_id] if isinstance(employee_id, str) else list(employee_id)
+
+
 def is_k70_category(category: str | None) -> bool:
     return (category or "").strip().casefold() == K70_CATEGORY
 
