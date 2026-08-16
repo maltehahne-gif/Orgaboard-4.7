@@ -49,6 +49,13 @@ class Settings(BaseSettings):
     smtp_from_email: str | None = None
     smtp_use_tls: bool = True
     password_reset_exp_minutes: int = 20
+    # Web-Push. Ohne diese beiden Schluessel bleibt Push abgeschaltet - die
+    # Anwendung laeuft vollstaendig weiter, nur ohne Benachrichtigung aufs
+    # Geraet. Erzeugen mit:
+    #   python -m app.tools.vapid_keys
+    vapid_public_key: str | None = None
+    vapid_private_key: str | None = None
+    vapid_contact_email: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

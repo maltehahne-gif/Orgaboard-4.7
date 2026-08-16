@@ -704,15 +704,87 @@ class WeeklyStatistic(Base):
     calculated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
 
+class NotificationCategory(str, enum.Enum):
+    """Anlaesse, zu denen benachrichtigt wird.
+
+    Bewusst eine feste, kleine Liste: der Benutzer soll je Anlass entscheiden
+    koennen, ob er ihn bekommen will. Eine frei wachsende Menge von Anlaessen
+    waere in den Einstellungen nicht mehr ueberschaubar - und was man nicht
+    abschalten kann, schaltet man irgendwann ganz ab.
+    """
+
+    APPOINTMENT_SOON = "appointment_soon"      # Termin beginnt bald
+    APPOINTMENT_TODAY = "appointment_today"    # Termine des heutigen Tages
+    FOLLOWUP_TODAY = "followup_today"          # Wiedervorlage heute faellig
+    FOLLOWUP_OVERDUE = "followup_overdue"      # Wiedervorlage ueberfaellig
+    MESSAGE_NEW = "message_new"                # neue private Nachricht
+    RENTAL_DUE = "rental_due"                  # Verleihgeraet bald faellig
+    RENTAL_OVERDUE = "rental_overdue"          # Verleihgeraet ueberfaellig
+
+
 class Notification(Base):
     __tablename__ = "notifications"
+    __table_args__ = (
+        # Verhindert, dass derselbe Anlass bei jedem Abruf erneut auftaucht.
+        # Die Benachrichtigungen werden aus dem Datenbestand abgeleitet; ohne
+        # diesen Schluessel entstuende bei jedem Aufruf ein neuer Eintrag.
+        UniqueConstraint("user_id", "dedupe_key", name="uq_notification_dedupe"),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     kind: Mapped[str] = mapped_column(String(80))
     title: Mapped[str] = mapped_column(String(255))
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Wohin die Benachrichtigung fuehrt, wenn man sie antippt.
+    link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Fachlicher Schluessel des Anlasses, z. B. "appointment_soon:<id>".
+    # NULL bleibt erlaubt, damit von Hand erzeugte Einzelmeldungen weiterhin
+    # moeglich sind, ohne sich einen Schluessel ausdenken zu muessen.
+    dedupe_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, index=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class NotificationSetting(Base):
+    """Abweichung vom Standard je Benutzer und Anlass.
+
+    Gleiches Muster wie UserPermission: kein Eintrag heisst "Standard gilt".
+    So bekommt ein neuer Anlass nicht automatisch fuer jeden Benutzer eine
+    Zeile, und ein spaeter geaenderter Standard wirkt fuer alle, die nie
+    etwas anderes eingestellt haben.
+    """
+
+    __tablename__ = "notification_settings"
+    __table_args__ = (
+        UniqueConstraint("user_id", "category", name="uq_notification_setting"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    category: Mapped[NotificationCategory] = mapped_column(Enum(NotificationCategory), index=True)
+    # Im Postfach anzeigen.
+    in_app: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Zusaetzlich als Push aufs Geraet schicken.
+    push: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class PushSubscription(Base):
+    """Ein angemeldetes Geraet fuer Web-Push.
+
+    Ein Benutzer kann mehrere Geraete haben (Telefon, Tablet, Rechner),
+    deshalb haengt die Anmeldung am Endpunkt, nicht am Benutzer. Der Endpunkt
+    ist eindeutig - meldet sich dasselbe Geraet erneut an, wird der
+    vorhandene Eintrag aufgefrischt statt ein zweiter angelegt.
+    """
+
+    __tablename__ = "push_subscriptions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    endpoint: Mapped[str] = mapped_column(String(600), unique=True, index=True)
+    p256dh: Mapped[str] = mapped_column(String(200))
+    auth: Mapped[str] = mapped_column(String(100))
+    user_agent: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AuditLog(Base):
