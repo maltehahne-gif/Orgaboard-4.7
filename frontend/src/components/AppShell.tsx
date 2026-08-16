@@ -7,6 +7,7 @@ import {
   FileSignature,
   FileText,
   Gauge,
+  GitCompare,
   KanbanSquare,
   LayoutDashboard,
   History,
@@ -98,6 +99,7 @@ const NAV_GROUPS: NavGroup[] = [
     teamLeaderOnly: true,
     items: [
       {to: '/cockpit', label: 'Cockpit', icon: LayoutDashboard},
+      {to: '/vergleich', label: 'Vergleich', icon: GitCompare},
       {to: '/team', label: 'Team', icon: Users},
       {to: '/teamstatistiken', label: 'Teamstatistiken', icon: BarChart3, short: 'Statistik'},
       {to: '/verwaltung', label: 'Verwaltung', icon: ShieldCheck},
