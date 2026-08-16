@@ -5,7 +5,6 @@ import {
   Copy,
   Download,
   Mail,
-  Package,
   Plus,
   Search,
   ShoppingCart,
@@ -16,6 +15,7 @@ import {
 import {api, downloadFile, formatDateTime, money} from '../lib/api'
 import type {Customer, Offer, Product} from '../types'
 import {Modal} from '../components/Modal'
+import {ProductCombobox} from '../components/ProductCombobox'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
 import {darfVerwalten} from '../lib/roles'
@@ -139,8 +139,11 @@ export function OffersPage(){
 
   function productMatches(query:string){
     const q = query.trim().toLowerCase()
-    if (!q) return products.slice(0, 8)
-    return products.filter(p => [p.name, p.category, p.description].filter(Boolean).join(' ').toLowerCase().includes(q)).slice(0, 10)
+    // Die alte Obergrenze von 8/10 stammt aus der Zeit, als die Liste im
+    // Formular stand und jede Zeile die Felder darunter weggeschoben hat.
+    // Sie scrollt jetzt in sich selbst; die Suchregel bleibt dieselbe.
+    if (!q) return products.slice(0, 50)
+    return products.filter(p => [p.name, p.category, p.description].filter(Boolean).join(' ').toLowerCase().includes(q)).slice(0, 50)
   }
 
   function selectedProduct(item:ItemForm){
@@ -463,46 +466,29 @@ export function OffersPage(){
               {form.items.map((item, index) => {
                 const selected = selectedProduct(item)
                 const matches = productMatches(item.search)
-                const showResults = !selected || item.search !== selected.name
                 return (
                   <div className="sale-product-entry" key={index}>
                     <div className="sale-product-number">{index + 1}</div>
                     <div className="sale-product-main">
-                      <label className="sale-search-label">
-                        Produkt suchen
-                        <div className="sale-product-search">
-                          <Search size={19} />
-                          <input
-                            type="text"
-                            value={item.search}
-                            placeholder="z. B. VK7, SP7, Polster, Roboter…"
-                            autoComplete="off"
-                            onChange={e => updateItem(index, {search: e.target.value, product_id:'', price_eur:''})}
-                          />
-                          {item.search && (
-                            <button type="button" className="sale-search-clear" onClick={() => updateItem(index, {search:'', product_id:'', price_eur:''})}>
-                              <X size={16} />
-                            </button>
-                          )}
-                        </div>
-                      </label>
-
-                      {showResults && (
-                        <div className="sale-product-results">
-                          {matches.length === 0 ? (
-                            <div className="sale-product-no-result">Kein Produkt gefunden.</div>
-                          ) : matches.map(product => (
-                            <button key={product.id} type="button" className="sale-product-result" onClick={() => chooseProduct(index, product)}>
-                              <div className="sale-result-icon"><Package size={19} /></div>
-                              <div className="sale-result-content">
-                                <strong>{product.name}</strong>
-                                <span className="sale-result-category">{product.category || 'Produkt'}</span>
-                              </div>
-                              <div className="sale-result-price">{productPriceCents(product) === null ? 'Preis nicht hinterlegt' : money(productPriceCents(product) as number)}</div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      <ProductCombobox
+                        label="Produkt suchen"
+                        placeholder="z. B. VK7, SP7, Polster, Roboter…"
+                        value={item.search}
+                        options={matches.map(p => ({
+                          id: p.id,
+                          name: p.name,
+                          category: p.category || 'Produkt',
+                          price: productPriceCents(p) === null
+                            ? null
+                            : money(productPriceCents(p) as number),
+                        }))}
+                        onChange={wert => updateItem(index, {search: wert, product_id:'', price_eur:''})}
+                        onSelect={eintrag => {
+                          const produkt = products.find(p => p.id === eintrag.id)
+                          if (produkt) chooseProduct(index, produkt)
+                        }}
+                        onClear={() => updateItem(index, {search:'', product_id:'', price_eur:''})}
+                      />
 
                       <div className="sale-product-values">
                         <label>

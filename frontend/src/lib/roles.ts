@@ -43,3 +43,39 @@ export function istSystemAdmin(rolle: Role | undefined | null): boolean {
 export function rolleBezeichnung(rolle: Role | undefined | null): string {
   return rolle ? (ROLLE_BEZEICHNUNG[rolle] ?? rolle) : '–'
 }
+
+/** Welche Rollen diese Rolle vergeben darf.
+ *
+ *  Spiegelt erlaubte_zielrollen() aus backend/app/core/benutzerscope.py:
+ *  niemand vergibt die eigene Stufe. Ein Teamleiter kommt damit auf genau
+ *  eine Auswahl (Mitarbeiter), und ernennen kann ihn nur die Stufe darüber.
+ *
+ *  Wieder nur ein Abbild. Ablehnen tut der Server – hier wird eine Auswahl
+ *  gar nicht erst angeboten, die er ohnehin zurückweisen würde.
+ */
+export function zielrollen(rolle: Role | undefined | null): Role[] {
+  if (istSystemAdmin(rolle)) return ['EMPLOYEE', 'TEAM_LEADER', 'REGIONAL_LEAD', 'SYSTEM_ADMIN']
+  if (!darfVerwalten(rolle)) return []
+  const eigener = rang(rolle)
+  return (['EMPLOYEE', 'TEAM_LEADER', 'REGIONAL_LEAD'] as Role[]).filter(r => RANG[r] < eigener)
+}
+
+/** Ob diese Rolle die genannte Zielrolle vergeben darf.
+ *
+ *  Bewusst mit Zielrolle statt als bloßes „darf Rollen vergeben“: ein
+ *  Teamleiter darf die Rolle Mitarbeiter vergeben und wäre damit unter der
+ *  gröberen Frage berechtigt – die Schaltfläche, um die es geht, macht aber
+ *  jemanden zum Teamleiter. Genau diese Verwechslung soll der Parameter
+ *  verhindern.
+ */
+export function darfRolleVergeben(
+  rolle: Role | undefined | null,
+  ziel: Role,
+): boolean {
+  return zielrollen(rolle).includes(ziel)
+}
+
+/** Darf Konten endgültig löschen. Nur der Betreiber, serverseitig erzwungen. */
+export function darfKontenLoeschen(rolle: Role | undefined | null): boolean {
+  return istSystemAdmin(rolle)
+}

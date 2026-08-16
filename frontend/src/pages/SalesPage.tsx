@@ -9,7 +9,6 @@ import {
   Check,
   ChevronDown,
   Download,
-  Package,
   Plus,
   Search,
   Ban,
@@ -32,6 +31,7 @@ import type {
 } from '../types'
 
 import {Modal} from '../components/Modal'
+import {ProductCombobox} from '../components/ProductCombobox'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
 import {useLocation,useNavigate} from 'react-router-dom'
@@ -457,8 +457,13 @@ export function SalesPage(){
         .trim()
         .toLowerCase()
 
+    /* Die Obergrenze lag bei 8 bzw. 10 - sie stammt aus der Zeit, als die
+       Liste im Formular stand und jede weitere Zeile die Felder darunter
+       weggeschoben hat. Die Liste scrollt jetzt in sich selbst, also darf
+       sie so viele Treffer zeigen, wie man tatsaechlich sucht. Die
+       Suchregel darunter ist unveraendert. */
     if(!query){
-      return products.slice(0,8)
+      return products.slice(0,50)
     }
 
 
@@ -478,7 +483,7 @@ export function SalesPage(){
 
         return text.includes(query)
       })
-      .slice(0,10)
+      .slice(0,50)
   }
 
 
@@ -1558,11 +1563,6 @@ export function SalesPage(){
                     item.search
                   )
 
-                const showResults=
-                  !selected
-                  || item.search
-                    !== selected.name
-
 
                 return(
                   <div
@@ -1577,132 +1577,67 @@ export function SalesPage(){
 
                     <div className="sale-product-main">
 
-                      <label className="sale-search-label">
-
-                        Produkt suchen
-
-                        <div className="sale-product-search">
-
-                          <Search size={19}/>
-
-                          <input
-                            type="text"
-                            value={item.search}
-                            placeholder="z. B. VK7, SP7, Polster, Roboter…"
-                            autoComplete="off"
-                            onChange={event=>{
-
-                              updateItem(
-                                index,
-                                {
-                                  search:
-                                    event.target.value,
-
-                                  product_id:'',
-                                  price_eur:'',
-                                }
-                              )
-                            }}
-                          />
-
-                          {item.search && (
-                            <button
-                              type="button"
-                              className="sale-search-clear"
-                              onClick={()=>
-                                updateItem(
-                                  index,
-                                  {
-                                    search:'',
-                                    product_id:'',
-                                    price_eur:'',
-                                  }
-                                )
-                              }
-                            >
-                              <X size={16}/>
-                            </button>
-                          )}
-
-                        </div>
-
-                      </label>
-
-
-                      {showResults && (
-                        <div className="sale-product-results">
-
-                          {matches.length===0 ? (
-
-                            <div className="sale-product-no-result">
-                              Kein Produkt gefunden.
-                              Du kannst es zuerst im
-                              Produktkatalog anlegen.
-                            </div>
-
-                          ) : (
-
-                            matches.map(
-                              product=>(
-                                <button
-                                  key={product.id}
-                                  type="button"
-                                  className="sale-product-result"
-                                  onClick={()=>
-                                    chooseProduct(
-                                      index,
-                                      product
-                                    )
-                                  }
-                                >
-
-                                  <div className="sale-result-icon">
-                                    <Package size={19}/>
-                                  </div>
-
-
-                                  <div className="sale-result-content">
-
-                                    <strong>
-                                      {product.name}
-                                    </strong>
-
-                                    <span className="sale-result-category">
-                                      {product.category
-                                        || 'Produkt'
-                                      }
-                                      {product.technical?.k70_group
-                                        ? ` · ${product.technical.k70_group}`
-                                        : ''
-                                      }
-                                      {product.technical?.article_number
-                                        ? ` · Art. ${product.technical.article_number}`
-                                        : ''
-                                      }
-                                    </span>
-
-                                    {product.description && (
-                                      <small>
-                                        {product.description}
-                                      </small>
-                                    )}
-
-                                  </div>
-
-
-                                  <div className="sale-result-price">
-                                    {productPriceText(
-                                      product
-                                    )}
-                                  </div>
-
-                                </button>
-                              )
+                      <ProductCombobox
+                        label="Produkt suchen"
+                        placeholder="z. B. VK7, SP7, Polster, Roboter…"
+                        value={item.search}
+                        options={matches.map(
+                          produkt=>({
+                            id:produkt.id,
+                            name:produkt.name,
+                            category:
+                              produkt.category
+                              ||'Produkt',
+                            meta:[
+                              produkt.technical?.k70_group,
+                              produkt.technical?.article_number
+                                ? `Art. ${produkt.technical.article_number}`
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')
+                              ||null,
+                            price:
+                              productPriceCents(produkt)===null
+                                ? null
+                                : productPriceText(produkt),
+                          })
+                        )}
+                        emptyText="Kein Produkt gefunden. Du kannst es zuerst im Produktkatalog anlegen."
+                        onChange={wert=>
+                          updateItem(
+                            index,
+                            {
+                              search:wert,
+                              product_id:'',
+                              price_eur:'',
+                            }
+                          )
+                        }
+                        onSelect={eintrag=>{
+                          const produkt=
+                            products.find(
+                              p=>p.id===eintrag.id
                             )
-                          )}
 
-                        </div>
-                      )}
+                          if(produkt){
+                            chooseProduct(
+                              index,
+                              produkt
+                            )
+                          }
+                        }}
+                        onClear={()=>
+                          updateItem(
+                            index,
+                            {
+                              search:'',
+                              product_id:'',
+                              price_eur:'',
+                            }
+                          )
+                        }
+                      />
 
 
                       {selected && (

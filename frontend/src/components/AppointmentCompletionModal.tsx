@@ -1,6 +1,5 @@
 import {
   FormEvent,
-  useMemo,
   useState,
 } from 'react'
 import {
@@ -8,12 +7,12 @@ import {
   CircleSlash2,
   PackageCheck,
   Plus,
-  Search,
   ShoppingCart,
   Trash2,
 } from 'lucide-react'
 
 import {Modal} from './Modal'
+import {ProductCombobox} from './ProductCombobox'
 import {useToast} from './Toast'
 import {api,money} from '../lib/api'
 import type {
@@ -179,26 +178,17 @@ export function AppointmentCompletionModal({
     useState('')
 
 
-  const rentalSelected=useMemo(
-    ()=>catalog.find(
-      product=>
-        product.id===rentalProductId
-    ),
-    [
-      catalog,
-      rentalProductId,
-    ],
-  )
-
-
   function matches(search:string){
     const query=
       search
         .trim()
         .toLowerCase()
 
+    /* Die alte Obergrenze von 8/10 stammt aus der Zeit, als die Liste im
+       Dialog stand und jede Zeile die Felder darunter weggeschoben hat.
+       Sie scrollt jetzt in sich selbst; die Suchregel bleibt dieselbe. */
     if(!query){
-      return catalog.slice(0,8)
+      return catalog.slice(0,50)
     }
 
     return catalog
@@ -206,7 +196,7 @@ export function AppointmentCompletionModal({
         productSearchText(product)
           .includes(query)
       )
-      .slice(0,10)
+      .slice(0,50)
   }
 
 
@@ -651,20 +641,8 @@ export function AppointmentCompletionModal({
 
             {saleItems.map(
               (item,index)=>{
-                const selectedProduct=
-                  catalog.find(
-                    product=>
-                      product.id
-                      ===item.product_id
-                  )
-
                 const resultRows=
                   matches(item.search)
-
-                const showResults=
-                  !selectedProduct
-                  || selectedProduct.name
-                    !==item.search
 
                 return <div
                   className="completion-product"
@@ -696,80 +674,60 @@ export function AppointmentCompletionModal({
                   </div>
 
 
-                  <label>
-                    Produkt suchen
-
-                    <div className="completion-search">
-                      <Search size={17}/>
-
-                      <input
-                        value={item.search}
-                        placeholder="z. B. VK7, SP7, K70 …"
-                        autoComplete="off"
-                        onChange={event=>
-                          updateSaleItem(
-                            index,
-                            {
-                              search:
-                                event.target.value,
-                              product_id:'',
-                              price_eur:'',
-                            }
-                          )
+                  <ProductCombobox
+                    label="Produkt suchen"
+                    placeholder="z. B. VK7, SP7, K70 …"
+                    value={item.search}
+                    options={resultRows.map(
+                      produkt=>({
+                        id:produkt.id,
+                        name:produkt.name,
+                        category:
+                          produkt.category
+                          ||'Produkt',
+                        price:
+                          productPriceCents(produkt)===null
+                            ?null
+                            :money(
+                              productPriceCents(produkt) as number
+                            ),
+                      })
+                    )}
+                    emptyText="Kein Produkt gefunden"
+                    onChange={wert=>
+                      updateSaleItem(
+                        index,
+                        {
+                          search:wert,
+                          product_id:'',
+                          price_eur:'',
                         }
-                      />
-                    </div>
-                  </label>
+                      )
+                    }
+                    onSelect={eintrag=>{
+                      const produkt=
+                        catalog.find(
+                          p=>p.id===eintrag.id
+                        )
 
-
-                  {showResults&&
-                    <div className="completion-search-results">
-
-                      {resultRows.map(
-                        product=>{
-                          const cents=
-                            productPriceCents(
-                              product
-                            )
-
-                          return <button
-                            type="button"
-                            key={product.id}
-                            onClick={()=>
-                              chooseSaleProduct(
-                                index,
-                                product
-                              )
-                            }
-                          >
-                            <span>
-                              <strong>
-                                {product.name}
-                              </strong>
-
-                              <small>
-                                {product.category
-                                  ||'Produkt'}
-                              </small>
-                            </span>
-
-                            <b>
-                              {cents===null
-                                ?'Preis fehlt'
-                                :money(cents)}
-                            </b>
-                          </button>
-                        }
-                      )}
-
-                      {resultRows.length===0&&
-                        <div className="completion-no-result">
-                          Kein Produkt gefunden
-                        </div>
+                      if(produkt){
+                        chooseSaleProduct(
+                          index,
+                          produkt as CatalogProduct
+                        )
                       }
-
-                    </div>
-                  }
+                    }}
+                    onClear={()=>
+                      updateSaleItem(
+                        index,
+                        {
+                          search:'',
+                          product_id:'',
+                          price_eur:'',
+                        }
+                      )
+                    }
+                  />
 
 
                   <div className="completion-product-meta">
@@ -885,61 +843,44 @@ export function AppointmentCompletionModal({
           </div>
 
 
-          <label>
-            Gerät suchen
+          <ProductCombobox
+            label="Gerät suchen"
+            placeholder="Produkt oder Gerät suchen …"
+            value={rentalSearch}
+            options={matches(rentalSearch).map(
+              produkt=>({
+                id:produkt.id,
+                name:produkt.name,
+                category:
+                  produkt.category
+                  ||'Gerät',
+                // Beim Verleih steht kein Preis zur Debatte - er wäre hier
+                // eine Zahl ohne Bedeutung.
+                price:'',
+              })
+            )}
+            emptyText="Kein Gerät gefunden"
+            onChange={wert=>{
+              setRentalSearch(wert)
+              setRentalProductId('')
+            }}
+            onSelect={eintrag=>{
+              const produkt=
+                catalog.find(
+                  p=>p.id===eintrag.id
+                )
 
-            <div className="completion-search">
-              <Search size={17}/>
-
-              <input
-                value={rentalSearch}
-                placeholder="Produkt oder Gerät suchen …"
-                autoComplete="off"
-                onChange={event=>{
-                  setRentalSearch(
-                    event.target.value
-                  )
-                  setRentalProductId('')
-                }}
-              />
-            </div>
-          </label>
-
-
-          {(
-            !rentalSelected
-            || rentalSelected.name
-              !==rentalSearch
-          )&&
-            <div className="completion-search-results">
-
-              {matches(rentalSearch)
-                .map(product=>
-                  <button
-                    type="button"
-                    key={product.id}
-                    onClick={()=>
-                      chooseRentalProduct(
-                        product
-                      )
-                    }
-                  >
-                    <span>
-                      <strong>
-                        {product.name}
-                      </strong>
-
-                      <small>
-                        {product.category
-                          ||'Gerät'}
-                      </small>
-                    </span>
-                  </button>
+              if(produkt){
+                chooseRentalProduct(
+                  produkt as CatalogProduct
                 )
               }
-
-            </div>
-          }
+            }}
+            onClear={()=>{
+              setRentalSearch('')
+              setRentalProductId('')
+            }}
+          />
 
 
           <div className="completion-rental-grid">
