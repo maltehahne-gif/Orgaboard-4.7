@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ChevronDown,
   ContactRound,
+  FileSignature,
   FileText,
   Gauge,
   History,
@@ -79,6 +80,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Verkauf',
     items: [
+      {to: '/angebote', label: 'Angebote', icon: FileSignature},
       {to: '/verkaeufe', label: 'Verkäufe', icon: ShoppingCart},
       {to: '/verkaufstabelle', label: 'Verkaufstabelle', icon: Table2, short: 'Tabelle'},
       {to: '/berichte', label: 'Berichte', icon: FileText},

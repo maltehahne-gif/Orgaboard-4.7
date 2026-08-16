@@ -11605,3 +11605,29 @@ to{
   padding:11px 16px;
   font-weight:600;
 }
+
+.offer-status{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12.5px;
+  font-weight:600;
+  border:1px solid var(--line);
+  background:var(--panel3);
+  color:var(--muted);
+  white-space:nowrap;
+}
+.offer-status-draft{color:var(--muted);border-color:var(--line)}
+.offer-status-sent{color:#7fc7ff;border-color:#2b5a75;background:rgba(58,140,199,.12)}
+.offer-status-accepted{color:var(--green);border-color:var(--line-green);background:rgba(52,215,105,.1)}
+.offer-status-rejected{color:var(--danger);border-color:#5a2a2a;background:rgba(255,99,99,.1)}
+.offer-status-expired{color:var(--orange);border-color:#6a4a24;background:rgba(255,155,67,.1)}
+.offer-status-converted{color:var(--green2);border-color:var(--line-green);background:rgba(21,153,71,.14)}
+
+.offer-actions{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  flex-wrap:wrap;
+}

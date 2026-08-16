@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Download,
+  FileSignature,
   ShieldOff,
   Mail,
   MapPin,
@@ -18,7 +19,7 @@ import {
   StickyNote,
   Undo2,
 } from 'lucide-react'
-import {Link, useParams} from 'react-router-dom'
+import {Link, useNavigate, useParams} from 'react-router-dom'
 import {api, formatDateTime} from '../lib/api'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
@@ -93,6 +94,7 @@ const FUNNEL_ORDER = [
 const KIND_ICON: Record<string, typeof CalendarDays> = {
   appointment: CalendarDays,
   presentation: Presentation,
+  offer: FileSignature,
   sale: ShoppingCart,
   rental: Package,
   rental_return: Undo2,
@@ -103,6 +105,7 @@ const KIND_ICON: Record<string, typeof CalendarDays> = {
 const KIND_LABEL: Record<string, string> = {
   appointment: 'Termin',
   presentation: 'Vorführung',
+  offer: 'Angebot',
   sale: 'Verkauf',
   rental: 'Verleih',
   rental_return: 'Rückgabe',
@@ -112,6 +115,7 @@ const KIND_LABEL: Record<string, string> = {
 
 export function CustomerDetailPage() {
   const {customerId} = useParams<{customerId: string}>()
+  const navigate = useNavigate()
   const [data, setData] = useState<Timeline | null>(null)
   const [noteBody, setNoteBody] = useState('')
   const [saving, setSaving] = useState(false)
@@ -269,6 +273,14 @@ export function CustomerDetailPage() {
         </div>
 
         <div className="page-head-actions">
+          <button
+            type="button"
+            className="primary"
+            onClick={() => navigate('/angebote', {state: {openCreate: true, customerId, customerName: customer.full_name}})}
+            title="Angebot für diesen Kunden erstellen"
+          >
+            <FileSignature size={16} /> Angebot erstellen
+          </button>
           <button type="button" onClick={datenauskunft} title="Alle gespeicherten Daten als Datei (Art. 15 DSGVO)">
             <Download size={16} /> Datenauskunft
           </button>

@@ -8,3 +8,15 @@ export interface SaleItem { id?:string; product_id:string; name?:string; quantit
 export interface Sale { id:string; customer_id:string; customer_name:string; employee_id:string; appointment_id:string|null; sold_at:string; channel:string; notes:string|null; items:SaleItem[]; total_cents:number; units:number; cancelled:boolean; cancelled_at:string|null; cancellation_reason:string|null; counts_total_cents:number; counts_units:number }
 export interface TradeIn { id:string; customer_id:string; customer_name:string; employee_id:string; sale_id:string|null; model:string; serial_number:string|null; condition:string; condition_label:string; status:string; status_label:string; received_on:string; notes:string|null; created_at:string }
 export interface Rental { id:string; product_id:string; product_name:string|null; customer_id:string; customer_name:string|null; customer_phone:string|null; employee_id:string; serial_number:string|null; issued_at:string; due_at:string|null; returned_at:string|null; status:string; notes:string|null; is_overdue:boolean; due_soon:boolean; days_until_due:number|null; days_overdue:number }
+export interface OfferItem { id?:string; product_id:string; name?:string; quantity:number; unit_price_cents:number; total_cents?:number }
+export interface Offer {
+  id:string; number:string; customer_id:string; customer_name:string; customer_address:string
+  employee_id:string; employee_name:string; appointment_id:string|null
+  status:'draft'|'sent'|'accepted'|'rejected'|'expired'|'converted'; status_label:string; stored_status:string
+  issued_on:string; valid_until:string|null; discount_percent:number; notes:string|null
+  created_at:string; updated_at:string; sent_at:string|null; accepted_at:string|null
+  rejected_at:string|null; rejection_reason:string|null
+  converted_sale_id:string|null; converted_at:string|null
+  items:OfferItem[]; subtotal_cents:number; discount_cents:number; total_cents:number
+  can_edit:boolean; can_delete:boolean; can_send:boolean; can_accept:boolean; can_reject:boolean; can_convert:boolean
+}
