@@ -12,6 +12,7 @@ from app.core.security import get_current_user
 from app.core.timeutils import local_today, month_bounds, week_bounds
 from app.models import Appointment, Employee, ProductPresentation, Rental, RentalStatus, Sale, User
 from app.services.analytics import employee_goal_progress
+from app.services.orgscope import org_lookup, team_chain
 from app.services.stats import dashboard_stats
 
 router = APIRouter(prefix="/team", tags=["team"])
@@ -29,12 +30,28 @@ def employees(user: User = Depends(get_current_user), db: Session = Depends(get_
         sales = db.scalar(select(func.count(Sale.id)).where(Sale.employee_id == e.id, Sale.sold_at >= ws, Sale.sold_at < we)) or 0
         presentations = db.scalar(select(func.count(ProductPresentation.id)).where(ProductPresentation.employee_id == e.id, ProductPresentation.presented_at >= ws, ProductPresentation.presented_at < we)) or 0
         rentals = db.scalar(select(func.count(Rental.id)).where(Rental.employee_id == e.id, Rental.status.in_([RentalStatus.RENTED, RentalStatus.DUE]))) or 0
+        chain = team_chain(db, e.team_id)
         result.append({
             "id": e.id, "display_name": e.display_name, "position": e.position,
+            "team_id": chain.team_id, "team_name": chain.team_name,
+            "district_id": chain.district_id, "district_name": chain.district_name,
+            "region_id": chain.region_id, "region_name": chain.region_name,
             **stats, "appointments_week": appointments, "sales_week": sales,
             "presentations_week": presentations, "active_rentals": rentals,
         })
     return result
+
+
+@router.get("/org-lookup")
+def org_lookup_route(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Regionen, Bezirke und Teams als Auswahlliste fuer Filter.
+
+    Anders als /sysadmin/org auch fuer Teamleiter und Regionalleiter
+    erreichbar - die brauchen die Liste fuer die Pipeline- und
+    Vergleichsfilter, duerfen die Struktur selbst aber nicht verwalten.
+    """
+    require_team_leader(user)
+    return org_lookup(db)
 
 
 @router.get("/stats")
