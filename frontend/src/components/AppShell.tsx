@@ -8,6 +8,7 @@ import {
   FileText,
   Gauge,
   KanbanSquare,
+  LayoutDashboard,
   History,
   Home,
   LogOut,
@@ -96,6 +97,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: 'Team',
     teamLeaderOnly: true,
     items: [
+      {to: '/cockpit', label: 'Cockpit', icon: LayoutDashboard},
       {to: '/team', label: 'Team', icon: Users},
       {to: '/teamstatistiken', label: 'Teamstatistiken', icon: BarChart3, short: 'Statistik'},
       {to: '/verwaltung', label: 'Verwaltung', icon: ShieldCheck},
