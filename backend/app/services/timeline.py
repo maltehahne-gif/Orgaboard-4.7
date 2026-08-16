@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.timeutils import local_today, utc_aware
-from app.services.stats import not_cancelled
+from app.services.stats import EmployeeScope, employee_filter, not_cancelled
 from app.models import (
     Appointment,
     AppointmentStatus,
@@ -363,11 +363,12 @@ FUNNEL_LABELS = {
 }
 
 
-def funnel_overview(db: Session, employee_id: str | None = None) -> dict:
+def funnel_overview(db: Session, employee_id: EmployeeScope = None) -> dict:
     """Trichter mit Stufenbesetzung und Umwandlungsquoten."""
     stmt = select(Customer).where(Customer.deleted_at.is_(None))
-    if employee_id:
-        stmt = stmt.where(Customer.employee_id == employee_id)
+    empfilter = employee_filter(Customer.employee_id, employee_id)
+    if empfilter is not None:
+        stmt = stmt.where(empfilter)
     customers = db.scalars(stmt).all()
 
     counts = {stage: 0 for stage in FUNNEL_ORDER}
@@ -409,21 +410,23 @@ def funnel_overview(db: Session, employee_id: str | None = None) -> dict:
     }
 
 
-def appointment_kpis(db: Session, start: datetime, end: datetime, employee_id: str | None = None) -> dict:
+def appointment_kpis(db: Session, start: datetime, end: datetime, employee_id: EmployeeScope = None) -> dict:
     """Kennzahlen rund um Termine im Zeitraum."""
     stmt = select(Appointment).where(
         Appointment.start_at >= start, Appointment.start_at < end
     )
-    if employee_id:
-        stmt = stmt.where(Appointment.employee_id == employee_id)
+    appt_filter = employee_filter(Appointment.employee_id, employee_id)
+    if appt_filter is not None:
+        stmt = stmt.where(appt_filter)
     appointments = db.scalars(stmt).all()
 
     done = [a for a in appointments if a.status == AppointmentStatus.COMPLETED]
     with_sale = [a for a in done if a.outcome == "sale"]
 
     sale_stmt = select(Sale).where(Sale.sold_at >= start, Sale.sold_at < end, not_cancelled())
-    if employee_id:
-        sale_stmt = sale_stmt.where(Sale.employee_id == employee_id)
+    sale_filter = employee_filter(Sale.employee_id, employee_id)
+    if sale_filter is not None:
+        sale_stmt = sale_stmt.where(sale_filter)
     sales = db.scalars(sale_stmt).all()
 
     revenue = 0
@@ -435,8 +438,9 @@ def appointment_kpis(db: Session, start: datetime, end: datetime, employee_id: s
         ProductPresentation.presented_at >= start,
         ProductPresentation.presented_at < end,
     )
-    if employee_id:
-        pres_stmt = pres_stmt.where(ProductPresentation.employee_id == employee_id)
+    pres_filter = employee_filter(ProductPresentation.employee_id, employee_id)
+    if pres_filter is not None:
+        pres_stmt = pres_stmt.where(pres_filter)
     presentations = len(db.scalars(pres_stmt).all())
 
     return {

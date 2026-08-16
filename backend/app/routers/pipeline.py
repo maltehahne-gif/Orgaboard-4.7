@@ -10,12 +10,11 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.rbac import scoped_employee_id
 from app.core.security import get_current_user
 from app.core.timeutils import day_bounds, utc_aware
 from app.models import (
@@ -31,9 +30,9 @@ from app.models import (
     User,
 )
 from app.routers.offers import effective_status, serialize as offer_serialize
-from app.services.orgscope import resolve_scope_employee_ids, team_chain
+from app.services.orgscope import resolve_management_scope, team_chain
 from app.services.serializers import sale_total
-from app.services.stats import not_cancelled
+from app.services.stats import employee_filter, not_cancelled
 from app.services.timeline import (
     FUNNEL_LABELS,
     FUNNEL_ORDER,
@@ -170,17 +169,14 @@ def pipeline(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    scope = scoped_employee_id(db, user, employee_id)
+    scope = resolve_management_scope(db, user, employee_id, team_id, district_id, region_id)
+    if isinstance(scope, list) and not scope:
+        return {"customers": [], "counts": {stage.value: 0 for stage in FUNNEL_ORDER}}
 
     stmt = select(Customer).where(Customer.deleted_at.is_(None))
-    if scope:
-        stmt = stmt.where(Customer.employee_id == scope)
-    else:
-        hierarchy_scope = resolve_scope_employee_ids(db, team_id, district_id, region_id)
-        if hierarchy_scope is not None:
-            if not hierarchy_scope:
-                return {"customers": [], "counts": {stage.value: 0 for stage in FUNNEL_ORDER}}
-            stmt = stmt.where(Customer.employee_id.in_(hierarchy_scope))
+    empfilter = employee_filter(Customer.employee_id, scope)
+    if empfilter is not None:
+        stmt = stmt.where(empfilter)
 
     customers = db.scalars(stmt.order_by(Customer.last_name, Customer.first_name)).all()
     cards = [_card(db, c) for c in customers]

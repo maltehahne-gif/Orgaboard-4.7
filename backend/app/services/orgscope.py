@@ -15,7 +15,8 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import District, Employee, Region, Team
+from app.core.rbac import scoped_employee_id
+from app.models import District, Employee, Region, Team, User
 
 
 @dataclass
@@ -68,6 +69,30 @@ def resolve_scope_employee_ids(
     if region_id:
         return employee_ids_in_region(db, region_id)
     return None
+
+
+def resolve_management_scope(
+    db: Session,
+    user: User,
+    employee_id: str | None = None,
+    team_id: str | None = None,
+    district_id: str | None = None,
+    region_id: str | None = None,
+) -> str | list[str] | None:
+    """Sichtbarer Mitarbeiterausschnitt fuer Auswertungen - eine Stelle fuer
+    Pipeline, Management-Cockpit, Mitarbeitervergleich und Forecast.
+
+    scoped_employee_id() bleibt die Grenze dessen, was ein Benutzer ueberhaupt
+    sehen darf: ein einfacher Mitarbeiter bekommt dort immer seine eigene ID
+    zurueck, ein angegebener fremder Mitarbeiter wird dort abgelehnt. Erst
+    wenn diese Pruefung "alles erlaubt" zurueckgibt (kein employee_id, Rang
+    mindestens Teamleiter), engt Team/Bezirk/Region das Ergebnis zusaetzlich
+    ein - dieselbe Reihenfolge wie in der Pipeline (Block 2).
+    """
+    scope = scoped_employee_id(db, user, employee_id)
+    if scope:
+        return scope
+    return resolve_scope_employee_ids(db, team_id, district_id, region_id)
 
 
 def team_chain(db: Session, team_id: str | None) -> TeamChain:

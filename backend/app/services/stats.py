@@ -19,6 +19,29 @@ def not_cancelled():
     return Sale.cancelled_at.is_(None)
 
 
+EmployeeScope = str | list[str] | None
+
+
+def employee_filter(column, employee_id: EmployeeScope):
+    """where()-Bedingung fuer einen einzelnen Mitarbeiter oder eine Gruppe.
+
+    Dieselbe Stelle fuer Umsatz, Einheiten, Termine, Produktmix und Angebote -
+    sonst rechnet eine Team- oder Regionsauswertung frueher oder spaeter mit
+    einer anderen Grundgesamtheit als eine Einzelauswertung, und zwei Zahlen
+    fuer denselben Ausschnitt laufen auseinander.
+
+    None heisst "kein Ausschnitt, alle zaehlen mit". Eine - auch leere -
+    Liste ist dagegen ein bereits aufgeloester Ausschnitt (z. B. ein Team
+    ohne Mitglieder): die leere Liste muss dann niemanden treffen, nicht
+    stillschweigend auf "alle" zurueckfallen.
+    """
+    if employee_id is None:
+        return None
+    if isinstance(employee_id, (list, tuple, set)):
+        return column.in_(list(employee_id))
+    return column == employee_id
+
+
 def is_k70_category(category: str | None) -> bool:
     return (category or "").strip().casefold() == K70_CATEGORY
 
@@ -27,7 +50,7 @@ def revenue_between(
     db: Session,
     start: datetime,
     end: datetime,
-    employee_id: str | None = None,
+    employee_id: EmployeeScope = None,
     channel: SaleChannel | None = None,
     product_category: str | None = None,
 ) -> int:
@@ -37,8 +60,9 @@ def revenue_between(
         .join(Sale, Sale.id == SaleItem.sale_id)
         .where(Sale.sold_at >= start, Sale.sold_at < end, not_cancelled())
     )
-    if employee_id:
-        stmt = stmt.where(Sale.employee_id == employee_id)
+    empfilter = employee_filter(Sale.employee_id, employee_id)
+    if empfilter is not None:
+        stmt = stmt.where(empfilter)
     if channel:
         stmt = stmt.where(Sale.channel == channel)
     if product_category:
@@ -83,7 +107,7 @@ def units_between(
     db: Session,
     start: datetime,
     end: datetime,
-    employee_id: str | None = None,
+    employee_id: EmployeeScope = None,
 ) -> int:
 
     stmt = (
@@ -108,10 +132,9 @@ def units_between(
         )
     )
 
-    if employee_id:
-        stmt = stmt.where(
-            Sale.employee_id == employee_id
-        )
+    empfilter = employee_filter(Sale.employee_id, employee_id)
+    if empfilter is not None:
+        stmt = stmt.where(empfilter)
 
     rows = db.execute(stmt).all()
 
@@ -133,6 +156,25 @@ def units_between(
         total += quantity * unit_factor
 
     return total
+
+
+def sales_count_between(
+    db: Session,
+    start: datetime,
+    end: datetime,
+    employee_id: EmployeeScope = None,
+) -> int:
+    """Anzahl der (nicht stornierten) Verkaufsvorgaenge im Zeitraum.
+
+    Getrennt von revenue_between/units_between: dort zaehlen Positionen,
+    hier zaehlt der Verkauf als Ganzes - fuer "Umsatz pro Verkauf" braucht
+    es beide Zahlen unabhaengig voneinander.
+    """
+    stmt = select(func.count(Sale.id)).where(Sale.sold_at >= start, Sale.sold_at < end, not_cancelled())
+    empfilter = employee_filter(Sale.employee_id, employee_id)
+    if empfilter is not None:
+        stmt = stmt.where(empfilter)
+    return int(db.scalar(stmt) or 0)
 
 
 def dashboard_stats(db: Session, employee_id: str | None = None) -> dict:

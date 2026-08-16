@@ -44,6 +44,24 @@ def month_bounds(day: date | None = None) -> tuple[datetime, datetime]:
     return _local_midnight_to_utc(first), _local_midnight_to_utc(nxt)
 
 
+def quarter_bounds(day: date | None = None) -> tuple[datetime, datetime]:
+    d = day or local_today()
+    first_month = (d.month - 1) // 3 * 3 + 1
+    first = d.replace(month=first_month, day=1)
+    if first_month == 10:
+        nxt = first.replace(year=first.year + 1, month=1)
+    else:
+        nxt = first.replace(month=first_month + 3)
+    return _local_midnight_to_utc(first), _local_midnight_to_utc(nxt)
+
+
+def year_bounds(day: date | None = None) -> tuple[datetime, datetime]:
+    d = day or local_today()
+    first = d.replace(month=1, day=1)
+    nxt = first.replace(year=first.year + 1)
+    return _local_midnight_to_utc(first), _local_midnight_to_utc(nxt)
+
+
 # Ein Vertriebssystem verwaltet die naechsten Jahre, nicht die naechsten
 # Jahrhunderte. Diese Fenster fangen Tippfehler in Jahreszahlen ab -
 # "2206" statt "2026" legte sonst einen Termin an, der nie wieder auftaucht,

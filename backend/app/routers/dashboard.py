@@ -5,11 +5,13 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.rbac import require_team_leader, scoped_employee_id
 from app.core.security import get_current_user
-from app.core.timeutils import day_bounds, local_today, month_bounds, week_bounds, utc_aware
-from app.models import Appointment, AppointmentStatus, Customer, Message, MessageHidden, MessageRead, Rental, RentalStatus, User
-from app.services.stats import dashboard_stats
+from app.core.timeutils import day_bounds, local_today, month_bounds, quarter_bounds, week_bounds, year_bounds, utc_aware
+from app.models import Appointment, AppointmentStatus, Customer, FollowUp, FollowUpStatus, Message, MessageHidden, MessageRead, Rental, RentalStatus, User
+from app.services.orgscope import resolve_management_scope
+from app.services.stats import dashboard_stats, employee_filter, revenue_between, sales_count_between, units_between
 from app.services.analytics import (
     employee_goal_progress,
+    offer_kpis,
     product_ranking,
     team_alerts,
     trend,
@@ -19,10 +21,32 @@ from app.services.timeline import appointment_kpis, funnel_overview
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
+def _hierarchy_scope(
+    db: Session, user: User,
+    employee_id: str | None, team_id: str | None, district_id: str | None, region_id: str | None,
+):
+    return resolve_management_scope(db, user, employee_id, team_id, district_id, region_id)
+
+
+def _as_employee_ids(scope) -> list[str] | None:
+    """employee_goal_progress()/team_alerts() wollen eine Liste oder None,
+    nicht die einzelne Zeichenkette, die scoped_employee_id() liefert."""
+    if scope is None:
+        return None
+    return [scope] if isinstance(scope, str) else scope
+
+
 @router.get("/funnel")
-def funnel(employee_id: str | None = None, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def funnel(
+    employee_id: str | None = None,
+    team_id: str | None = None,
+    district_id: str | None = None,
+    region_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Verkaufstrichter mit Stufenbesetzung und Umwandlungsquoten."""
-    scope = scoped_employee_id(db, user, employee_id)
+    scope = _hierarchy_scope(db, user, employee_id, team_id, district_id, region_id)
     return funnel_overview(db, scope)
 
 
@@ -33,6 +57,10 @@ def _period_bounds(period: str):
         return week_bounds(today)
     if period == "day":
         return day_bounds(today)
+    if period == "quarter":
+        return quarter_bounds(today)
+    if period == "year":
+        return year_bounds(today)
     return month_bounds(today)
 
 
@@ -40,12 +68,15 @@ def _period_bounds(period: str):
 def kpis(
     period: str = "month",
     employee_id: str | None = None,
+    team_id: str | None = None,
+    district_id: str | None = None,
+    region_id: str | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Terminbezogene Kennzahlen: durchgeführte Termine, Abschlussquote,
     Umsatz pro Termin, Vorführungen."""
-    scope = scoped_employee_id(db, user, employee_id)
+    scope = _hierarchy_scope(db, user, employee_id, team_id, district_id, region_id)
     start, end = _period_bounds(period)
     return {"period": period, **appointment_kpis(db, start, end, scope)}
 
@@ -54,11 +85,14 @@ def kpis(
 def trend_view(
     period: str = "month",
     employee_id: str | None = None,
+    team_id: str | None = None,
+    district_id: str | None = None,
+    region_id: str | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Umsatz und Einheiten im Vergleich zum gleich langen Zeitraum davor."""
-    scope = scoped_employee_id(db, user, employee_id)
+    scope = _hierarchy_scope(db, user, employee_id, team_id, district_id, region_id)
     start, end = _period_bounds(period)
     return {"period": period, **trend(db, start, end, scope)}
 
@@ -67,22 +101,103 @@ def trend_view(
 def product_ranking_view(
     period: str = "month",
     employee_id: str | None = None,
+    team_id: str | None = None,
+    district_id: str | None = None,
+    region_id: str | None = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Meistverkaufte Produkte im Zeitraum."""
-    scope = scoped_employee_id(db, user, employee_id)
+    scope = _hierarchy_scope(db, user, employee_id, team_id, district_id, region_id)
     start, end = _period_bounds(period)
     return {"period": period, "products": product_ranking(db, start, end, scope)}
 
 
 @router.get("/team-overview")
-def team_overview(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def team_overview(
+    team_id: str | None = None,
+    district_id: str | None = None,
+    region_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Zielerreichung je Mitarbeiter und Hinweise auf auffällige Entwicklungen."""
     require_team_leader(user)
+    scope = _as_employee_ids(resolve_management_scope(db, user, None, team_id, district_id, region_id))
     return {
-        "employees": employee_goal_progress(db),
-        "alerts": team_alerts(db),
+        "employees": employee_goal_progress(db, employee_ids=scope),
+        "alerts": team_alerts(db, employee_ids=scope),
+    }
+
+
+@router.get("/cockpit")
+def cockpit(
+    period: str = "month",
+    employee_id: str | None = None,
+    team_id: str | None = None,
+    district_id: str | None = None,
+    region_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Management-Cockpit: alle Führungskennzahlen für einen Ausschnitt (ein
+    Mitarbeiter, ein Team, ein Bezirk, eine Region oder das ganze
+    Unternehmen) in einer Antwort.
+
+    Rechnet nichts neu, sondern ruft dieselben Bausteine wie /dashboard/kpis,
+    /trend, /products, /funnel und /team-overview auf - mit derselben
+    employee_filter()-Logik, damit ein Team-Cockpit und eine
+    Einzelmitarbeiter-Auswertung für denselben Ausschnitt nie unterschiedliche
+    Zahlen zeigen.
+    """
+    require_team_leader(user)
+    scope = _hierarchy_scope(db, user, employee_id, team_id, district_id, region_id)
+    start, end = _period_bounds(period)
+
+    revenue_cents = revenue_between(db, start, end, scope)
+    units = units_between(db, start, end, scope)
+    sales_count = sales_count_between(db, start, end, scope)
+    appt = appointment_kpis(db, start, end, scope)
+    offers = offer_kpis(db, start, end, scope)
+
+    goal_ids = _as_employee_ids(scope)
+    goals = employee_goal_progress(db, employee_ids=goal_ids)
+    units_target = sum(g["units_target"] for g in goals)
+    units_month = sum(g["units_month"] for g in goals)
+
+    follow_up_stmt = select(func.count(FollowUp.id)).where(FollowUp.status == FollowUpStatus.OPEN)
+    follow_up_filter = employee_filter(FollowUp.employee_id, scope)
+    if follow_up_filter is not None:
+        follow_up_stmt = follow_up_stmt.where(follow_up_filter)
+    open_follow_ups = int(db.scalar(follow_up_stmt) or 0)
+
+    overdue_stmt = follow_up_stmt.where(FollowUp.due_on < local_today())
+    overdue_follow_ups = int(db.scalar(overdue_stmt) or 0)
+
+    return {
+        "period": period,
+        "employee_count": len(goals),
+        "revenue_cents": revenue_cents,
+        "units": units,
+        "sales_count": sales_count,
+        "revenue_per_sale_cents": round(revenue_cents / sales_count) if sales_count else 0,
+        "appointments_total": appt["appointments_total"],
+        "appointments_done": appt["appointments_done"],
+        "presentations": appt["presentations"],
+        "close_rate_percent": appt["close_rate_percent"],
+        "revenue_per_appointment_cents": appt["revenue_per_appointment_cents"],
+        "offers_created": offers["created"],
+        "offers_converted": offers["converted"],
+        "offers_conversion_rate_percent": offers["conversion_rate_percent"],
+        "offers_total_value_cents": offers["total_value_cents"],
+        "goal_units_target": units_target,
+        "goal_units_achieved": units_month,
+        "goal_percent": round(units_month / units_target * 100, 1) if units_target else 0.0,
+        "open_follow_ups": open_follow_ups,
+        "overdue_follow_ups": overdue_follow_ups,
+        "products": product_ranking(db, start, end, scope, limit=5),
+        "funnel": funnel_overview(db, scope),
+        "alerts": team_alerts(db, employee_ids=goal_ids),
     }
 
 

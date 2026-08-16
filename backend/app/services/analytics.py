@@ -22,6 +22,9 @@ from app.models import (
     Employee,
     FollowUp,
     FollowUpStatus,
+    Offer,
+    OfferItem,
+    OfferStatus,
     Product,
     Rental,
     RentalStatus,
@@ -29,10 +32,13 @@ from app.models import (
     SaleItem,
 )
 from app.services.stats import (
+    EmployeeScope,
+    employee_filter,
     is_k70_category,
     not_cancelled,
     product_unit_count_from_name,
     revenue_between,
+    sales_count_between,
     units_between,
 )
 from app.services.timeline import appointment_kpis
@@ -57,7 +63,7 @@ def trend(
     db: Session,
     start: datetime,
     end: datetime,
-    employee_id: str | None = None,
+    employee_id: EmployeeScope = None,
 ) -> dict:
     """Vergleich mit dem gleich langen Zeitraum davor."""
     vor_start, vor_end = previous_period(start, end)
@@ -88,7 +94,7 @@ def product_ranking(
     db: Session,
     start: datetime,
     end: datetime,
-    employee_id: str | None = None,
+    employee_id: EmployeeScope = None,
     limit: int = 8,
 ) -> list[dict]:
     """Meistverkaufte Produkte im Zeitraum, nach Umsatz sortiert.
@@ -112,8 +118,9 @@ def product_ranking(
         .order_by(func.sum(SaleItem.quantity * SaleItem.unit_price_cents).desc())
         .limit(limit)
     )
-    if employee_id:
-        stmt = stmt.where(Sale.employee_id == employee_id)
+    empfilter = employee_filter(Sale.employee_id, employee_id)
+    if empfilter is not None:
+        stmt = stmt.where(empfilter)
 
     zeilen = db.execute(stmt).all()
     gesamt = sum(int(z.umsatz or 0) for z in zeilen) or 0
@@ -137,13 +144,69 @@ def product_ranking(
     ]
 
 
-def employee_goal_progress(db: Session, day: date | None = None) -> list[dict]:
-    """Zielerreichung je Mitarbeiter im laufenden Monat."""
+def offer_kpis(
+    db: Session,
+    start: datetime,
+    end: datetime,
+    employee_id: EmployeeScope = None,
+) -> dict:
+    """Angebotskennzahlen im Zeitraum, nach Erstelldatum gezaehlt.
+
+    Umgewandelt zaehlt unabhaengig davon, wann die Umwandlung stattfand -
+    sonst würde ein im Vormonat erstelltes, diesen Monat umgewandeltes
+    Angebot in keiner der beiden Monatszahlen als Erfolg auftauchen.
+    """
+    stmt = select(Offer.status, Offer.discount_percent, Offer.id).where(
+        Offer.created_at >= start, Offer.created_at < end
+    )
+    empfilter = employee_filter(Offer.employee_id, employee_id)
+    if empfilter is not None:
+        stmt = stmt.where(empfilter)
+    rows = db.execute(stmt).all()
+
+    created = len(rows)
+    converted = sum(1 for r in rows if r.status == OfferStatus.CONVERTED)
+
+    total_cents = 0
+    if rows:
+        totals_stmt = (
+            select(OfferItem.offer_id, func.sum(OfferItem.quantity * OfferItem.unit_price_cents))
+            .where(OfferItem.offer_id.in_([r.id for r in rows]))
+            .group_by(OfferItem.offer_id)
+        )
+        subtotals = dict(db.execute(totals_stmt).all())
+        rabatt = {r.id: r.discount_percent for r in rows}
+        total_cents = sum(
+            round(int(subtotal) * (100 - rabatt.get(offer_id, 0)) / 100)
+            for offer_id, subtotal in subtotals.items()
+        )
+
+    return {
+        "created": created,
+        "converted": converted,
+        "conversion_rate_percent": round(converted / created * 100, 1) if created else 0.0,
+        "total_value_cents": total_cents,
+        "average_value_cents": round(total_cents / created) if created else 0,
+    }
+
+
+def employee_goal_progress(
+    db: Session, day: date | None = None, employee_ids: list[str] | None = None
+) -> list[dict]:
+    """Zielerreichung je Mitarbeiter im laufenden Monat.
+
+    employee_ids grenzt auf ein Team, einen Bezirk oder eine Region ein;
+    ohne Angabe zaehlt jeder Mitarbeiter.
+    """
     ms, me = month_bounds(day)
     ws, we = week_bounds(day)
 
+    stmt = select(Employee).order_by(Employee.display_name)
+    if employee_ids is not None:
+        stmt = stmt.where(Employee.id.in_(employee_ids))
+
     ergebnis = []
-    for e in db.scalars(select(Employee).order_by(Employee.display_name)).all():
+    for e in db.scalars(stmt).all():
         einheiten = units_between(db, ms, me, e.id)
         ziel = e.monthly_units_target or 0
         kpis = appointment_kpis(db, ms, me, e.id)
@@ -166,18 +229,28 @@ def employee_goal_progress(db: Session, day: date | None = None) -> list[dict]:
     return ergebnis
 
 
-def team_alerts(db: Session, day: date | None = None) -> list[dict]:
+def team_alerts(
+    db: Session, day: date | None = None, employee_ids: list[str] | None = None
+) -> list[dict]:
     """Auffaellige Entwicklungen im Team.
 
     Jeder Hinweis nennt den Mitarbeiter, was auffaellt und die Zahl dahinter -
     ohne diese drei Angaben ist ein Hinweis nicht handlungsfaehig.
+
+    employee_ids grenzt sowohl die betrachteten Mitarbeiter als auch den
+    Teamschnitt der Abschlussquote ein - sonst wuerde ein Regionalcockpit
+    einzelne Mitarbeiter gegen einen unternehmensweiten Schnitt vergleichen,
+    der mit der angezeigten Gruppe gar nichts zu tun hat.
     """
     heute = day or local_today()
     ms, me = month_bounds(day)
     ws, we = week_bounds(day)
     vor_ms, vor_me = previous_period(ms, me)
 
-    mitarbeiter = db.scalars(select(Employee).order_by(Employee.display_name)).all()
+    stmt = select(Employee).order_by(Employee.display_name)
+    if employee_ids is not None:
+        stmt = stmt.where(Employee.id.in_(employee_ids))
+    mitarbeiter = db.scalars(stmt).all()
     if not mitarbeiter:
         return []
 
