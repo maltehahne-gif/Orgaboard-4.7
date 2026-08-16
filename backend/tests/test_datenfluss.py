@@ -110,19 +110,27 @@ def _login(client, email="anna@example.com"):
     return {"X-CSRF-Token": client.cookies.get("orgaboard_csrf")}
 
 
-def _heute_mittag() -> str:
-    """Ein Zeitpunkt heute, sicher innerhalb der laufenden Woche und des Monats."""
+def _zeitpunkt_diese_woche() -> str:
+    """Ein Zeitpunkt, der in allen Auswertungen mitzaehlt.
+
+    Zwei Bedingungen muessen gleichzeitig gelten, und die frueheren feste
+    Mittagszeit erfuellte nur eine davon:
+
+    * Nicht in der Zukunft. Auswertungen, die von heute rueckwaerts rechnen -
+      etwa die Produktanalyse ueber die letzten 90 Tage - enden bei "jetzt".
+      Ein Verkauf um 12 Uhr taucht dort vormittags nicht auf, nachmittags
+      schon. Der Test schlug damit nur vor der Mittagszeit fehl.
+    * Nicht vor dem Wochenbeginn, sonst faellt der Verkauf aus der Woche.
+    """
     start, _ = week_bounds()
-    heute = datetime.now(timezone.utc)
-    zeitpunkt = heute.replace(hour=12, minute=0, second=0, microsecond=0)
-    # Falls "heute" am Wochenrand liegt, bleibt der Wochenstart die sichere Wahl.
-    return (zeitpunkt if zeitpunkt >= start else start + timedelta(hours=12)).isoformat()
+    jetzt = datetime.now(timezone.utc)
+    return min(max(start + timedelta(minutes=1), jetzt - timedelta(hours=1)), jetzt).isoformat()
 
 
 def _verkauf_anlegen(client, kopf, welt, cent=PREIS_CENT, menge=1):
     antwort = client.post("/api/v1/sales", json={
         "customer_id": welt["kunde"],
-        "sold_at": _heute_mittag(),
+        "sold_at": _zeitpunkt_diese_woche(),
         "channel": "field",
         "items": [{"product_id": welt["produkt"], "quantity": menge,
                    "unit_price_cents": cent}],
