@@ -11806,6 +11806,51 @@ to{
   .quick-action{flex:1 1 calc(50% - 8px)}
 }
 
+/* Benachrichtigungseinstellungen im Profil. */
+.notif-settings{display:flex;flex-direction:column;gap:14px}
+
+.notif-push-box{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--panel3);
+  flex-wrap:wrap;
+}
+.notif-push-box.is-on{border-color:var(--line-green)}
+
+.notif-push-icon{
+  width:38px;height:38px;
+  display:grid;place-items:center;
+  border-radius:10px;
+  background:var(--panel2);
+  color:var(--muted);
+  flex:0 0 auto;
+}
+.notif-push-box.is-on .notif-push-icon{color:var(--green)}
+
+.notif-push-text{display:flex;flex-direction:column;gap:3px;flex:1 1 240px;min-width:0}
+.notif-push-text small{color:var(--muted);line-height:1.45}
+
+.notif-table{width:100%;border-collapse:collapse}
+.notif-table th{
+  text-align:left;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:var(--muted);
+  padding:8px 10px;
+  border-bottom:1px solid var(--line);
+}
+.notif-table th:not(:first-child),
+.notif-table td:not(:first-child){width:84px;text-align:center}
+.notif-table td{padding:10px;border-bottom:1px solid var(--line)}
+.notif-table tr:last-child td{border-bottom:0}
+/* Ankreuzfelder in Tabellenzellen sind sonst kaum zu treffen. */
+.notif-table input[type="checkbox"]{width:20px;height:20px;accent-color:var(--green);cursor:pointer}
+
 .forecast-status-green{color:var(--green);border-color:var(--line-green);background:rgba(52,215,105,.1)}
 .forecast-status-yellow{color:var(--orange);border-color:#6a4a24;background:rgba(255,155,67,.1)}
 .forecast-status-red{color:var(--danger);border-color:#5a2a2a;background:rgba(255,99,99,.1)}

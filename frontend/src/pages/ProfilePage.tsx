@@ -3,6 +3,7 @@ import {api} from '../lib/api'
 import {useAuth} from '../lib/auth'
 import {useToast} from '../components/Toast'
 import {APP_VERSION, CHANGELOG} from '../lib/changelog'
+import {NotificationSettings} from '../components/NotificationSettings'
 
 type P = {
   id: string
@@ -205,6 +206,8 @@ export function ProfilePage() {
           </div>
         </form>
       </div>
+
+      <NotificationSettings />
 
       <section className="card changelog-card">
         <h2>Was ist neu · OrgaBoard v{APP_VERSION}</h2>

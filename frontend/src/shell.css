@@ -461,6 +461,24 @@ body.ob-scroll-locked {
   text-transform: uppercase;
   color: var(--ob-text-dim);
   border-bottom: 1px solid var(--ob-line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ob-notif-readall {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--ob-accent, #34d769);
+  font: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 2px 4px;
+  cursor: pointer;
 }
 
 .ob-notif-empty {

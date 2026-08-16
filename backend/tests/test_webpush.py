@@ -175,3 +175,106 @@ def test_nicht_erreichbarer_dienst_wirft_nicht(db, push_dienst, vapid):
     db.commit()
 
     assert webpush.senden(db, [meldung]) == 0
+
+
+# ------------------------------------------------------- An- und Abmelden
+# Der Browser-Teil dieses Ablaufs laesst sich hier nicht fahren (Chrome
+# sperrt die Push-API im Inkognito-Modus, und ein echtes Profil braucht eine
+# Verbindung zum Push-Dienst des Herstellers). Geprueft wird deshalb die
+# Serverseite mit genau der Nutzlast, die der Browser liefert.
+
+@pytest.fixture
+def client(vapid):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    Base.metadata.create_all(bind=engine)
+    yield TestClient(app)
+    Base.metadata.drop_all(bind=engine)
+
+
+def _angemeldet(client):
+    from app.core.ratelimit import login_limiter
+
+    login_limiter.clear()
+    db = SessionLocal()
+    try:
+        db.add(User(email="anna@example.com", full_name="Anna",
+                    password_hash=hash_password("PasswortPasswort1"),
+                    must_change_password=False))
+        db.commit()
+    finally:
+        db.close()
+    antwort = client.post("/api/v1/auth/login",
+                          json={"email": "anna@example.com", "password": "PasswortPasswort1"})
+    assert antwort.status_code == 200, antwort.text
+    return {"X-CSRF-Token": client.cookies.get("orgaboard_csrf")}
+
+
+def _anmeldung_json(endpoint="https://fcm.example.com/abc123"):
+    p256dh, auth = _empfaenger_schluessel()
+    return {"endpoint": endpoint, "p256dh": p256dh, "auth": auth, "user_agent": "Mozilla/5.0 Test"}
+
+
+def test_geraet_anmelden_und_wieder_abmelden(client):
+    kopf = _angemeldet(client)
+    nutzlast = _anmeldung_json()
+
+    assert client.post("/api/v1/notifications/push/subscribe", json=nutzlast, headers=kopf).status_code == 200
+
+    geraete = client.get("/api/v1/notifications/push/devices", headers=kopf).json()
+    assert len(geraete) == 1
+    assert geraete[0]["user_agent"] == "Mozilla/5.0 Test"
+
+    assert client.post("/api/v1/notifications/push/unsubscribe",
+                       json={"endpoint": nutzlast["endpoint"]}, headers=kopf).status_code == 200
+    assert client.get("/api/v1/notifications/push/devices", headers=kopf).json() == []
+
+
+def test_dasselbe_geraet_meldet_sich_nicht_doppelt_an(client):
+    """Nach einem Browserneustart kommt derselbe Endpunkt erneut - er darf
+    keinen zweiten Eintrag erzeugen, sonst bekaeme das Geraet alles doppelt."""
+    kopf = _angemeldet(client)
+    nutzlast = _anmeldung_json()
+
+    client.post("/api/v1/notifications/push/subscribe", json=nutzlast, headers=kopf)
+    client.post("/api/v1/notifications/push/subscribe", json=nutzlast, headers=kopf)
+
+    assert len(client.get("/api/v1/notifications/push/devices", headers=kopf).json()) == 1
+
+
+def test_fremdes_geraet_laesst_sich_nicht_abmelden(client):
+    """Der Endpunkt allein darf nicht genuegen, um jemanden abzumelden."""
+    kopf = _angemeldet(client)
+    nutzlast = _anmeldung_json()
+    client.post("/api/v1/notifications/push/subscribe", json=nutzlast, headers=kopf)
+
+    # Ein zweiter Benutzer versucht, den fremden Endpunkt abzumelden.
+    from app.core.ratelimit import login_limiter
+
+    login_limiter.clear()
+    db = SessionLocal()
+    try:
+        db.add(User(email="bodo@example.com", full_name="Bodo",
+                    password_hash=hash_password("PasswortPasswort1"),
+                    must_change_password=False))
+        db.commit()
+    finally:
+        db.close()
+    client.post("/api/v1/auth/login", json={"email": "bodo@example.com", "password": "PasswortPasswort1"})
+    fremd_kopf = {"X-CSRF-Token": client.cookies.get("orgaboard_csrf")}
+    client.post("/api/v1/notifications/push/unsubscribe",
+                json={"endpoint": nutzlast["endpoint"]}, headers=fremd_kopf)
+
+    db = SessionLocal()
+    try:
+        assert db.query(PushSubscription).count() == 1, "Fremdes Gerät wurde abgemeldet"
+    finally:
+        db.close()
+
+
+def test_anmeldung_braucht_csrf_token(client):
+    _angemeldet(client)
+    antwort = client.post("/api/v1/notifications/push/subscribe", json=_anmeldung_json())
+    assert antwort.status_code == 403

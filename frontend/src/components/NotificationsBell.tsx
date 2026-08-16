@@ -1,5 +1,6 @@
-import {Bell, Check} from 'lucide-react'
+import {Bell, Check, CheckCheck} from 'lucide-react'
 import {useEffect, useRef, useState} from 'react'
+import {useNavigate} from 'react-router-dom'
 import {api, formatDateTime} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
 
@@ -8,6 +9,7 @@ type Notification = {
   kind: string
   title: string
   body: string | null
+  link: string | null
   created_at: string
   read_at: string | null
 }
@@ -16,6 +18,7 @@ export function NotificationsBell() {
   const [items, setItems] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
   const boxRef = useRef<HTMLDivElement | null>(null)
+  const navigate = useNavigate()
 
   const load = () => {
     api<Notification[]>('/notifications')
@@ -55,6 +58,28 @@ export function NotificationsBell() {
     }
   }
 
+  /**
+   * Antippen heißt: gelesen und hin da. Die Meldung sagt, dass etwas ansteht -
+   * sie nur abzuhaken, ließe den Benutzer den Weg dorthin selbst suchen.
+   */
+  function oeffnen(notification: Notification) {
+    markRead(notification)
+    if (notification.link) {
+      setOpen(false)
+      navigate(notification.link)
+    }
+  }
+
+  async function alleGelesen() {
+    try {
+      await api('/notifications/read-all', {method: 'POST'})
+      const jetzt = new Date().toISOString()
+      setItems(current => current.map(item => (item.read_at ? item : {...item, read_at: jetzt})))
+    } catch {
+      // Wie oben: der nächste Ladevorgang zieht den echten Stand nach.
+    }
+  }
+
   return (
     <div className="ob-notif" ref={boxRef}>
       <button
@@ -70,14 +95,21 @@ export function NotificationsBell() {
 
       {open && (
         <div className="ob-notif-popover">
-          <div className="ob-notif-head">Benachrichtigungen</div>
+          <div className="ob-notif-head">
+            Benachrichtigungen
+            {unread > 0 && (
+              <button type="button" className="ob-notif-readall" onClick={alleGelesen}>
+                <CheckCheck size={14} aria-hidden="true" /> Alle gelesen
+              </button>
+            )}
+          </div>
           {items.length === 0 && <div className="ob-notif-empty">Keine Benachrichtigungen</div>}
           {items.slice(0, 20).map(item => (
             <button
               type="button"
               key={item.id}
               className={item.read_at ? 'ob-notif-row' : 'ob-notif-row is-unread'}
-              onClick={() => markRead(item)}
+              onClick={() => oeffnen(item)}
             >
               <span className="ob-notif-row-main">
                 <strong>{item.title}</strong>
