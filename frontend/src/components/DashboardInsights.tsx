@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react'
 import {ArrowDownRight, ArrowUpRight, Minus} from 'lucide-react'
 import {api, money} from '../lib/api'
 import {hatListen} from '../lib/antwort'
+import {ForecastCard} from './ForecastCard'
 
 /**
  * Auswertungsblock für das Dashboard: Kennzahlen, Verkaufstrichter und
@@ -176,6 +177,8 @@ export function DashboardInsights({employeeId}: {employeeId?: string}) {
           </div>
         </section>
       )}
+
+      <ForecastCard employeeId={employeeId} />
 
       {/* ---------- Verkaufstrichter ---------- */}
       {funnel && (

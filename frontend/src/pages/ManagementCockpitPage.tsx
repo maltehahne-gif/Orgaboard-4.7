@@ -3,6 +3,7 @@ import {AlertTriangle, CalendarX, Info, PackageX, TrendingDown} from 'lucide-rea
 import type {LucideIcon} from 'lucide-react'
 import {api, money} from '../lib/api'
 import {useToast} from '../components/Toast'
+import {ForecastCard} from '../components/ForecastCard'
 import type {OrgLookup} from '../types'
 
 type EmployeeOption = {id:string; display_name:string}
@@ -194,6 +195,8 @@ export function ManagementCockpitPage(){
               <strong>{data.open_follow_ups} offen · {data.overdue_follow_ups} überfällig</strong>
             </div>
           </div>
+
+          <ForecastCard employeeId={employeeId} teamId={teamId} districtId={districtId} regionId={regionId} />
 
           {data.alerts.length > 0 && (
             <section className="card insights-card">

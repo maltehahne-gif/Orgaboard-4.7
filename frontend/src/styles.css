@@ -11758,3 +11758,18 @@ to{
   font-size:12.5px;
   cursor:help;
 }
+
+.forecast-status{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 12px;
+  border-radius:999px;
+  font-size:12.5px;
+  font-weight:600;
+  white-space:nowrap;
+  border:1px solid var(--line);
+}
+.forecast-status-green{color:var(--green);border-color:var(--line-green);background:rgba(52,215,105,.1)}
+.forecast-status-yellow{color:var(--orange);border-color:#6a4a24;background:rgba(255,155,67,.1)}
+.forecast-status-red{color:var(--danger);border-color:#5a2a2a;background:rgba(255,99,99,.1)}
