@@ -22,9 +22,17 @@ if [ ! -f .env ]; then
     echo "SEED_DEFAULT_PASSWORD=OrgaBoard-Start-2026!"
     echo "COOKIE_SECURE=false"
     echo "AUTO_CREATE_SCHEMA=false"
+    echo ""
+    echo "# Betreiberkonto: eigene E-Mail eintragen und ein Passwort mit"
+    echo "# mindestens 12 Zeichen setzen, dann 'docker compose up -d' erneut."
+    echo "# Erst damit entsteht der Zugang zum Verwaltungsbereich."
+    echo "SYSTEM_ADMIN_EMAIL="
+    echo "SYSTEM_ADMIN_PASSWORD="
   } > .env
 
-  printf 'Fertig. Startpasswort steht als SEED_DEFAULT_PASSWORD in .env.\n\n'
+  printf 'Fertig. Startpasswort steht als SEED_DEFAULT_PASSWORD in .env.\n'
+  printf 'Fuer den Verwaltungsbereich SYSTEM_ADMIN_EMAIL und\n'
+  printf 'SYSTEM_ADMIN_PASSWORD in .env ausfuellen und neu starten.\n\n'
 fi
 
 docker compose up --build -d

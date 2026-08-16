@@ -35,6 +35,15 @@ services:
       AI_ENABLED: "true"
       SEED_DEFAULT_PASSWORD: ${SEED_DEFAULT_PASSWORD:?SEED_DEFAULT_PASSWORD fehlt - ./start.sh anlegen lassen oder .env.example kopieren}
       SEED_USERS_FILE: ${SEED_USERS_FILE:-}
+      # Ohne diese beiden Zeilen sieht der Container die Eintraege aus der .env
+      # nicht: Der Betreiber traegt seine Adresse ein, beim Start findet
+      # betreiber_festlegen() ein leeres Feld - und es entsteht nie ein
+      # Systemadministrator. Der Verwaltungsbereich waere dauerhaft
+      # unerreichbar, ohne dass irgendwo ein Fehler erschiene.
+      SYSTEM_ADMIN_EMAIL: ${SYSTEM_ADMIN_EMAIL:-}
+      SYSTEM_ADMIN_PASSWORD: ${SYSTEM_ADMIN_PASSWORD:-}
+      BUSINESS_TIMEZONE: ${BUSINESS_TIMEZONE:-Europe/Berlin}
+      JWT_EXP_MINUTES: ${JWT_EXP_MINUTES:-720}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
