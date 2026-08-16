@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from io import BytesIO
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -9,10 +9,11 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.rbac import require_team_leader
 from app.core.security import get_current_user
-from app.core.timeutils import local_today, month_bounds, week_bounds
+from app.core.timeutils import local_today, month_bounds, period_bounds, week_bounds
 from app.models import Appointment, Employee, ProductPresentation, Rental, RentalStatus, Sale, User
-from app.services.analytics import employee_goal_progress
-from app.services.orgscope import org_lookup, team_chain
+from app.services.analytics import MINDEST_TERMINE_FUER_QUOTE, employee_goal_progress
+from app.services.comparison import district_rows, employee_rows, region_rows, team_rows
+from app.services.orgscope import org_lookup, resolve_scope_employee_ids, team_chain
 from app.services.stats import dashboard_stats
 
 router = APIRouter(prefix="/team", tags=["team"])
@@ -52,6 +53,48 @@ def org_lookup_route(user: User = Depends(get_current_user), db: Session = Depen
     """
     require_team_leader(user)
     return org_lookup(db)
+
+
+@router.get("/comparison")
+def comparison(
+    level: str = "employee",
+    period: str = "month",
+    date_from: date | None = None,
+    date_to: date | None = None,
+    team_id: str | None = None,
+    district_id: str | None = None,
+    region_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Vergleich auf Mitarbeiter-, Team-, Bezirks- oder Regionsebene.
+
+    Jede Ebene nutzt dieselben Kennzahlfunktionen wie das Cockpit - nur die
+    Mitarbeitergruppe je Zeile unterscheidet sich. team_id/district_id/
+    region_id grenzen bei level=employee ein, auf welche Mitarbeiter,
+    bei level=team/district, auf welchen Ausschnitt der jeweils darüber
+    liegenden Ebene.
+    """
+    require_team_leader(user)
+    start, end = period_bounds(period, date_from, date_to)
+
+    if level == "team":
+        rows = team_rows(db, start, end, district_id=district_id, region_id=region_id)
+    elif level == "district":
+        rows = district_rows(db, start, end, region_id=region_id)
+    elif level == "region":
+        rows = region_rows(db, start, end)
+    else:
+        level = "employee"
+        employee_ids = resolve_scope_employee_ids(db, team_id, district_id, region_id)
+        rows = employee_rows(db, employee_ids, start, end)
+
+    return {
+        "level": level,
+        "period": period,
+        "rows": rows,
+        "minimum_appointments_for_quote": MINDEST_TERMINE_FUER_QUOTE,
+    }
 
 
 @router.get("/stats")

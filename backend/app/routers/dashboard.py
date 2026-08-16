@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.rbac import require_team_leader, scoped_employee_id
 from app.core.security import get_current_user
-from app.core.timeutils import day_bounds, local_today, month_bounds, quarter_bounds, week_bounds, year_bounds, utc_aware
+from app.core.timeutils import day_bounds, local_today, period_bounds, utc_aware
 from app.models import Appointment, AppointmentStatus, Customer, FollowUp, FollowUpStatus, Message, MessageHidden, MessageRead, Rental, RentalStatus, User
 from app.services.orgscope import resolve_management_scope
 from app.services.stats import dashboard_stats, employee_filter, revenue_between, sales_count_between, units_between
@@ -50,20 +50,6 @@ def funnel(
     return funnel_overview(db, scope)
 
 
-def _period_bounds(period: str):
-    """Zeitraumgrenzen. Unbekannte Werte fallen auf den Monat zurück."""
-    today = local_today()
-    if period == "week":
-        return week_bounds(today)
-    if period == "day":
-        return day_bounds(today)
-    if period == "quarter":
-        return quarter_bounds(today)
-    if period == "year":
-        return year_bounds(today)
-    return month_bounds(today)
-
-
 @router.get("/kpis")
 def kpis(
     period: str = "month",
@@ -77,7 +63,7 @@ def kpis(
     """Terminbezogene Kennzahlen: durchgeführte Termine, Abschlussquote,
     Umsatz pro Termin, Vorführungen."""
     scope = _hierarchy_scope(db, user, employee_id, team_id, district_id, region_id)
-    start, end = _period_bounds(period)
+    start, end = period_bounds(period)
     return {"period": period, **appointment_kpis(db, start, end, scope)}
 
 
@@ -93,7 +79,7 @@ def trend_view(
 ):
     """Umsatz und Einheiten im Vergleich zum gleich langen Zeitraum davor."""
     scope = _hierarchy_scope(db, user, employee_id, team_id, district_id, region_id)
-    start, end = _period_bounds(period)
+    start, end = period_bounds(period)
     return {"period": period, **trend(db, start, end, scope)}
 
 
@@ -109,7 +95,7 @@ def product_ranking_view(
 ):
     """Meistverkaufte Produkte im Zeitraum."""
     scope = _hierarchy_scope(db, user, employee_id, team_id, district_id, region_id)
-    start, end = _period_bounds(period)
+    start, end = period_bounds(period)
     return {"period": period, "products": product_ranking(db, start, end, scope)}
 
 
@@ -152,7 +138,7 @@ def cockpit(
     """
     require_team_leader(user)
     scope = _hierarchy_scope(db, user, employee_id, team_id, district_id, region_id)
-    start, end = _period_bounds(period)
+    start, end = period_bounds(period)
 
     revenue_cents = revenue_between(db, start, end, scope)
     units = units_between(db, start, end, scope)

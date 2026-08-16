@@ -92,3 +92,29 @@ def spaetestes_datum() -> date:
 def datum_plausibel(wert: date) -> bool:
     """Liegt das Datum im Bereich, den dieses System sinnvoll abbildet?"""
     return fruehestes_datum() <= wert <= spaetestes_datum()
+
+
+def period_bounds(
+    period: str, date_from: date | None = None, date_to: date | None = None
+) -> tuple[datetime, datetime]:
+    """Zeitraumgrenzen fuer einen benannten Zeitraum oder einen eigenen.
+
+    Eine Stelle fuer Dashboard, Cockpit und Mitarbeitervergleich - sonst
+    entscheidet jede Auswertung fuer sich, was "diese Woche" bedeutet, und
+    zwei Seiten zeigen am Wochenrand unterschiedliche Zahlen. Unbekannte
+    oder unvollstaendige Angaben fallen auf den laufenden Monat zurueck.
+    """
+    if period == "custom" and date_from and date_to:
+        start, _ = day_bounds(date_from)
+        _, end = day_bounds(date_to)
+        return start, end
+    today = local_today()
+    if period == "week":
+        return week_bounds(today)
+    if period == "day":
+        return day_bounds(today)
+    if period == "quarter":
+        return quarter_bounds(today)
+    if period == "year":
+        return year_bounds(today)
+    return month_bounds(today)
