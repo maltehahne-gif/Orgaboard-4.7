@@ -25,7 +25,9 @@ import {
 } from 'lucide-react'
 
 import {api} from '../lib/api'
-import {telefonnummerBereinigen as cleanPhone} from '../lib/mobile'
+import {appleMapsHref,googleMapsHref,telefonnummerBereinigen as cleanPhone} from '../lib/mobile'
+import {calculateOrder,scheduleStops} from '../lib/route'
+import type {Located,Position,StopPlan} from '../lib/route'
 import {useAuth} from '../lib/auth'
 import {useToast} from '../components/Toast'
 import type {Appointment} from '../types'
@@ -36,28 +38,11 @@ type EmployeeOption={
   display_name:string
 }
 
-type Position={
-  lat:number
-  lon:number
-}
-
-type LocatedAppointment={
-  appointment:Appointment
-  lat:number
-  lon:number
-}
-
-type PlannedStop={
-  appointment:Appointment
-  lat:number
-  lon:number
-  sequence:number
-  travelMinutes:number
-  distanceKm:number
-  arrivalAt:string
-  waitMinutes:number
-  lateMinutes:number
-}
+/* Reihenfolge und Tagesplan liegen in lib/route.ts - dort sind sie ohne
+   diese Seite prüfbar. Hier bleiben nur die Namen, die die Oberfläche
+   ohnehin schon benutzt. */
+type LocatedAppointment=Located<Appointment>
+type PlannedStop=StopPlan<Appointment>
 
 type UnresolvedStop={
   appointment:Appointment
@@ -82,74 +67,6 @@ type RoutePlan={
 }
 
 
-/**
- * Baut aus einer Reihenfolge den fertigen Tagesplan: Fahrzeit, Strecke,
- * Ankunft, Wartezeit und Verspaetung je Stopp.
- *
- * Bewusst eine reine Funktion ohne Zustand - sie wird sowohl von der
- * automatischen Berechnung als auch beim Verschieben von Hand benutzt.
- */
-function scheduleStops(
-  order:number[],
-  located:LocatedAppointment[],
-  durations:number[][],
-  distances:number[][],
-){
-  let currentMatrixIndex=0
-  let currentTime=Date.now()
-  let totalTravel=0
-  let totalDistance=0
-
-  const stops:PlannedStop[]=[]
-
-  for(let sequence=0;sequence<order.length;sequence++){
-    const stopIndex=order[sequence]
-    const stop=located[stopIndex]
-    const matrixIndex=stopIndex+1
-
-    const travel=durations[currentMatrixIndex][matrixIndex]
-    const distance=distances[currentMatrixIndex][matrixIndex]
-
-    totalTravel+=travel
-    totalDistance+=distance
-
-    currentTime+=travel*60000
-
-    const appointmentTime=
-      new Date(stop.appointment.start_at).getTime()
-
-    const arrivalTime=currentTime
-
-    const lateMinutes=
-      Math.max(0,Math.round((arrivalTime-appointmentTime)/60000))
-
-    const waitMinutes=
-      Math.max(0,Math.round((appointmentTime-arrivalTime)/60000))
-
-    stops.push({
-      appointment:stop.appointment,
-      lat:stop.lat,
-      lon:stop.lon,
-      sequence:sequence+1,
-      travelMinutes:Math.max(0,Math.round(travel)),
-      distanceKm:Math.round(distance*10)/10,
-      arrivalAt:new Date(arrivalTime).toISOString(),
-      waitMinutes,
-      lateMinutes,
-    })
-
-    currentTime=Math.max(currentTime,appointmentTime)
-    currentTime+=appointmentDurationMinutes(stop.appointment)*60000
-    currentMatrixIndex=matrixIndex
-  }
-
-  return {
-    stops,
-    totalDistanceKm:Math.round(totalDistance*10)/10,
-    totalTravelMinutes:Math.round(totalTravel),
-    finishAt:stops.length?new Date(currentTime).toISOString():null,
-  }
-}
 
 
 const geocodeCachePrefix =
@@ -433,181 +350,6 @@ async function getRouteMatrix(
 }
 
 
-function permutations(
-  values:number[],
-):number[][]{
-  if(values.length<=1){
-    return [values]
-  }
-
-  const result:number[][]=[]
-
-  values.forEach(
-    (value,index)=>{
-      const rest=[
-        ...values.slice(0,index),
-        ...values.slice(index+1),
-      ]
-
-      for(
-        const permutation
-        of permutations(rest)
-      ){
-        result.push([
-          value,
-          ...permutation,
-        ])
-      }
-    }
-  )
-
-  return result
-}
-
-
-function appointmentDurationMinutes(
-  appointment:Appointment,
-){
-  if(appointment.end_at){
-    const start=
-      new Date(
-        appointment.start_at
-      ).getTime()
-
-    const end=
-      new Date(
-        appointment.end_at
-      ).getTime()
-
-    const minutes=
-      (end-start)/60000
-
-    if(minutes>0){
-      return Math.max(
-        15,
-        Math.min(
-          240,
-          minutes
-        )
-      )
-    }
-  }
-
-  return 30
-}
-
-
-function calculateOrder(
-  located:LocatedAppointment[],
-  durations:number[][],
-  distances:number[][],
-){
-  const indexes=
-    located.map((_,index)=>index)
-
-  const orders=
-    indexes.length<=8
-      ?permutations(indexes)
-      :[
-        [...indexes].sort(
-          (a,b)=>
-            new Date(
-              located[a]
-                .appointment
-                .start_at
-            ).getTime()
-            -
-            new Date(
-              located[b]
-                .appointment
-                .start_at
-            ).getTime()
-        )
-      ]
-
-  let bestOrder=indexes
-  let bestScore=
-    Number.POSITIVE_INFINITY
-
-  for(const order of orders){
-    let currentMatrixIndex=0
-    let currentTime=Date.now()
-    let score=0
-
-    for(const stopIndex of order){
-      const matrixIndex=
-        stopIndex+1
-
-      const travel=
-        durations[
-          currentMatrixIndex
-        ][matrixIndex]
-
-      const distance=
-        distances[
-          currentMatrixIndex
-        ][matrixIndex]
-
-      currentTime+=
-        travel*60000
-
-      const appointment=
-        located[
-          stopIndex
-        ].appointment
-
-      const appointmentTime=
-        new Date(
-          appointment.start_at
-        ).getTime()
-
-      const lateMinutes=
-        Math.max(
-          0,
-          (
-            currentTime
-            -appointmentTime
-          )/60000
-        )
-
-      const waitingMinutes=
-        Math.max(
-          0,
-          (
-            appointmentTime
-            -currentTime
-          )/60000
-        )
-
-      score+=
-        travel
-        +(distance*.05)
-        +(lateMinutes*1000)
-        +(waitingMinutes*.015)
-
-      currentTime=
-        Math.max(
-          currentTime,
-          appointmentTime
-        )
-
-      currentTime+=
-        appointmentDurationMinutes(
-          appointment
-        )*60000
-
-      currentMatrixIndex=
-        matrixIndex
-    }
-
-    if(score<bestScore){
-      bestScore=score
-      bestOrder=order
-    }
-  }
-
-  return bestOrder
-}
 
 
 async function getGeometry(
@@ -1276,29 +1018,6 @@ export function RoutePlanningPage(){
   }
 
 
-  function appleMapsUrl(
-    stop:PlannedStop,
-  ){
-    if(!plan)return '#'
-
-    const params=
-      new URLSearchParams({
-        saddr:
-          `${plan.start.lat},${plan.start.lon}`,
-
-        daddr:
-          `${stop.lat},${stop.lon}`,
-
-        dirflg:'d',
-      })
-
-    return (
-      'https://maps.apple.com/?'
-      +params.toString()
-    )
-  }
-
-
   return <div className="page route-planning-page">
 
     <div className="page-head route-planning-head">
@@ -1508,8 +1227,9 @@ export function RoutePlanningPage(){
             </a>
 
             <a
-              href={appleMapsUrl(
-                plan.stops[0]
+              href={appleMapsHref(
+                plan.stops[0].lat,
+                plan.stops[0].lon,
               )}
               target="_blank"
               rel="noreferrer"
@@ -1723,8 +1443,13 @@ export function RoutePlanningPage(){
                       </a>
                     }
 
+                    {/* Beide ohne Startpunkt: die Karten-App nimmt den
+                        aktuellen Standort. Vorher begann die Apple-Route
+                        immer am Tagesstart - vom vierten Stopp aus also
+                        von zu Hause -, und Google zeigte über /search/
+                        nur eine Stecknadel statt einer Wegbeschreibung. */}
                     <a
-                      href={appleMapsUrl(stop)}
+                      href={appleMapsHref(stop.lat,stop.lon)}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -1733,12 +1458,7 @@ export function RoutePlanningPage(){
                     </a>
 
                     <a
-                      href={
-                        'https://www.google.com/maps/search/?api=1&query='
-                        +encodeURIComponent(
-                          `${stop.lat},${stop.lon}`
-                        )
-                      }
+                      href={googleMapsHref(stop.lat,stop.lon)}
                       target="_blank"
                       rel="noreferrer"
                     >

@@ -1,5 +1,13 @@
 import {afterEach, describe, expect, it, vi} from 'vitest'
-import {kartenHref, mailHref, telHref, telefonnummerBereinigen} from './mobile'
+import {
+  appleMapsHref,
+  googleMapsHref,
+  kartenHref,
+  kartenHrefKoordinaten,
+  mailHref,
+  telHref,
+  telefonnummerBereinigen,
+} from './mobile'
 
 /** Gibt vor, auf welchem Gerät die Anwendung gerade läuft. */
 function geraet(userAgent: string) {
@@ -78,5 +86,42 @@ describe('kartenHref', () => {
     geraet(ANDROID)
     expect(kartenHref(null)).toBe('')
     expect(kartenHref('   ')).toBe('')
+  })
+
+  it('gibt keinen Startpunkt vor, damit die App den aktuellen Standort nimmt', () => {
+    geraet(ANDROID)
+    expect(kartenHref('Musterstraße 1')).not.toContain('origin=')
+    geraet(IPHONE)
+    expect(kartenHref('Musterstraße 1')).not.toContain('saddr=')
+  })
+})
+
+describe('Navigation zu Koordinaten', () => {
+  it('folgt dem Gerät wie die Anschrift-Variante', () => {
+    geraet(IPHONE)
+    expect(kartenHrefKoordinaten(51.25, 7.15)).toContain('maps.apple.com')
+    geraet(ANDROID)
+    expect(kartenHrefKoordinaten(51.25, 7.15)).toContain('google.com/maps')
+  })
+
+  it('startet am aktuellen Standort statt an einem festen Punkt', () => {
+    // Unterwegs zählt "von hier aus", nicht "von zu Hause aus".
+    geraet(IPHONE)
+    expect(appleMapsHref(51.25, 7.15)).not.toContain('saddr=')
+    expect(googleMapsHref(51.25, 7.15)).not.toContain('origin=')
+  })
+
+  it('führt in beiden Apps eine Route und keine reine Suche', () => {
+    expect(appleMapsHref(51.25, 7.15)).toContain('daddr=51.25,7.15')
+    expect(appleMapsHref(51.25, 7.15)).toContain('dirflg=d')
+    // /dir/ ist die Wegbeschreibung; /search/ zeigte nur eine Stecknadel.
+    expect(googleMapsHref(51.25, 7.15)).toContain('/maps/dir/')
+    expect(googleMapsHref(51.25, 7.15)).toContain('travelmode=driving')
+  })
+
+  it('liefert nichts bei unbrauchbaren Koordinaten', () => {
+    expect(kartenHrefKoordinaten(Number.NaN, 7.15)).toBe('')
+    expect(appleMapsHref(51.25, Number.POSITIVE_INFINITY)).toBe('')
+    expect(googleMapsHref(Number.NaN, Number.NaN)).toBe('')
   })
 })

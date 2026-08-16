@@ -51,8 +51,37 @@ export function mailHref(email: string | null | undefined): string {
 export function kartenHref(adresse: string | null | undefined): string {
   const ziel = (adresse || '').trim()
   if (!ziel) return ''
-  const kodiert = encodeURIComponent(ziel)
+  return zielHref(encodeURIComponent(ziel))
+}
+
+/**
+ * Navigation zu einer Koordinate - für Stopps, deren Position bereits
+ * bestimmt wurde.
+ *
+ * Ohne Startpunkt: die Karten-App nimmt dann den aktuellen Standort. Genau
+ * das ist unterwegs gemeint - wer am vierten Stopp steht und zum fünften
+ * will, braucht keine Route, die zu Hause beginnt.
+ */
+export function kartenHrefKoordinaten(lat: number, lon: number): string {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return ''
+  return zielHref(`${lat},${lon}`)
+}
+
+/** Apple Maps auf Apple-Geräten, sonst Google Maps - ohne festen Startpunkt. */
+function zielHref(ziel: string): string {
   return istAppleGeraet()
-    ? `https://maps.apple.com/?daddr=${kodiert}&dirflg=d`
-    : `https://www.google.com/maps/dir/?api=1&destination=${kodiert}&travelmode=driving`
+    ? `https://maps.apple.com/?daddr=${ziel}&dirflg=d`
+    : `https://www.google.com/maps/dir/?api=1&destination=${ziel}&travelmode=driving`
+}
+
+/** Apple Maps ausdrücklich, unabhängig vom Gerät. */
+export function appleMapsHref(lat: number, lon: number): string {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return ''
+  return `https://maps.apple.com/?daddr=${lat},${lon}&dirflg=d`
+}
+
+/** Google Maps ausdrücklich, unabhängig vom Gerät. */
+export function googleMapsHref(lat: number, lon: number): string {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return ''
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`
 }
