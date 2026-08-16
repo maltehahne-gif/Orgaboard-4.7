@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react'
 import {ArrowDownRight, ArrowUpRight, Minus} from 'lucide-react'
 import {api, money} from '../lib/api'
+import {hatListen} from '../lib/antwort'
 
 /**
  * Auswertungsblock für das Dashboard: Kennzahlen, Verkaufstrichter und
@@ -102,10 +103,14 @@ export function DashboardInsights({employeeId}: {employeeId?: string}) {
     api<Kpis>(`/dashboard/kpis?period=month${q}`).then(setKpis).catch(() => {})
     api<Trend>(`/dashboard/trend?period=month${q}`).then(setTrend).catch(() => {})
     api<Funnel>(`/dashboard/funnel${employeeId ? `?employee_id=${employeeId}` : ''}`)
-      .then(setFunnel)
+      .then(antwort => {
+        if (hatListen(antwort, 'stages')) setFunnel(antwort)
+      })
       .catch(() => {})
     api<{products: ProductRow[]}>(`/dashboard/products?period=month${q}`)
-      .then(r => setProducts(r.products))
+      .then(antwort => {
+        if (hatListen(antwort, 'products')) setProducts(antwort.products)
+      })
       .catch(() => {})
   }, [employeeId])
 

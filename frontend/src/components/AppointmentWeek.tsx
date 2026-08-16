@@ -75,7 +75,7 @@ Planen, bestätigen, verschieben und sauber dokumentieren.
 
 <div className="apple-calendar-controls">
 
-<button onClick={()=>onShiftWeek(-7)}>
+<button aria-label="Vorherige Woche" title="Vorherige Woche" onClick={()=>onShiftWeek(-7)}>
 <ChevronLeft/>
 </button>
 
@@ -83,7 +83,7 @@ Planen, bestätigen, verschieben und sauber dokumentieren.
 Heute
 </button>
 
-<button onClick={()=>onShiftWeek(7)}>
+<button aria-label="Nächste Woche" title="Nächste Woche" onClick={()=>onShiftWeek(7)}>
 <ChevronRight/>
 </button>
 
@@ -196,6 +196,8 @@ Notiz
 {appointment.address&&
 
 <button
+aria-label={`Route zu ${appointment.customer_name} anzeigen`}
+title="Route anzeigen"
 onClick={()=>openDirections(appointment.address!)}
 >
 <MapPinned size={15}/>
@@ -205,6 +207,8 @@ onClick={()=>openDirections(appointment.address!)}
 
 
 <button
+aria-label={`Termin mit ${appointment.customer_name} in den Kalender übernehmen`}
+title="In den Kalender übernehmen"
 onClick={()=>downloadCalendarFile(appointment)}
 >
 <CalendarPlus size={15}/>
@@ -212,6 +216,8 @@ onClick={()=>downloadCalendarFile(appointment)}
 
 
 <button
+aria-label={`Termin mit ${appointment.customer_name} bearbeiten`}
+title="Bearbeiten"
 onClick={()=>onEdit(appointment)}
 >
 <Pencil size={15}/>
@@ -219,6 +225,10 @@ onClick={()=>onEdit(appointment)}
 
 
 <button
+aria-label={appointment.status==='completed'
+?`Termin mit ${appointment.customer_name} wieder öffnen`
+:`Termin mit ${appointment.customer_name} als erledigt markieren`}
+title={appointment.status==='completed'?'Wieder öffnen':'Als erledigt markieren'}
 onClick={()=>onToggleCompleted(appointment)}
 >
 {
@@ -232,6 +242,8 @@ appointment.status==='completed'
 
 
 <button
+aria-label={`Termin mit ${appointment.customer_name} löschen`}
+title="Löschen"
 onClick={()=>onDelete(appointment)}
 >
 <Trash2 size={15}/>

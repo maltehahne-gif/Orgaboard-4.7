@@ -166,7 +166,7 @@ className={`rental-auto-state ${computedRentalState(r)}`}
 ?'🔴 Überfällig'
 :'🟡 Aktiv'}
 </span>
-<select value={r.status} onChange={e=>changeStatus(r.id,e.target.value)}><option value="rented">verliehen</option><option value="due">Rückgabe fällig</option><option value="returned">zurückgegeben</option></select><small>Rückgabe: {formatDateTime(r.due_at)}</small></div></div>)}</div>
+<select aria-label={`Status von ${r.product_name} bei ${r.customer_name}`} value={r.status} onChange={e=>changeStatus(r.id,e.target.value)}><option value="rented">verliehen</option><option value="due">Rückgabe fällig</option><option value="returned">zurückgegeben</option></select><small>Rückgabe: {formatDateTime(r.due_at)}</small></div></div>)}</div>
 
 </>}
 

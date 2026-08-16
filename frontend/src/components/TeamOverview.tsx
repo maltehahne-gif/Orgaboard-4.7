@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react'
 import {AlertTriangle, CalendarX, Info, PackageX, TrendingDown} from 'lucide-react'
 import type {LucideIcon} from 'lucide-react'
 import {api, money} from '../lib/api'
+import {hatListen} from '../lib/antwort'
 
 /**
  * Zielerreichung je Mitarbeiter und Hinweise auf auffällige Entwicklungen.
@@ -55,7 +56,13 @@ export function TeamOverview() {
   const [data, setData] = useState<Overview | null>(null)
 
   useEffect(() => {
-    api<Overview>('/dashboard/team-overview').then(setData).catch(() => {})
+    api<Overview>('/dashboard/team-overview')
+      // Nur übernehmen, was die erwartete Form hat: eine Antwort ohne
+      // `alerts` liesse die Karte am ersten Zugriff abstürzen.
+      .then(antwort => {
+        if (hatListen(antwort, 'employees', 'alerts')) setData(antwort)
+      })
+      .catch(() => {})
   }, [])
 
   if (!data) return null

@@ -22,7 +22,7 @@ export function HistoryPage(){
   return <div className="page">
     <div className="page-head"><div><h1>Verlauf</h1><p>Kundendaten und relevante Verkaufsinformationen.</p></div></div>
     {fehler&&<LoadError meldung={fehler} onRetry={laden}/>}
-    <div className="history-grid">{rows.map(r=><section className="card" key={r.customer_id}><h3>{r.name}</h3><p>{r.address||'Keine Adresse hinterlegt'}</p><small>{r.phone||'–'} · {r.email||'–'}</small><div className="divider"/><strong>Gekauft</strong>{r.purchased_products.length?r.purchased_products.map((p,i)=><div className="list-row" key={i}><span>{p.quantity}× {p.name}<small>{formatDateTime(p.sold_at)}</small></span><strong>{money(p.unit_price_cents*p.quantity)}</strong></div>):<p>Keine Verkäufe hinterlegt.</p>}</section>)}</div>
+    <div className="history-grid">{rows.map(r=><section className="card" key={r.customer_id}><h2>{r.name}</h2><p>{r.address||'Keine Adresse hinterlegt'}</p><small>{r.phone||'–'} · {r.email||'–'}</small><div className="divider"/><strong>Gekauft</strong>{r.purchased_products.length?r.purchased_products.map((p,i)=><div className="list-row" key={i}><span>{p.quantity}× {p.name}<small>{formatDateTime(p.sold_at)}</small></span><strong>{money(p.unit_price_cents*p.quantity)}</strong></div>):<p>Keine Verkäufe hinterlegt.</p>}</section>)}</div>
     {!geladen&&!fehler&&<div className="loading">Verlauf wird geladen…</div>}
     {geladen&&!fehler&&!rows.length&&<div className="empty card">Noch keine relevante Kundenhistorie vorhanden.</div>}
   </div>

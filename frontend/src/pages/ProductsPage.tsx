@@ -690,9 +690,9 @@ export function ProductsPage(){
               </div>
 
 
-              <h3>
+              <h2>
                 {product.name}
-              </h3>
+              </h2>
 
               {product.technical?.article_number && (
                 <div className="simple-product-sku">

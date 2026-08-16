@@ -4295,7 +4295,7 @@ body:has(.v7-login-scene) form {
   letter-spacing:.04em;
 }
 
-.simple-product-card h3{
+.simple-product-card h2{
   margin:0 0 9px;
   font-size:18px;
 }
