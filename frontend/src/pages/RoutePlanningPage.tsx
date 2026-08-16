@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 
 import {api} from '../lib/api'
+import {telefonnummerBereinigen as cleanPhone} from '../lib/mobile'
 import {useAuth} from '../lib/auth'
 import {useToast} from '../components/Toast'
 import type {Appointment} from '../types'
@@ -186,14 +187,6 @@ function formatTime(value:string|null){
       minute:'2-digit',
     }
   ).format(new Date(value))
-}
-
-
-function cleanPhone(value:string){
-  return value.replace(
-    /[^0-9+*#;,]/g,
-    ''
-  )
 }
 
 

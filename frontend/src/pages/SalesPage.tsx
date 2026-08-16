@@ -296,8 +296,15 @@ export function SalesPage(){
 
 
   useEffect(()=>{
-    if((location.state as any)?.openCreate){
+    const state=location.state as any
+    if(state?.openCreate){
       resetForm()
+      // Aus der Kundenakte heraus ist der Kunde schon bekannt - ihn dort
+      // erneut zu suchen waere ein ueberfluessiger Schritt.
+      if(state.customerId){
+        setForm(current=>({...current,customer_id:state.customerId}))
+        setCustomerSearch(state.customerName || '')
+      }
       setOpen(true)
       navigate(location.pathname,{replace:true,state:null})
     }

@@ -8,9 +8,10 @@ import {AppointmentCompletionModal} from '../components/AppointmentCompletionMod
 import {appointmentPayload,appointmentStatuses,appointmentTypeOption,downloadCalendarFile,openDirections,type AppointmentDraft} from '../lib/appointments'
 import {connectRealtime} from '../lib/realtime'
 import {useAuth} from '../lib/auth'
+import {useLocation,useNavigate} from 'react-router-dom'
 
 type TeamEmployee={id:string;display_name:string}
-type Editor={appointment?:Appointment;initialDay?:Date}
+type Editor={appointment?:Appointment;initialDay?:Date;customerId?:string}
 
 export function AppointmentsPage(){
   const {me}=useAuth()
@@ -23,6 +24,17 @@ export function AppointmentsPage(){
   const [saving,setSaving]=useState(false)
   const toast=useToast()
   const isTeamLeader=me?.role==='TEAM_LEADER'
+  const location=useLocation()
+  const navigate=useNavigate()
+
+  // Sprung aus der Kundenakte: Maske gleich mit dem Kunden oeffnen.
+  useEffect(()=>{
+    const state=location.state as any
+    if(state?.openCreate){
+      setEditor({initialDay:new Date(),customerId:state.customerId})
+      navigate(location.pathname,{replace:true,state:null})
+    }
+  },[location.state])
 
   const load=useCallback(async()=>{
     try{
@@ -113,6 +125,7 @@ export function AppointmentsPage(){
     {editor&&<AppointmentModal
       appointment={editor.appointment}
       initialDay={editor.initialDay}
+      initialCustomerId={editor.customerId}
       ownEmployeeId={me?.employee?.id}
       isTeamLeader={isTeamLeader}
       customers={customers}

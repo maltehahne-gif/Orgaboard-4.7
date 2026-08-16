@@ -1,4 +1,4 @@
-import {FormEvent, useCallback, useEffect, useState} from 'react'
+import {FormEvent, useCallback, useEffect, useRef, useState} from 'react'
 import {
   AlarmClock,
   ArrowLeft,
@@ -11,6 +11,7 @@ import {
   Mail,
   MapPin,
   MessageSquarePlus,
+  Navigation,
   Package,
   PackageCheck,
   Phone,
@@ -25,6 +26,7 @@ import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
 import {ausIso, heuteIso} from '../lib/datum'
 import {FUNNEL_ORDER} from '../lib/funnel'
+import {kartenHref, mailHref, telHref} from '../lib/mobile'
 
 type Customer = {
   id: string
@@ -113,6 +115,7 @@ export function CustomerDetailPage() {
   const [nachfassOffen, setNachfassOffen] = useState(false)
   const [nachfass, setNachfass] = useState({datum: heuteIso(), notiz: ''})
   const [nachfassBusy, setNachfassBusy] = useState(false)
+  const notizFeldRef = useRef<HTMLTextAreaElement | null>(null)
   const toast = useToast()
   const {me} = useAuth()
   const isTeamLeader = me?.role === 'TEAM_LEADER'
@@ -252,6 +255,10 @@ export function CustomerDetailPage() {
   const {customer, events} = data
   const stageIndex = (FUNNEL_ORDER as readonly string[]).indexOf(data.funnel_stage)
 
+  // Was Termin-, Verkaufs- und Angebotsmaske brauchen, um den Kunden schon
+  // ausgefüllt zu übernehmen - eine Angabe, drei Ziele.
+  const kundenZustand = {openCreate: true, customerId, customerName: customer.full_name}
+
   return (
     <div className="page">
       <div className="page-head">
@@ -285,21 +292,87 @@ export function CustomerDetailPage() {
       </div>
 
       <div className="customer-contact card">
-        {customer.phone && (
-          <a href={`tel:${customer.phone}`}>
+        {telHref(customer.phone) && (
+          <a href={telHref(customer.phone)}>
             <Phone size={16} /> {customer.phone}
           </a>
         )}
-        {customer.email && (
-          <a href={`mailto:${customer.email}`}>
+        {mailHref(customer.email) && (
+          <a href={mailHref(customer.email)}>
             <Mail size={16} /> {customer.email}
           </a>
         )}
-        {customer.address && (
+        {/* Die Anschrift ist antippbar: unterwegs führt sie direkt in die
+            Karten-App, statt zum Abtippen zu zwingen. */}
+        {kartenHref(customer.address) ? (
+          <a href={kartenHref(customer.address)} target="_blank" rel="noopener noreferrer">
+            <MapPin size={16} /> {customer.address}
+          </a>
+        ) : customer.address && (
           <span>
             <MapPin size={16} /> {customer.address}
           </span>
         )}
+      </div>
+
+      {/* Schnellaktionen – das, was im Außendienst vor der Tür zählt. */}
+      <div className="quick-actions card">
+        {telHref(customer.phone) && (
+          <a className="quick-action" href={telHref(customer.phone)}>
+            <Phone size={18} /> Anrufen
+          </a>
+        )}
+        {kartenHref(customer.address) && (
+          <a
+            className="quick-action"
+            href={kartenHref(customer.address)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Navigation size={18} /> Navigieren
+          </a>
+        )}
+        <button
+          type="button"
+          className="quick-action"
+          onClick={() => navigate('/termine', {state: kundenZustand})}
+        >
+          <CalendarDays size={18} /> Termin
+        </button>
+        <button
+          type="button"
+          className="quick-action"
+          onClick={() => notizFeldRef.current?.focus()}
+        >
+          <StickyNote size={18} /> Notiz
+        </button>
+        <button
+          type="button"
+          className="quick-action"
+          onClick={() => {
+            setNachfass({
+              datum: data.next_follow_up?.due_on ?? heuteIso(),
+              notiz: data.next_follow_up?.note ?? '',
+            })
+            setNachfassOffen(true)
+          }}
+        >
+          <AlarmClock size={18} /> Nachfassen
+        </button>
+        <button
+          type="button"
+          className="quick-action"
+          onClick={() => navigate('/verkaeufe', {state: kundenZustand})}
+        >
+          <ShoppingCart size={18} /> Verkauf
+        </button>
+        <button
+          type="button"
+          className="quick-action"
+          onClick={() => navigate('/angebote', {state: kundenZustand})}
+        >
+          <FileSignature size={18} /> Angebot
+        </button>
       </div>
 
       {/* Trichterstufe – aus den Ereignissen abgeleitet, nicht gespeichert */}
@@ -408,6 +481,7 @@ export function CustomerDetailPage() {
         <label>
           <MessageSquarePlus size={16} /> Notiz hinzufügen
           <textarea
+            ref={notizFeldRef}
             rows={3}
             value={noteBody}
             onChange={e => setNoteBody(e.target.value)}

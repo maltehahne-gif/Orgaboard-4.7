@@ -9,6 +9,8 @@ type TeamEmployee={id:string;display_name:string}
 type Props={
   appointment?:Appointment|null
   initialDay?:Date|null
+  /** Vorbelegter Kunde, z. B. beim Sprung aus der Kundenakte. */
+  initialCustomerId?:string
   ownEmployeeId?:string
   isTeamLeader:boolean
   customers:Customer[]
@@ -20,14 +22,14 @@ type Props={
   onDelete?:()=>Promise<void>
 }
 
-export function AppointmentModal({appointment,initialDay,ownEmployeeId='',isTeamLeader,customers,products,employees,saving=false,onClose,onSave,onDelete}:Props){
-  const [form,setForm]=useState<AppointmentDraft>(()=>appointment ? appointmentDraft(appointment) : newAppointmentDraft(initialDay || new Date(),ownEmployeeId))
+export function AppointmentModal({appointment,initialDay,initialCustomerId='',ownEmployeeId='',isTeamLeader,customers,products,employees,saving=false,onClose,onSave,onDelete}:Props){
+  const [form,setForm]=useState<AppointmentDraft>(()=>appointment ? appointmentDraft(appointment) : newAppointmentDraft(initialDay || new Date(),ownEmployeeId,initialCustomerId))
   const [error,setError]=useState('')
 
   useEffect(()=>{
-    setForm(appointment ? appointmentDraft(appointment) : newAppointmentDraft(initialDay || new Date(),ownEmployeeId))
+    setForm(appointment ? appointmentDraft(appointment) : newAppointmentDraft(initialDay || new Date(),ownEmployeeId,initialCustomerId))
     setError('')
-  },[appointment,initialDay,ownEmployeeId])
+  },[appointment,initialDay,initialCustomerId,ownEmployeeId])
 
   const visibleCustomers=useMemo(()=>{
     if(!isTeamLeader || !form.employee_id)return customers
@@ -38,6 +40,18 @@ export function AppointmentModal({appointment,initialDay,ownEmployeeId='',isTeam
   const [customerSearch,setCustomerSearch]=useState(
     selectedCustomer?.full_name || ''
   )
+
+  // Beim ersten Rendern ist die Kundenliste oft noch nicht geladen; der
+  // ausgewaehlte Kunde laesst sich dann nicht aufloesen und das Suchfeld
+  // bliebe leer, obwohl ein Kunde gesetzt ist. Sobald der Name feststeht,
+  // wird er nachgetragen - beim Bearbeiten wie beim Sprung aus der
+  // Kundenakte. Getippten Text ueberschreibt das nicht: solange sich die
+  // Auswahl nicht aendert, laeuft dieser Effekt nicht erneut.
+  useEffect(()=>{
+    if(selectedCustomer?.full_name){
+      setCustomerSearch(selectedCustomer.full_name)
+    }
+  },[selectedCustomer?.full_name])
 
   const filteredCustomerResults = visibleCustomers.filter(customer =>
     customer.full_name
@@ -83,7 +97,10 @@ export function AppointmentModal({appointment,initialDay,ownEmployeeId='',isTeam
           }}
         />
 
-        {customerSearch && filteredCustomerResults.length > 0 && (
+        {/* Steht im Feld genau der bereits gewaehlte Kunde, ist eine
+            Vorschlagsliste mit diesem einen Namen nur Beiwerk - sie
+            erscheint erst wieder, sobald wirklich gesucht wird. */}
+        {customerSearch && customerSearch!==selectedCustomer?.full_name && filteredCustomerResults.length > 0 && (
           <div className="customer-search-results">
             {filteredCustomerResults.slice(0,10).map(customer=>(
               <button

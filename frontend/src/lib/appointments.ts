@@ -1,4 +1,5 @@
 import type {Appointment} from '../types'
+import {kartenHref} from './mobile'
 
 export type AppointmentDraft = {
   customer_id:string
@@ -64,13 +65,13 @@ export function dateKey(value:Date|string) {
   return `${year}-${month}-${day}`
 }
 
-export function newAppointmentDraft(day = new Date(), employeeId = ''):AppointmentDraft {
+export function newAppointmentDraft(day = new Date(), employeeId = '', customerId = ''):AppointmentDraft {
   const start = new Date(day)
   start.setHours(9,0,0,0)
   const end = new Date(start)
   end.setHours(10,0,0,0)
   return {
-    customer_id:'',
+    customer_id:customerId,
     employee_id:employeeId,
     start_at:toDateTimeLocal(start),
     end_at:toDateTimeLocal(end),
@@ -110,9 +111,13 @@ export function appointmentPayload(form:AppointmentDraft) {
   }
 }
 
+/**
+ * Route zu einer Anschrift. Liegt in lib/mobile.ts, damit Terminliste,
+ * Kundenakte und Routenplanung dieselbe Karten-App ansteuern - und damit
+ * Apple-Geräte Apple Maps bekommen statt zwangsweise Google Maps.
+ */
 export function directionsUrl(address:string) {
-  const destination=address.trim()
-  return destination ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving` : ''
+  return kartenHref(address)
 }
 
 export function openDirections(address:string) {
