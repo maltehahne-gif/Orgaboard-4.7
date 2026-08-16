@@ -4,6 +4,11 @@ Schwerpunkt sind die Sperren, die das System handlungsfaehig halten: niemand
 darf sich selbst aussperren, und der letzte aktive Teamleiter bleibt
 bestehen. Faellt eine dieser Zusicherungen, laesst sich OrgaBoard in einen
 Zustand bringen, der nur noch direkt auf der Datenbank zu reparieren ist.
+
+Dazu kommt die Rangregel: Fuehrungsrollen vergibt nur, wer selbst hoeher
+steht. Ein Teamleiter fuehrt seine Mitarbeiter - er ernennt keine
+Nachfolger. Wo frueher der Teamleiter befoerdert hat, steht deshalb jetzt
+die Organisationsleitung (REGIONAL_LEAD).
 """
 import os
 import tempfile
@@ -60,6 +65,12 @@ def leiter():
 @pytest.fixture
 def mitarbeiter():
     return _anlegen("mitarbeiter@example.com", "Mit Arbeiter", Role.EMPLOYEE)
+
+
+@pytest.fixture
+def leitung():
+    """Organisationsleitung - die Stufe, die Teamleiter einsetzt."""
+    return _anlegen("leitung@example.com", "Olga Leitung", Role.REGIONAL_LEAD)
 
 
 @pytest.fixture(autouse=True)
@@ -163,18 +174,16 @@ def test_niemand_aendert_die_eigene_rolle(client, leiter):
         db.close()
 
 
-def test_letzter_teamleiter_wird_nicht_degradiert(client, leiter):
-    """Ein zweiter Leiter darf degradiert werden - der letzte nicht."""
+def test_letzter_teamleiter_wird_nicht_degradiert(client, leitung, leiter):
+    """Ein zweiter Leiter darf degradiert werden - der letzte nicht.
+
+    Degradieren ist Rollenverwaltung, also Sache der Organisationsleitung.
+    """
     zweiter = _anlegen("zweiter@example.com", "Zweiter Chef", Role.TEAM_LEADER)
-    kopf = _login(client, "leiter@example.com")
+    kopf = _login(client, "leitung@example.com")
 
-    # Solange es zwei gibt, ist das erlaubt.
+    # Solange es mehrere gibt, ist das erlaubt.
     assert client.patch(f"/api/v1/admin/users/{zweiter}",
-                        json={"role": "EMPLOYEE"}, headers=kopf).status_code == 200
-
-    # Jetzt ist "leiter" der letzte - und der ist zusaetzlich er selbst.
-    dritter = _anlegen("dritter@example.com", "Dritter Chef", Role.TEAM_LEADER)
-    assert client.patch(f"/api/v1/admin/users/{dritter}",
                         json={"role": "EMPLOYEE"}, headers=kopf).status_code == 200
 
     db = SessionLocal()
@@ -186,18 +195,17 @@ def test_letzter_teamleiter_wird_nicht_degradiert(client, leiter):
         db.close()
 
 
-def test_letzter_aktiver_teamleiter_wird_nicht_deaktiviert(client, leiter):
-    zweiter = _anlegen("zweiter@example.com", "Zweiter Chef", Role.TEAM_LEADER)
-    kopf = _login(client, "zweiter@example.com")
+def test_letzter_aktiver_teamleiter_wird_nicht_deaktiviert(client, leitung, leiter):
+    kopf = _login(client, "leitung@example.com")
 
-    # "zweiter" deaktiviert "leiter" - danach ist "zweiter" der letzte.
+    # Die Leitung selbst zaehlt als verwaltende Stufe mit, deshalb bleibt
+    # nach dem Abschalten des Teamleiters noch jemand handlungsfaehig.
     assert client.patch(f"/api/v1/admin/users/{leiter}",
                         json={"is_active": False}, headers=kopf).status_code == 200
 
-    # Ein dritter Leiter kann jetzt nicht mehr deaktiviert werden, wenn er
-    # der einzige verbleibende aktive waere - hier geprueft ueber "zweiter"
-    # selbst, der sich ohnehin nicht deaktivieren darf.
-    antwort = client.patch(f"/api/v1/admin/users/{zweiter}",
+    # Die Leitung ist jetzt die letzte aktive verwaltende Person - und darf
+    # sich ohnehin nicht selbst abschalten.
+    antwort = client.patch(f"/api/v1/admin/users/{leitung}",
                            json={"is_active": False}, headers=kopf)
     assert antwort.status_code == 400
 
@@ -215,8 +223,23 @@ def test_deaktivierter_benutzer_kommt_nicht_mehr_rein(client, leiter, mitarbeite
 
 # ------------------------------------------------------- Rolle und Profil
 
-def test_leiter_befoerdert_mitarbeiter(client, leiter, mitarbeiter):
+def test_leiter_befoerdert_niemanden(client, leiter, mitarbeiter):
+    """Die absolute Regel: ein Teamleiter macht keinen zweiten Teamleiter."""
     kopf = _login(client, "leiter@example.com")
+    antwort = client.patch(f"/api/v1/admin/users/{mitarbeiter}",
+                           json={"role": "TEAM_LEADER"}, headers=kopf)
+    assert antwort.status_code == 403
+
+    db = SessionLocal()
+    try:
+        assert db.get(User, mitarbeiter).role == Role.EMPLOYEE
+    finally:
+        db.close()
+
+
+def test_leitung_befoerdert_mitarbeiter(client, leitung, mitarbeiter):
+    """Die Stufe darueber darf es - sonst gaebe es nie einen Teamleiter."""
+    kopf = _login(client, "leitung@example.com")
     antwort = client.patch(f"/api/v1/admin/users/{mitarbeiter}",
                            json={"role": "TEAM_LEADER"}, headers=kopf)
     assert antwort.status_code == 200
@@ -257,8 +280,8 @@ def test_passwort_zuruecksetzen_erzwingt_wechsel(client, leiter, mitarbeiter):
     assert anmeldung.json()["must_change_password"] is True
 
 
-def test_aenderungen_landen_im_audit_log(client, leiter, mitarbeiter):
-    kopf = _login(client, "leiter@example.com")
+def test_aenderungen_landen_im_audit_log(client, leitung, mitarbeiter):
+    kopf = _login(client, "leitung@example.com")
     client.patch(f"/api/v1/admin/users/{mitarbeiter}",
                  json={"role": "TEAM_LEADER"}, headers=kopf)
 

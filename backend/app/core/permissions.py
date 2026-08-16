@@ -15,6 +15,18 @@ Deshalb hier zwei Begriffe, auf die sich alles zurueckfuehren laesst:
 Der Systemadministrator ist bewusst nicht Teil der Rechtetabelle: er darf
 alles, ohne Ausnahme und ohne Eintrag. Ein Betreiber, der sich selbst ein
 Recht entziehen kann, sperrt sich irgendwann aus seiner eigenen Anlage aus.
+
+Zwei Dinge stehen bewusst *nicht* allein in dieser Tabelle:
+
+*Rollenvergabe* - ein Haken bei "Teamleiter ernennen" reicht nicht. Zusaetzlich
+gilt immer die Rangregel aus benutzerscope.erlaubte_zielrollen(): niemand
+vergibt die eigene Stufe. Sonst waere die Regel "ein Teamleiter macht keinen
+zweiten Teamleiter" nur einen versehentlichen Haken weit entfernt.
+
+*Konten endgueltig loeschen* - gar kein Recht, sondern fest an den
+Systemadministrator gebunden (benutzerscope.pruefe_loeschrecht). Was sich
+zuteilen laesst, laesst sich auch versehentlich zuteilen, und Loeschen ist
+die einzige Aktion ohne Rueckweg.
 """
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -52,6 +64,11 @@ ROLLEN_RECHTE: dict[Role, set[Permission]] = {
         Permission.DASHBOARD_SEHEN,
         Permission.STATISTIK_SEHEN,
         Permission.EXPORT,
+        # Der Teamleiter besetzt sein Team - mehr nicht. Die beiden
+        # Rollenrechte fehlen hier absichtlich: eine Fuehrungsrolle darf er
+        # weder vergeben noch entziehen.
+        Permission.TEAM_MITGLIED_HINZUFUEGEN,
+        Permission.TEAM_MITGLIED_ENTFERNEN,
     },
     Role.REGIONAL_LEAD: {
         Permission.KUNDEN_SEHEN,
@@ -69,6 +86,12 @@ ROLLEN_RECHTE: dict[Role, set[Permission]] = {
         Permission.DASHBOARD_SEHEN,
         Permission.STATISTIK_SEHEN,
         Permission.EXPORT,
+        # Die Organisationsleitung setzt Teamleiter ein und ab - das ist
+        # ihre eigentliche Aufgabe in dieser Struktur.
+        Permission.TEAM_MITGLIED_HINZUFUEGEN,
+        Permission.TEAM_MITGLIED_ENTFERNEN,
+        Permission.ROLLE_TEAMLEITER_VERGEBEN,
+        Permission.ROLLE_TEAMLEITER_ENTZIEHEN,
     },
 }
 
@@ -88,6 +111,10 @@ RECHTE_BEZEICHNUNG: dict[Permission, str] = {
     Permission.DASHBOARD_SEHEN: "Dashboard sehen",
     Permission.STATISTIK_SEHEN: "Statistiken sehen",
     Permission.EXPORT: "Export durchführen",
+    Permission.TEAM_MITGLIED_HINZUFUEGEN: "Mitarbeiter ins Team aufnehmen",
+    Permission.TEAM_MITGLIED_ENTFERNEN: "Mitarbeiter aus dem Team nehmen",
+    Permission.ROLLE_TEAMLEITER_VERGEBEN: "Teamleiter ernennen",
+    Permission.ROLLE_TEAMLEITER_ENTZIEHEN: "Teamleiter absetzen",
 }
 
 

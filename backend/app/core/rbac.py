@@ -49,7 +49,16 @@ def resolve_employee_by_name(db: Session, user: User, name: str | None) -> Emplo
         if name.casefold() not in own.display_name.casefold():
             raise HTTPException(status_code=403, detail="Zugriff auf fremde Mitarbeiterdaten ist nicht erlaubt")
         return own
-    candidates = db.scalars(select(Employee).where(Employee.display_name.ilike(f"%{name}%"))).all()
+    # Auch die Namenssuche laeuft durch die Sichtbarkeit: sonst waere sie der
+    # bequemste Weg, an ein Konto zu kommen, das in keiner Liste steht.
+    from app.core.benutzerscope import mitarbeiter_sichtbar_filter
+
+    candidates = db.scalars(
+        select(Employee).where(
+            Employee.display_name.ilike(f"%{name}%"),
+            mitarbeiter_sichtbar_filter(user),
+        )
+    ).all()
     if len(candidates) != 1:
         raise HTTPException(status_code=400, detail="Mitarbeitername ist nicht eindeutig")
     return candidates[0]

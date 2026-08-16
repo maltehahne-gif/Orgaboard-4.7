@@ -20,6 +20,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
+from app.core.benutzerscope import sichtbar
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.rbac import scoped_employee_id
@@ -397,14 +398,17 @@ def validate_recipient(
             detail="Du kannst dir nicht selbst privat schreiben",
         )
 
-    if (
-        recipient_user_id
-        and not db.get(User, recipient_user_id)
-    ):
-        raise HTTPException(
-            status_code=404,
-            detail="Empfänger nicht gefunden",
-        )
+    # Ein Konto, das der Absender nicht sehen darf, gibt es fuer ihn auch als
+    # Empfaenger nicht. Sonst waere das Nachrichtenfeld die Hintertuer neben
+    # der abgesicherten Empfaengerliste - und die Zustellbestaetigung wuerde
+    # die Existenz des Kontos verraten.
+    if recipient_user_id:
+        empfaenger = db.get(User, recipient_user_id)
+        if not empfaenger or not sichtbar(user, empfaenger):
+            raise HTTPException(
+                status_code=404,
+                detail="Empfänger nicht gefunden",
+            )
 
 
 @router.get("")

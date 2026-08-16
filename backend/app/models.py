@@ -198,6 +198,15 @@ class Permission(str, enum.Enum):
     STATISTIK_SEHEN = "stats.view"
     EXPORT = "export.run"
 
+    # Mitarbeiter ins Team holen ist eine Verwaltungsaufgabe der Teamleitung.
+    # Eine Fuehrungsrolle vergeben ist es nicht - deshalb zwei getrennte
+    # Rechte statt eines gemeinsamen "Team verwalten". Wer zusammenfaellt,
+    # was nicht zusammengehoert, verschenkt beim ersten Haken beides.
+    TEAM_MITGLIED_HINZUFUEGEN = "team.member.add"
+    TEAM_MITGLIED_ENTFERNEN = "team.member.remove"
+    ROLLE_TEAMLEITER_VERGEBEN = "role.teamleader.assign"
+    ROLLE_TEAMLEITER_ENTZIEHEN = "role.teamleader.revoke"
+
 
 class UserPermission(Base):
     """Abweichung vom Rollenstandard fuer einen einzelnen Benutzer."""
@@ -255,7 +264,15 @@ class User(Base):
 class Employee(Base):
     __tablename__ = "employees"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
+    # Nullable, seit ein Systemadministrator Konten endgueltig loeschen kann.
+    # Das Profil traegt die Verkaufshistorie; wuerde es mit dem Konto fallen,
+    # verschwaenden Umsaetze frueherer Monate oder die Loeschung scheiterte
+    # am Fremdschluessel. Ohne Konto bleibt es als namenloser Rest stehen
+    # (siehe services/kontoloeschung.py). Mehrere solcher Reste sind erlaubt:
+    # NULL zaehlt in einem eindeutigen Index nicht als Dublette.
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True, nullable=True
+    )
     display_name: Mapped[str] = mapped_column(String(255), index=True)
     position: Mapped[str] = mapped_column(String(120), default="Vertriebspartner")
     monthly_units_target: Mapped[int] = mapped_column(Integer, default=30)

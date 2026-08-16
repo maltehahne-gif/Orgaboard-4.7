@@ -4,8 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
+from app.core.benutzerscope import (
+    mitarbeiter_sichtbar_filter,
+    ohne_verborgene,
+    verborgene_rollen,
+)
 from app.core.database import get_db
 from app.core.rbac import require_team_leader
 from app.core.security import get_current_user
@@ -21,8 +26,18 @@ router = APIRouter(prefix="/team", tags=["team"])
 
 @router.get("/employees")
 def employees(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Mitarbeiterliste mit Wochenzahlen.
+
+    Eine Kennzahlenliste mit Namen ist eine Benutzerliste. Deshalb faellt
+    auch hier das Systemadministrator-Profil heraus, sobald nicht der
+    Systemadministrator selbst fragt.
+    """
     require_team_leader(user)
-    rows = db.scalars(select(Employee).order_by(Employee.display_name)).all()
+    rows = db.scalars(
+        select(Employee)
+        .where(mitarbeiter_sichtbar_filter(user))
+        .order_by(Employee.display_name)
+    ).all()
     ws, we = week_bounds(); ms, me = month_bounds()
     result = []
     for e in rows:
@@ -88,6 +103,10 @@ def comparison(
         level = "employee"
         employee_ids = resolve_scope_employee_ids(db, team_id, district_id, region_id)
         rows = employee_rows(db, employee_ids, start, end)
+        # Namentliche Zeilen sind eine Benutzerliste. Auf den zusammen-
+        # gefassten Ebenen (Team, Bezirk, Region) steht kein einzelner
+        # Mensch in der Zeile, dort ist nichts zu verbergen.
+        rows = ohne_verborgene(db, user, rows, schluessel="id")
 
     return {
         "level": level,
@@ -101,7 +120,9 @@ def comparison(
 def team_stats(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_team_leader(user)
     stats = dashboard_stats(db, None)
-    count = db.scalar(select(func.count(Employee.id))) or 0
+    count = db.scalar(
+        select(func.count(Employee.id)).where(mitarbeiter_sichtbar_filter(user))
+    ) or 0
     return {**stats, "employees": count, "average_units_per_employee": round(stats["units_week"] / count, 1) if count else 0}
 
 
@@ -110,7 +131,7 @@ def export_team_stats(user: User = Depends(get_current_user), db: Session = Depe
     """Zielerreichung je Mitarbeiter als Excel-Datei - dieselben Zahlen, die
     auf der Teamstatistiken-Seite angezeigt werden."""
     require_team_leader(user)
-    rows = employee_goal_progress(db)
+    rows = ohne_verborgene(db, user, employee_goal_progress(db))
 
     wb = Workbook()
     ws = wb.active
@@ -151,7 +172,19 @@ def export_team_stats(user: User = Depends(get_current_user), db: Session = Depe
 
 @router.get("/audit")
 def audit_log(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Protokoll der letzten Aenderungen.
+
+    Eintraege des Systemadministrators bleiben aussen vor, solange nicht er
+    selbst liest: user_id ist die interne Kennung des Kontos, und die zu
+    kennen reicht schon, um es gezielt anzusprechen.
+    """
     from app.models import AuditLog
     require_team_leader(user)
-    rows = db.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(500)).all()
+    verborgene = select(User.id).where(User.role.in_(verborgene_rollen(user)))
+    stmt = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(500)
+    if verborgene_rollen(user):
+        stmt = stmt.where(
+            or_(AuditLog.user_id.is_(None), AuditLog.user_id.notin_(verborgene))
+        )
+    rows = db.scalars(stmt).all()
     return [{"id": r.id, "user_id": r.user_id, "action": r.action, "entity_type": r.entity_type, "entity_id": r.entity_id, "created_at": r.created_at, "before": r.before_json, "after": r.after_json} for r in rows]
