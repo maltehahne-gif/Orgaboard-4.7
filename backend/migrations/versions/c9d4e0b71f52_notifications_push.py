@@ -34,7 +34,11 @@ def upgrade() -> None:
         batch.add_column(sa.Column("dedupe_key", sa.String(length=200), nullable=True))
         batch.create_unique_constraint("uq_notification_dedupe", ["user_id", "dedupe_key"])
 
-    KATEGORIE.create(op.get_bind(), checkfirst=True)
+    # Den Enum-Typ NICHT vorab anlegen: create_table() erzeugt ihn auf
+    # PostgreSQL selbst. Beides zusammen scheiterte mit "type ... already
+    # exists" - und zwar nur dort, weil SQLite keine Enum-Typen kennt und
+    # den Fehler deshalb nie zeigt. Gleiches Vorgehen wie in der
+    # Altgeraete-Migration (e4a7c9b2f318).
     op.create_table(
         "notification_settings",
         sa.Column("id", sa.String(length=36), primary_key=True),

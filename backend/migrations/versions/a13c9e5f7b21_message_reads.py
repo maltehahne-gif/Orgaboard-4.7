@@ -5,6 +5,7 @@ Revises: 7e91a2c3d4f5
 Create Date: 2026-08-13
 """
 
+import uuid
 from typing import Sequence, Union
 
 from alembic import op
@@ -55,33 +56,47 @@ def upgrade() -> None:
     )
 
 
-    # Bereits gelesene private Nachrichten übernehmen.
-    # SQLite-kompatible Version ohne md5/random/clock_timestamp.
-    op.execute("""
-        INSERT INTO message_reads (id, message_id, user_id, read_at)
-        SELECT
-            lower(hex(randomblob(16))),
-            m.id,
-            m.recipient_user_id,
-            m.read_at
-        FROM messages m
-        WHERE m.recipient_user_id IS NOT NULL
-          AND m.read_at IS NOT NULL
-    """)
+    # Bestehende Nachrichten uebernehmen.
+    #
+    # Die Schluessel entstehen in Python, nicht in der Datenbank. Vorher
+    # standen hier randomblob()/hex() - beides gibt es nur in SQLite, und
+    # auf PostgreSQL brach die Migration deshalb ab. Da vor ihr
+    # `alembic upgrade head` im Startbefehl steht, kam der Container nie
+    # hoch. uuid4() ist in jedem Dialekt gleich.
+    bind = op.get_bind()
 
-    # Alte Team-Nachrichten als gelesen markieren.
-    op.execute("""
-        INSERT INTO message_reads (id, message_id, user_id, read_at)
-        SELECT
-            lower(hex(randomblob(16))),
-            m.id,
-            u.id,
-            m.created_at
-        FROM messages m
-        CROSS JOIN users u
-        WHERE m.recipient_user_id IS NULL
-          AND u.id <> m.sender_user_id
-    """)
+    # 1. Bereits gelesene private Nachrichten.
+    gelesen = bind.execute(
+        sa.text(
+            "SELECT id, recipient_user_id, read_at FROM messages "
+            "WHERE recipient_user_id IS NOT NULL AND read_at IS NOT NULL"
+        )
+    ).fetchall()
+
+    # 2. Alte Team-Nachrichten fuer alle ausser dem Absender.
+    team = bind.execute(
+        sa.text(
+            "SELECT m.id, u.id AS user_id, m.created_at "
+            "FROM messages m CROSS JOIN users u "
+            "WHERE m.recipient_user_id IS NULL AND u.id <> m.sender_user_id"
+        )
+    ).fetchall()
+
+    einfuegen = sa.text(
+        "INSERT INTO message_reads (id, message_id, user_id, read_at) "
+        "VALUES (:id, :message_id, :user_id, :read_at)"
+    )
+
+    for message_id, user_id, read_at in [*gelesen, *team]:
+        bind.execute(
+            einfuegen,
+            {
+                "id": str(uuid.uuid4()),
+                "message_id": message_id,
+                "user_id": user_id,
+                "read_at": read_at,
+            },
+        )
 
 
 
