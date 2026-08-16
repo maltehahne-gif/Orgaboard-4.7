@@ -20,3 +20,26 @@ export interface Offer {
   items:OfferItem[]; subtotal_cents:number; discount_cents:number; total_cents:number
   can_edit:boolean; can_delete:boolean; can_send:boolean; can_accept:boolean; can_reject:boolean; can_convert:boolean
 }
+export interface PipelineFollowUp { id:string; due_on:string; reason:string; note:string|null; days_until:number; is_overdue:boolean; is_today:boolean }
+export interface PipelineAppointment { id:string; start_at:string; appointment_type:string }
+export interface PipelineOffer { id:string; number:string; status:string; status_label:string; total_cents:number }
+export interface PipelineSale { id:string; sold_at:string; total_cents:number }
+export interface PipelineCard {
+  customer_id:string; customer_name:string; customer_phone:string|null; customer_email:string|null; customer_city:string|null
+  employee_id:string; employee_name:string
+  team_id:string|null; team_name:string|null; district_id:string|null; district_name:string|null; region_id:string|null; region_name:string|null
+  stage:string; stage_label:string
+  last_contact_at:string
+  next_action:string
+  next_appointment:PipelineAppointment|null
+  next_follow_up:PipelineFollowUp|null
+  open_offer:PipelineOffer|null
+  last_sale:PipelineSale|null
+  potential_revenue_cents:number|null
+}
+export interface PipelineResponse { customers:PipelineCard[]; counts:Record<string,number> }
+export interface OrgLookup {
+  regions:{id:string; name:string}[]
+  districts:{id:string; name:string; region_id:string}[]
+  teams:{id:string; name:string; district_id:string}[]
+}

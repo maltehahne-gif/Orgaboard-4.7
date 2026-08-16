@@ -11631,3 +11631,115 @@ to{
   gap:4px;
   flex-wrap:wrap;
 }
+
+.pipeline-board{
+  display:flex;
+  gap:14px;
+  overflow-x:auto;
+  padding-bottom:8px;
+  align-items:flex-start;
+}
+
+.pipeline-column{
+  flex:0 0 260px;
+  width:260px;
+  background:var(--panel2);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  display:flex;
+  flex-direction:column;
+  max-height:calc(100vh - 320px);
+  min-height:220px;
+}
+
+.pipeline-column-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 14px;
+  border-bottom:1px solid var(--line);
+  font-weight:700;
+  font-size:14px;
+  position:sticky;
+  top:0;
+  background:var(--panel2);
+  border-radius:var(--radius) var(--radius) 0 0;
+}
+
+.pipeline-column-count{
+  background:var(--panel3);
+  border-radius:999px;
+  padding:2px 9px;
+  font-size:12px;
+  color:var(--muted);
+}
+
+.pipeline-column-body{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:10px;
+  overflow-y:auto;
+}
+
+.pipeline-column-empty{
+  color:var(--muted);
+  font-size:13px;
+  padding:8px 4px;
+  text-align:center;
+}
+
+.pipeline-card{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  text-align:left;
+  background:var(--panel3);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:11px 12px;
+  color:#f5f7f6;
+  cursor:pointer;
+  transition:border-color .15s ease, transform .1s ease;
+}
+.pipeline-card:hover{
+  border-color:var(--line-green);
+  transform:translateY(-1px);
+}
+
+.pipeline-card-name{
+  font-size:14px;
+}
+
+.pipeline-card-meta{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  color:var(--muted);
+}
+
+.pipeline-card-alert{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  color:var(--danger);
+  font-weight:600;
+}
+
+.pipeline-card-next{
+  font-size:12px;
+  color:#bcd0c8;
+}
+
+.pipeline-card-revenue{
+  margin-top:2px;
+  font-weight:700;
+  color:var(--green);
+  font-size:13.5px;
+}
+
+@media (max-width: 720px){
+  .pipeline-column{flex-basis:220px;width:220px}
+}

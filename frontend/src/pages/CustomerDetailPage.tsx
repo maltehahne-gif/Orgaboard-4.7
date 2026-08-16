@@ -24,6 +24,7 @@ import {api, formatDateTime} from '../lib/api'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
 import {ausIso, heuteIso} from '../lib/datum'
+import {FUNNEL_ORDER} from '../lib/funnel'
 
 type Customer = {
   id: string
@@ -80,16 +81,6 @@ function faelligkeitstext(f: FollowUp) {
   }
   return `in ${f.days_until} ${f.days_until === 1 ? 'Tag' : 'Tagen'} · ${datum}`
 }
-
-const FUNNEL_ORDER = [
-  'contact',
-  'appointment_set',
-  'appointment_done',
-  'presentation',
-  'offer',
-  'sale',
-  'aftercare',
-]
 
 const KIND_ICON: Record<string, typeof CalendarDays> = {
   appointment: CalendarDays,
@@ -259,7 +250,7 @@ export function CustomerDetailPage() {
   if (!data) return <div className="loading">Kundenakte wird geladen…</div>
 
   const {customer, events} = data
-  const stageIndex = FUNNEL_ORDER.indexOf(data.funnel_stage)
+  const stageIndex = (FUNNEL_ORDER as readonly string[]).indexOf(data.funnel_stage)
 
   return (
     <div className="page">

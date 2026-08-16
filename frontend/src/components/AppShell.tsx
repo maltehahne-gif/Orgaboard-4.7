@@ -7,6 +7,7 @@ import {
   FileSignature,
   FileText,
   Gauge,
+  KanbanSquare,
   History,
   Home,
   LogOut,
@@ -72,6 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       {to: '/termine', label: 'Termine', icon: CalendarDays},
       {to: '/kunden', label: 'Kunden', icon: ContactRound},
+      {to: '/pipeline', label: 'Pipeline', icon: KanbanSquare},
       {to: '/nachfassen', label: 'Nachfassen', icon: AlarmClock},
       {to: '/routenplanung', label: 'Routenplanung', icon: RouteIcon, short: 'Route'},
       {to: '/nachrichten', label: 'Nachrichten', icon: Mail},
