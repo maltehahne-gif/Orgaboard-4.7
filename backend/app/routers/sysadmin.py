@@ -16,6 +16,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit
+from app.core.benutzerscope import (
+    erlaubte_zielrollen,
+    pruefe_loeschrecht,
+    pruefe_zielrolle,
+)
 from app.core.database import get_db
 from app.core.permissions import (
     RECHTE_BEZEICHNUNG,
@@ -43,6 +48,10 @@ from app.models import (
     TradeIn,
     User,
     UserPermission,
+)
+from app.services.kontoloeschung import (
+    aktive_systemadmins,
+    konto_endgueltig_loeschen,
 )
 from app.services.stats import not_cancelled, revenue_between
 
@@ -425,6 +434,7 @@ def benutzer_einzeln(user_id: str, user: User = Depends(_admin), db: Session = D
 def benutzer_anlegen(data: BenutzerIn, user: User = Depends(_admin),
                      db: Session = Depends(get_db)):
     """Legt Benutzerkonto und Mitarbeiterprofil in einem Zug an."""
+    pruefe_zielrolle(user, data.role)
     adresse = data.email.lower().strip()
     if db.scalar(select(User).where(User.email == adresse)):
         raise HTTPException(status_code=400, detail="Diese E-Mail ist bereits vergeben")
@@ -495,6 +505,24 @@ def benutzer_aendern(user_id: str, data: BenutzerUpdate, user: User = Depends(_a
         if data.is_active is False:
             raise HTTPException(status_code=400, detail="Du kannst dich nicht selbst deaktivieren")
 
+    # Die Anlage darf nie ohne handlungsfaehigen Betreiber dastehen - weder
+    # durch Herabstufen noch durch Abschalten des letzten.
+    verliert_admin = (
+        ziel.role == Role.SYSTEM_ADMIN
+        and (
+            (data.role is not None and data.role != Role.SYSTEM_ADMIN)
+            or data.is_active is False
+        )
+    )
+    if verliert_admin and aktive_systemadmins(db, ausser=ziel.id) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Das ist der letzte aktive Systemadministrator",
+        )
+
+    if data.role is not None and data.role != ziel.role:
+        pruefe_zielrolle(user, data.role)
+
     if data.email is not None:
         adresse = data.email.lower().strip()
         belegt = db.scalar(select(User).where(User.email == adresse, User.id != ziel.id))
@@ -538,6 +566,41 @@ def benutzer_aendern(user_id: str, data: BenutzerUpdate, user: User = Depends(_a
           after={"role": ziel.role.value, "is_active": ziel.is_active, "email": ziel.email})
     db.commit()
     return _benutzer_out(db, ziel)
+
+
+@router.delete("/users/{user_id}", dependencies=[Depends(require_csrf)])
+def benutzer_endgueltig_loeschen(user_id: str, user: User = Depends(_admin),
+                                 db: Session = Depends(get_db)):
+    """Benutzerkonto wirklich entfernen - nicht nur abschalten.
+
+    Der andere Weg, ein Konto stillzulegen, ist PUT mit is_active=false. Der
+    laesst alles stehen und ist umkehrbar. Dieser hier nicht: E-Mail,
+    Passwort, Telefonnummer, Einzelrechte, Push-Anmeldungen und
+    Benachrichtigungen sind danach fort, und die Anmeldung ist mit dem
+    naechsten Aufruf ungueltig - get_current_user schlaegt das Konto bei
+    jeder Anfrage frisch nach.
+
+    Die Unternehmenshistorie bleibt. Was genau mit den abhaengigen Daten
+    passiert, steht in services/kontoloeschung.py.
+    """
+    pruefe_loeschrecht(user)
+    ziel = db.get(User, user_id)
+    if not ziel:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+
+    bericht = konto_endgueltig_loeschen(db, user, ziel)
+    db.commit()
+    return {
+        "ok": True,
+        "deleted_user_id": bericht.user_id,
+        "employee_profile": (
+            "anonymized" if bericht.profil_anonymisiert
+            else "deleted" if bericht.profil_geloescht
+            else "none"
+        ),
+        "removed": bericht.geloeschte_zeilen,
+        "detached": bericht.entkoppelte_zeilen,
+    }
 
 
 @router.post("/users/{user_id}/password", dependencies=[Depends(require_csrf)])
@@ -607,10 +670,15 @@ def recht_setzen(user_id: str, data: RechtIn, user: User = Depends(_admin),
 
 @router.get("/roles")
 def rollen(user: User = Depends(_admin)):
-    """Rollen mit Rang - fuer Auswahllisten."""
+    """Rollen mit Rang - fuer Auswahllisten.
+
+    Es sind genau die Rollen, die dieser Benutzer auch vergeben darf. Eine
+    Auswahl anzubieten, die der Server anschliessend ablehnt, ist eine
+    Einladung zum Fehler.
+    """
     return [
         {"value": r.value, "label": ROLLEN_BEZEICHNUNG.get(r, r.value), "rank": r.rang}
-        for r in sorted(Role, key=lambda x: x.rang)
+        for r in sorted(erlaubte_zielrollen(user), key=lambda x: x.rang)
     ]
 
 

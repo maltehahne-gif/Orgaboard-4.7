@@ -4,7 +4,7 @@ import {api, money} from '../lib/api'
 import {Modal} from '../components/Modal'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
-import {darfVerwalten, rolleBezeichnung} from '../lib/roles'
+import {darfRolleVergeben, darfVerwalten, rolleBezeichnung, zielrollen} from '../lib/roles'
 import type {Role} from '../types'
 
 type EmployeeProfile = {
@@ -40,10 +40,28 @@ const leeresFormular = {
  * Die Sperren gegen das Aussperren (letzter Teamleiter, eigenes Konto)
  * liegen im Backend - hier werden die betroffenen Knoepfe zusaetzlich
  * ausgegraut, damit der Fehler gar nicht erst passiert.
+ *
+ * Dasselbe gilt fuer die Rollenspalte: wer keine Rolle vergeben darf, sieht
+ * sie gar nicht erst. Das ist ausdruecklich nur Bedienkomfort - abgelehnt
+ * wird ohnehin im Backend, und die Liste selbst kommt schon eingegrenzt vom
+ * Server. Fuer einen Teamleiter stehen darin nur die Mitarbeiter seines
+ * Verantwortungsbereichs, kein Systemadministrator und keine andere
+ * Fuehrungskraft.
  */
 export function AdminPage() {
   const {me} = useAuth()
   const toast = useToast()
+
+  // Welche Rollen diese Person vergeben darf. Ein Teamleiter kommt hier auf
+  // genau eine - dann ist eine Auswahl sinnlos und der Dialog sagt schlicht,
+  // dass ein Mitarbeiter angelegt wird.
+  const vergebbareRollen = zielrollen(me?.role)
+  // Die Schaltfläche in der Zeile schaltet zwischen Mitarbeiter und
+  // Teamleiter um – sie gehört also an die Frage, ob *Teamleiter* vergeben
+  // werden darf, nicht an ein allgemeines „darf Rollen vergeben“. Für einen
+  // Teamleiter wäre das sonst wahr, weil er Mitarbeiter vergeben darf.
+  const darfTeamleiterErnennen = darfRolleVergeben(me?.role, 'TEAM_LEADER')
+  const rollenauswahlNoetig = vergebbareRollen.length > 1
 
   const [rows, setRows] = useState<AdminUser[]>([])
   const [anlegenOffen, setAnlegenOffen] = useState(false)
@@ -235,14 +253,16 @@ export function AdminPage() {
                         <Pencil size={15} />
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => umschalten(row, 'role')}
-                        disabled={!!rolleGesperrt}
-                        title={rolleGesperrt ?? (row.role === 'TEAM_LEADER' ? 'Zu Mitarbeiter machen' : 'Zu Teamleiter machen')}
-                      >
-                        <ShieldCheck size={15} />
-                      </button>
+                      {darfTeamleiterErnennen && (
+                        <button
+                          type="button"
+                          onClick={() => umschalten(row, 'role')}
+                          disabled={!!rolleGesperrt}
+                          title={rolleGesperrt ?? (row.role === 'TEAM_LEADER' ? 'Zu Mitarbeiter machen' : 'Zu Teamleiter machen')}
+                        >
+                          <ShieldCheck size={15} />
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -272,8 +292,12 @@ export function AdminPage() {
       </div>
 
       <p className="admin-hinweis">
-        Produkte und Preise werden im Bereich <strong>Produkte</strong> gepflegt. Teams, Regionen und
-        Bezirke gibt es noch nicht – dafür fehlt die Organisationsstruktur.
+        Hier stehen nur Konten deines Verantwortungsbereichs. Produkte und Preise werden im Bereich{' '}
+        <strong>Produkte</strong> gepflegt, Teams, Bezirke und Regionen in der{' '}
+        <strong>Systemverwaltung</strong>.
+        {!darfTeamleiterErnennen && ' Führungsrollen vergibt die Organisationsleitung.'}
+        {' '}Ein Konto endgültig zu löschen ist dem Systemadministrator vorbehalten; hier lässt es
+        sich nur deaktivieren.
       </p>
 
       {anlegenOffen && (
@@ -296,16 +320,28 @@ export function AdminPage() {
                 onChange={e => setFormular({...formular, email: e.target.value})}
               />
             </label>
-            <label>
-              Rolle
-              <select
-                value={formular.role}
-                onChange={e => setFormular({...formular, role: e.target.value as AdminUser['role']})}
-              >
-                <option value="EMPLOYEE">Mitarbeiter</option>
-                <option value="TEAM_LEADER">Teamleiter</option>
-              </select>
-            </label>
+            {rollenauswahlNoetig ? (
+              <label>
+                Rolle
+                <select
+                  value={formular.role}
+                  onChange={e => setFormular({...formular, role: e.target.value as AdminUser['role']})}
+                >
+                  {vergebbareRollen.map(r => (
+                    <option key={r} value={r}>
+                      {rolleBezeichnung(r)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label>
+                Rolle
+                {/* Nur eine vergebbare Rolle – ein Auswahlfeld mit einem
+                    Eintrag sähe nach Wahl aus, wo keine ist. */}
+                <input value={rolleBezeichnung('EMPLOYEE')} readOnly disabled />
+              </label>
+            )}
             <label>
               Position
               <input
@@ -323,6 +359,13 @@ export function AdminPage() {
               />
             </label>
             <p className="info-box span-2">
+              {!rollenauswahlNoetig && (
+                <>
+                  Es wird ein <strong>Mitarbeiter</strong> angelegt und deinem Team zugeordnet.
+                  Führungsrollen vergibt die Organisationsleitung.
+                  <br />
+                </>
+              )}
               Das Startpasswort wird automatisch erzeugt und danach einmalig angezeigt. Es muss beim
               ersten Anmelden geändert werden.
             </p>

@@ -2,6 +2,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
+from app.core.benutzerscope import benutzer_sichtbar_filter
 from app.core.permissions import sieht_fremde_daten
 from app.services.assistant_guard import SCHREIBENDE_WERKZEUGE, vormerken
 from app.core.audit import audit
@@ -413,7 +414,10 @@ def execute_tool(db: Session, user: User, name: str, args: dict,
         db.commit();return {"created":True,"sale_id":s.id,"units":sale_units(db,s.id),"total_cents":sum(i[1]["quantity"]*i[1]["unit_price_cents"] for i in resolved)}
 
     if name == "send_message":
-        term=f"%{args['recipient_name']}%"; users=db.scalars(select(User).where(User.full_name.ilike(term),User.is_active.is_(True))).all()
+        # Dieselbe Sichtbarkeit wie in der Empfaengerauswahl. Ohne sie waere
+        # die KI der bequemste Weg, ein Konto zu finden, das nirgends
+        # auftauchen soll.
+        term=f"%{args['recipient_name']}%"; users=db.scalars(select(User).where(User.full_name.ilike(term),User.is_active.is_(True),benutzer_sichtbar_filter(user))).all()
         if len(users)!=1:return {"error":"Empfänger ist nicht eindeutig"}
         m=Message(sender_user_id=user.id,recipient_user_id=users[0].id,body=args["body"].strip())
         db.add(m);db.flush()

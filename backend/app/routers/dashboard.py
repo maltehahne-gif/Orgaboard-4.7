@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
+from app.core.benutzerscope import ohne_verborgene
 from app.core.database import get_db
 from app.core.rbac import require_team_leader, scoped_employee_id
 from app.core.security import get_current_user
@@ -103,9 +104,11 @@ def team_overview(
     """Zielerreichung je Mitarbeiter und Hinweise auf auffällige Entwicklungen."""
     require_team_leader(user)
     scope = as_employee_ids(resolve_management_scope(db, user, None, team_id, district_id, region_id))
+    # Beide Listen nennen einzelne Personen beim Namen - also gilt dieselbe
+    # Sichtbarkeit wie in jeder anderen Benutzerliste.
     return {
-        "employees": employee_goal_progress(db, employee_ids=scope),
-        "alerts": team_alerts(db, employee_ids=scope),
+        "employees": ohne_verborgene(db, user, employee_goal_progress(db, employee_ids=scope)),
+        "alerts": ohne_verborgene(db, user, team_alerts(db, employee_ids=scope)),
     }
 
 
@@ -140,7 +143,7 @@ def cockpit(
     offers = offer_kpis(db, start, end, scope)
 
     goal_ids = as_employee_ids(scope)
-    goals = employee_goal_progress(db, employee_ids=goal_ids)
+    goals = ohne_verborgene(db, user, employee_goal_progress(db, employee_ids=goal_ids))
     units_target = sum(g["units_target"] for g in goals)
     units_month = sum(g["units_month"] for g in goals)
 
@@ -176,7 +179,7 @@ def cockpit(
         "overdue_follow_ups": overdue_follow_ups,
         "products": product_ranking(db, start, end, scope, limit=5),
         "funnel": funnel_overview(db, scope),
-        "alerts": team_alerts(db, employee_ids=goal_ids),
+        "alerts": ohne_verborgene(db, user, team_alerts(db, employee_ids=goal_ids)),
     }
 
 

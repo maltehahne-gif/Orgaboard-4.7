@@ -304,9 +304,6 @@
 }
 
 
-
-
-
 .delete-icon {
   color: #ff6b6b;
   margin-left: 6px;
@@ -518,7 +515,6 @@
 }
 
 
-
 /* ========================================
    Sprechblase
    ======================================== */
@@ -581,7 +577,6 @@
     opacity: 1;
   }
 }
-
 
 
 /* ========================================
@@ -662,7 +657,6 @@
     transform: translateX(-15px) scaleX(1.2);
   }
 }
-
 
 
 /* ========================================
@@ -852,7 +846,6 @@
 }
 
 
-
 /* Staubwolke beim Wegrennen */
 
 .dirt-dust-cloud {
@@ -897,7 +890,6 @@
 }
 
 
-
 @keyframes dirt-scared-hop {
 
   from {
@@ -912,7 +904,6 @@
       rotate(7deg);
   }
 }
-
 
 
 /* Die Krümel fliehen etwas schneller als Dustin */
@@ -937,7 +928,6 @@
   animation:
     dirt-run-three 15.7s linear infinite;
 }
-
 
 
 @keyframes dirt-run-one {
@@ -982,7 +972,6 @@
 }
 
 
-
 /* ========================================
    Tablet
    ======================================== */
@@ -1011,7 +1000,6 @@
   }
 
 }
-
 
 
 /* ========================================
@@ -1083,7 +1071,6 @@
 }
 
 
-
 /*
   Wichtig:
   niemals Login-Elemente blockieren
@@ -1093,7 +1080,6 @@
 .login-dust-chase-stage * {
   pointer-events: none !important;
 }
-
 
 
 /* Animation abschalten, falls Benutzer dies wünscht */
@@ -1446,7 +1432,6 @@
     top: -14px !important;
   }
 }
-
 
 
 /* ==========================================================
@@ -1910,7 +1895,6 @@
 }
 
 
-
 /* ==========================================================
    KRÜMEL / STAUB
    ========================================================== */
@@ -1987,7 +1971,6 @@
 }
 
 
-
 /* Körper Krümel */
 
 .v6-creature {
@@ -2062,7 +2045,6 @@
 }
 
 
-
 /* Augen */
 
 .v6-eye {
@@ -2131,7 +2113,6 @@
 
   background: #30231a;
 }
-
 
 
 /* Arme */
@@ -2210,7 +2191,6 @@
     transform: rotate(38deg);
   }
 }
-
 
 
 /* Beine */
@@ -2325,7 +2305,6 @@
 }
 
 
-
 /* ==========================================================
    TABLET
    ========================================================== */
@@ -2348,7 +2327,6 @@
   }
 
 }
-
 
 
 /* ==========================================================
@@ -2375,7 +2353,6 @@
 }
 
 
-
 /* Nutzer mit deaktivierter Bewegung */
 
 @media (prefers-reduced-motion:reduce) {
@@ -2388,7 +2365,6 @@
 /* ==========================================================
    END V6
    ========================================================== */
-
 
 
 /* =========================================================
@@ -2878,7 +2854,6 @@ body:has(.v7-login-scene) form {
 /* =========================================================
    END DUSTIN V7
    ========================================================= */
-
 
 
 /* ORGABOARD DUSTIN V8 START */
@@ -3526,7 +3501,6 @@ body:has(.v7-login-scene) form {
 }
 
 
-
 /* =========================================================
    ORGABOARD LOGIN – DUSTIN V7 CLEAN CINEMATIC
    ========================================================= */
@@ -4016,7 +3990,6 @@ body:has(.v7-login-scene) form {
    ========================================================= */
 
 
-
 /* ORGABOARD LOGIN PASSWORD RESET START */
 
 
@@ -4202,7 +4175,6 @@ body:has(.v7-login-scene) form {
 
 
 /* ORGABOARD LOGIN PASSWORD RESET END */
-
 
 
 /* ===== EINFACHER PRODUKTKATALOG ===== */
@@ -4429,7 +4401,6 @@ body:has(.v7-login-scene) form {
 }
 
 
-
 /* ORGABOARD FAST SALE SEARCH START */
 
 .sale-fast-form{
@@ -4528,224 +4499,6 @@ body:has(.v7-login-scene) form {
   display:flex;
   flex-direction:column;
   gap:12px;
-}
-
-
-.sale-product-search{
-  display:flex;
-  align-items:center;
-  gap:10px;
-
-  min-height:48px;
-
-  padding:
-    0 12px;
-
-  border:
-    1px solid
-    rgba(83,226,156,.30);
-
-  border-radius:12px;
-
-  background:
-    rgba(4,18,17,.88);
-}
-
-
-.sale-product-search:focus-within{
-  border-color:
-    rgba(64,235,147,.72);
-
-  box-shadow:
-    0 0 0 3px
-    rgba(55,225,139,.10);
-}
-
-
-.sale-product-search svg{
-  flex:0 0 auto;
-  opacity:.65;
-}
-
-
-.sale-product-search input{
-  width:100%;
-
-  border:0 !important;
-  outline:0 !important;
-
-  background:
-    transparent !important;
-
-  box-shadow:
-    none !important;
-}
-
-
-.sale-search-clear{
-  width:31px;
-  height:31px;
-
-  flex:0 0 auto;
-
-  padding:0;
-
-  display:grid;
-  place-items:center;
-
-  border:0 !important;
-
-  background:
-    transparent !important;
-}
-
-
-.sale-product-results{
-  max-height:350px;
-
-  overflow:auto;
-
-  display:flex;
-  flex-direction:column;
-
-  border:
-    1px solid
-    rgba(83,226,156,.20);
-
-  border-radius:13px;
-
-  background:#071d1a;
-
-  box-shadow:
-    0 18px 42px
-    rgba(0,0,0,.35);
-}
-
-
-.sale-product-result{
-  width:100%;
-
-  display:grid;
-
-  grid-template-columns:
-    40px
-    minmax(0,1fr)
-    auto;
-
-  align-items:center;
-
-  gap:12px;
-
-  padding:
-    13px 14px;
-
-  border:0;
-  border-bottom:
-    1px solid
-    rgba(255,255,255,.06);
-
-  border-radius:0;
-
-  background:
-    transparent;
-
-  color:inherit;
-
-  text-align:left;
-
-  cursor:pointer;
-}
-
-
-.sale-product-result:last-child{
-  border-bottom:0;
-}
-
-
-.sale-product-result:hover{
-  background:
-    rgba(47,218,132,.10);
-}
-
-
-.sale-result-icon{
-  width:38px;
-  height:38px;
-
-  display:grid;
-  place-items:center;
-
-  border-radius:11px;
-
-  background:
-    rgba(48,224,136,.12);
-
-  color:#48e395;
-}
-
-
-.sale-result-content{
-  min-width:0;
-
-  display:flex;
-  flex-direction:column;
-
-  gap:3px;
-}
-
-
-.sale-result-content strong{
-  font-size:14px;
-}
-
-
-.sale-result-category{
-  color:#48df94;
-
-  font-size:11px;
-  font-weight:750;
-
-  text-transform:uppercase;
-
-  letter-spacing:.035em;
-}
-
-
-.sale-result-content small{
-  max-width:580px;
-
-  overflow:hidden;
-
-  color:
-    rgba(229,241,237,.60);
-
-  font-size:12px;
-
-  white-space:nowrap;
-  text-overflow:ellipsis;
-}
-
-
-.sale-result-price{
-  padding-left:12px;
-
-  color:#48e395;
-
-  font-weight:800;
-
-  white-space:nowrap;
-}
-
-
-.sale-product-no-result{
-  padding:18px;
-
-  color:
-    rgba(224,237,233,.65);
-
-  font-size:13px;
-
-  text-align:center;
 }
 
 
@@ -4926,21 +4679,6 @@ body:has(.v7-login-scene) form {
   }
 
 
-  .sale-product-result{
-    grid-template-columns:
-      38px
-      minmax(0,1fr);
-  }
-
-
-  .sale-result-price{
-    grid-column:
-      2;
-
-    padding-left:0;
-  }
-
-
   .sale-product-values{
     grid-template-columns:
       1fr 1fr;
@@ -4955,15 +4693,9 @@ body:has(.v7-login-scene) form {
     grid-template-columns:1fr;
   }
 
-
-  .sale-product-result{
-    padding:12px;
-  }
-
 }
 
 /* ORGABOARD FAST SALE SEARCH END */
-
 
 
 /* ORGABOARD APPOINTMENT DELETE START */
@@ -6088,83 +5820,6 @@ body:has(.v7-login-scene) form {
   justify-content:space-between;
 }
 
-.completion-search{
-  height:43px;
-  padding:0 11px;
-  border:1px solid rgba(255,255,255,.1);
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  background:rgba(255,255,255,.035);
-}
-
-.completion-search input{
-  width:100%;
-  min-width:0;
-  border:0!important;
-  padding:0!important;
-  background:transparent!important;
-  outline:0;
-}
-
-.completion-search-results{
-  max-height:230px;
-  margin-top:5px;
-  overflow:auto;
-  border:1px solid rgba(255,255,255,.09);
-  border-radius:11px;
-  background:#10191d;
-}
-
-.completion-search-results>button{
-  width:100%;
-  min-height:51px;
-  padding:8px 10px;
-  border:0;
-  border-bottom:1px solid rgba(255,255,255,.06);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  text-align:left;
-  background:transparent;
-  color:inherit;
-  cursor:pointer;
-}
-
-.completion-search-results>button:hover{
-  background:rgba(32,198,107,.07);
-}
-
-.completion-search-results>button span{
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-}
-
-.completion-search-results strong{
-  font-size:12px;
-}
-
-.completion-search-results small{
-  color:rgba(255,255,255,.43);
-  font-size:10px;
-}
-
-.completion-search-results b{
-  white-space:nowrap;
-  color:#67e797;
-  font-size:11px;
-}
-
-.completion-no-result{
-  padding:13px;
-  text-align:center;
-  color:rgba(255,255,255,.45);
-  font-size:11px;
-}
-
 .completion-none{
   padding:22px 10px 5px;
   text-align:center;
@@ -6299,54 +5954,7 @@ body:has(.v7-login-scene) form {
   box-shadow:
     0 0 0 3px rgba(32,198,107,.08)
     !important;
-}
-
-/* Produktsuche: schwarze Schrift endgültig verhindern */
-.appointment-completion .completion-search{
-  min-height:43px;
-  padding:0 11px;
-
-  border:1px solid rgba(255,255,255,.11);
-  border-radius:10px;
-
-  background:#0d181c;
-
-  transition:
-    border-color .16s ease,
-    background .16s ease,
-    box-shadow .16s ease;
-}
-
-.appointment-completion .completion-search:focus-within{
-  border-color:rgba(53,210,118,.58);
-  background:#101e22;
-
-  box-shadow:
-    0 0 0 3px rgba(32,198,107,.08);
-}
-
-.appointment-completion .completion-search svg{
-  flex:0 0 auto;
-  color:rgba(255,255,255,.43);
-}
-
-.appointment-completion .completion-search input{
-  min-height:40px !important;
-  padding:0 !important;
-
-  border:0 !important;
-  border-radius:0 !important;
-
-  background:transparent !important;
-
-  color:#f4f7f5 !important;
-  -webkit-text-fill-color:#f4f7f5 !important;
-
-  box-shadow:none !important;
-  caret-color:#66e99b;
-}
-
-/* Chrome/Safari Autofill ebenfalls dunkel halten */
+}/* Chrome/Safari Autofill ebenfalls dunkel halten */
 .appointment-completion input:-webkit-autofill,
 .appointment-completion input:-webkit-autofill:hover,
 .appointment-completion input:-webkit-autofill:focus{
@@ -6415,37 +6023,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
     );
 }
 
-/* Suchergebnisse moderner */
-.completion-search-results{
-  margin-top:6px;
-
-  border:
-    1px solid rgba(255,255,255,.09);
-
-  border-radius:11px;
-
-  background:#0d171b;
-
-  box-shadow:
-    0 15px 35px rgba(0,0,0,.24);
-}
-
-.completion-search-results>button{
-  color:#edf5f0 !important;
-}
-
-.completion-search-results>button strong{
-  color:#f1f6f3 !important;
-}
-
-.completion-search-results>button small{
-  color:rgba(255,255,255,.45) !important;
-}
-
-.completion-search-results>button b{
-  color:#65e898 !important;
-}
-
 /* Notizen bekommen mehr Abstand */
 .completion-form>label{
   margin-top:2px;
@@ -6471,13 +6048,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
 
   .appointment-completion textarea{
     font-size:16px;
-  }
-
-  .appointment-completion .completion-search input{
-    font-size:16px;
-  }
-
-}
+  }}
 
 /* ===== PHASE 3 KUNDEN DASHBOARD ===== */
 
@@ -8572,7 +8143,6 @@ input[type="number"]{
 /* ORGABOARD OPEN BLOCK1 END */
 
 
-
 /* ORGABOARD VERBESSERUNGEN BLOCK 1 */
 
 
@@ -8667,8 +8237,6 @@ textarea {
 
 
 }
-
-
 
 
 /* ===============================
@@ -8797,7 +8365,6 @@ textarea {
 }
 
 
-
 /* Icons */
 
 .sidebar svg{
@@ -8813,7 +8380,6 @@ textarea {
     scale(1.15);
 
 }
-
 
 
 /* Logout */
@@ -8846,7 +8412,6 @@ textarea {
 }
 
 
-
 /* sanfte Apple Animation */
 
 .sidebar,
@@ -8876,8 +8441,6 @@ to{
 }
 
 }
-
-
 
 
 /* =====================================
@@ -8961,7 +8524,6 @@ to{
 }
 
 
-
 /* Zeit links */
 
 .appointment-time{
@@ -8975,7 +8537,6 @@ to{
   color:white;
 
 }
-
 
 
 /* Status Punkt */
@@ -8999,7 +8560,6 @@ to{
 
 
 }
-
 
 
 /* Inhalt */
@@ -9033,7 +8593,6 @@ to{
 }
 
 
-
 /* nächster Termin */
 
 .appointment-next{
@@ -9053,7 +8612,6 @@ to{
 
 
 }
-
 
 
 /* Buttons */
@@ -9090,7 +8648,6 @@ to{
 }
 
 
-
 /* Animation */
 
 .appointment-card,
@@ -9124,9 +8681,6 @@ to{
  }
 
 }
-
-
-
 
 
 /* ============================================================================
@@ -11854,3 +11408,367 @@ to{
 .forecast-status-green{color:var(--green);border-color:var(--line-green);background:rgba(52,215,105,.1)}
 .forecast-status-yellow{color:var(--orange);border-color:#6a4a24;background:rgba(255,155,67,.1)}
 .forecast-status-red{color:var(--danger);border-color:#5a2a2a;background:rgba(255,99,99,.1)}
+
+
+/* ===== KONTO DEAKTIVIEREN UND ENDGÜLTIG LÖSCHEN =====
+
+   Zwei Aktionen, die nicht dasselbe tun – also dürfen sie auch nicht
+   gleich aussehen. Der Löschknopf trägt als einziger die Warnfarbe. */
+
+.sysadmin-kontoaktionen{
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+}
+
+.sysadmin-kontoaktionen button{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+
+  min-height:40px;
+}
+
+.sysadmin-loeschknopf{
+  margin-left:auto;
+
+  border-color:#7b3232 !important;
+  color:#ff9c9c !important;
+}
+
+.sysadmin-loeschknopf:hover:not(:disabled){
+  background:#351719 !important;
+}
+
+.sysadmin-loeschknopf:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+.sysadmin-loeschhinweis{
+  margin:0;
+  font-size:12.5px;
+  line-height:1.55;
+}
+
+.loeschdialog{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.loeschdialog p{
+  margin:0;
+  line-height:1.6;
+}
+
+.loeschdialog-liste{
+  margin:0;
+  padding:12px 14px 12px 30px;
+
+  border:1px solid #5a2a2a;
+  border-radius:11px;
+
+  background:rgba(255,99,99,.07);
+
+  color:#e6d5d5;
+  font-size:13px;
+  line-height:1.7;
+}
+
+/* Der gefährliche Knopf ist der einzige, der gefüllt rot ist – wer ihn
+   sucht, findet ihn, und wer ihn nicht sucht, klickt ihn nicht aus
+   Versehen. */
+.loeschdialog .form-actions .danger{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+
+  border:1px solid #a03c3c !important;
+  background:#7c2626 !important;
+  color:#ffe3e3 !important;
+  font-weight:650;
+}
+
+.loeschdialog .form-actions .danger:hover:not(:disabled){
+  background:#953030 !important;
+}
+
+.loeschdialog .form-actions .danger:disabled{
+  opacity:.6;
+  cursor:progress;
+}
+
+@media(max-width:700px){
+  .sysadmin-kontoaktionen button{
+    flex:1 1 100%;
+    justify-content:center;
+  }
+
+  .sysadmin-loeschknopf{
+    margin-left:0;
+  }
+}
+
+
+/* ===== PRODUKTAUSWAHL =====
+
+   Gehört zu components/ProductCombobox.tsx. Die Liste hängt im Portal am
+   Body und ist `fixed` positioniert – Höhe, Breite und Ausrichtung setzt
+   die Komponente, weil sie den sichtbaren Bereich kennt. Hier steht nur,
+   wie sie aussieht.
+
+   Ein einziger z-index, und der reicht über den Dialog (der liegt bei
+   1000). Höhere Werte wären ein Wettlauf statt einer Lösung – dass die
+   Liste über allem liegt, kommt vom Portal, nicht von der Zahl. */
+
+.produktwahl-label{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+
+  min-width:0;
+}
+
+.produktwahl{
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  min-width:0;
+  min-height:48px;
+
+  padding:0 12px;
+
+  border:1px solid rgba(83,226,156,.30);
+  border-radius:12px;
+
+  background:rgba(4,18,17,.88);
+}
+
+.produktwahl:focus-within{
+  border-color:rgba(64,235,147,.72);
+  box-shadow:0 0 0 3px rgba(55,225,139,.10);
+}
+
+.produktwahl>svg{
+  flex:0 0 auto;
+  opacity:.65;
+}
+
+.produktwahl input{
+  width:100%;
+  min-width:0;
+
+  border:0 !important;
+  padding:0 !important;
+  outline:0 !important;
+
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+.produktwahl-leeren{
+  width:31px;
+  height:31px;
+  flex:0 0 auto;
+
+  padding:0;
+
+  display:grid;
+  place-items:center;
+
+  border:0 !important;
+  background:transparent !important;
+}
+
+/* --- die Liste selbst --- */
+
+.produktwahl-liste{
+  position:fixed;
+  z-index:1200;
+
+  overflow-y:auto;
+  overflow-x:hidden;
+
+  /* Ist die Liste am Ende, soll nicht plötzlich die Seite dahinter
+     weiterscrollen – auf dem Telefon der Unterschied zwischen „Liste
+     durchsehen“ und „Formular verloren“. */
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+
+  border:1px solid rgba(83,226,156,.22);
+  border-radius:13px;
+
+  background:#071d1a;
+
+  box-shadow:0 18px 42px rgba(0,0,0,.45);
+}
+
+.produktwahl-zeile{
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr) auto;
+  align-items:center;
+  gap:12px;
+
+  padding:11px 13px;
+
+  border-bottom:1px solid rgba(255,255,255,.06);
+
+  color:inherit;
+  text-align:left;
+
+  cursor:pointer;
+}
+
+.produktwahl-zeile:last-child{
+  border-bottom:0;
+}
+
+.produktwahl-zeile[data-markiert="ja"]{
+  background:rgba(47,218,132,.12);
+}
+
+.produktwahl-symbol{
+  width:36px;
+  height:36px;
+
+  display:grid;
+  place-items:center;
+
+  border-radius:11px;
+
+  background:rgba(48,224,136,.12);
+  color:#48e395;
+}
+
+.produktwahl-text{
+  min-width:0;
+
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+/* Lange Namen wie „Kobold VK7 + SP7 Saugwischer + EB7“ dürfen umbrechen,
+   aber nicht endlos: zwei Zeilen, danach Auslassungspunkte. Die Zeile wird
+   dadurch höher – gewollt, sie soll nicht überlaufen. */
+.produktwahl-name{
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+
+  /* Ohne das sprengt ein einzelnes langes Wort ohne Leerzeichen die
+     Spalte, statt umzubrechen. */
+  overflow-wrap:anywhere;
+
+  font-size:14px;
+  font-weight:650;
+  line-height:1.35;
+}
+
+.produktwahl-kategorie{
+  overflow:hidden;
+
+  color:#48df94;
+  font-size:11px;
+  font-weight:700;
+  line-height:1.4;
+
+  letter-spacing:.03em;
+  text-transform:uppercase;
+
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+.produktwahl-preis{
+  align-self:center;
+
+  /* Einzeilig: „536,00 €“ über zwei Zeilen zu brechen sieht nach Fehler
+     aus, und „Preis nicht hinterlegt“ über drei macht die Zeile doppelt so
+     hoch wie nötig. Platz nimmt er dem Namen nicht weg – dessen Spalte ist
+     minmax(0,1fr) und gibt nach; zu eng wird es ohnehin erst unterhalb der
+     Telefon-Grenze, und dort steht der Preis in einer eigenen Zeile. */
+  white-space:nowrap;
+
+  color:#48e395;
+  font-size:13px;
+  font-weight:750;
+  line-height:1.3;
+
+  text-align:right;
+}
+
+.produktwahl-preis.ist-offen{
+  color:rgba(226,238,234,.5);
+  font-size:11.5px;
+  font-weight:600;
+}
+
+.produktwahl-leer{
+  margin:0;
+  padding:18px 14px;
+
+  color:rgba(224,237,233,.65);
+  font-size:13px;
+  text-align:center;
+}
+
+/* --- Telefon --- */
+
+@media(max-width:700px){
+
+  .produktwahl{
+    min-height:50px;
+  }
+
+  .produktwahl input{
+    /* Unter 16px zoomt iOS beim Antippen in das Feld hinein und verschiebt
+       damit die halbe Seite. */
+    font-size:16px;
+  }
+
+  .produktwahl-zeile{
+    grid-template-columns:34px minmax(0,1fr);
+    /* Der Preis rutscht unter den Namen statt die Spalte zu quetschen. */
+    grid-template-areas:
+      "symbol text"
+      ".      preis";
+
+    gap:4px 10px;
+    /* Fingergroß – 44px ist die kleinste Fläche, die sich sicher trifft. */
+    min-height:56px;
+    padding:10px 12px;
+  }
+
+  .produktwahl-symbol{
+    grid-area:symbol;
+    align-self:start;
+
+    width:32px;
+    height:32px;
+  }
+
+  .produktwahl-text{
+    grid-area:text;
+  }
+
+  .produktwahl-preis{
+    grid-area:preis;
+
+    max-width:100%;
+    text-align:left;
+    /* In der eigenen Zeile darf er umbrechen – hier ist Platz das knappere
+       Gut als die Zeilenzahl. */
+    white-space:normal;
+  }
+
+  .produktwahl-kategorie{
+    /* Auf schmalen Geräten lieber umbrechen als abschneiden. */
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+}

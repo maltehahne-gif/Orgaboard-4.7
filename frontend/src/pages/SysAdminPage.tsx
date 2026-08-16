@@ -7,11 +7,16 @@ import {
   Settings2,
   ShieldCheck,
   Trash2,
+  UserCheck,
   UserCog,
   Users,
+  UserX,
 } from 'lucide-react'
 import {api, money} from '../lib/api'
+import {Modal} from '../components/Modal'
 import {useToast} from '../components/Toast'
+import {useAuth} from '../lib/auth'
+import {darfKontenLoeschen} from '../lib/roles'
 import type {Role} from '../types'
 
 type Reiter = 'uebersicht' | 'benutzer' | 'struktur' | 'einstellungen'
@@ -196,7 +201,13 @@ function Kennzahlen({toast}: {toast: ToastFn}) {
 /* ------------------------------------------------------ Benutzerverwaltung */
 
 function Benutzerverwaltung({toast}: {toast: ToastFn}) {
+  const {me} = useAuth()
   const [liste, setListe] = useState<Benutzer[] | null>(null)
+  // Welches Konto gerade zur Löschung ansteht. Bewusst ein eigener Dialog
+  // statt window.confirm: eine Aktion ohne Rückweg braucht den vollen Satz
+  // und einen Knopf, der aussieht wie das, was er tut.
+  const [loeschkandidat, setLoeschkandidat] = useState<Benutzer | null>(null)
+  const [loescht, setLoescht] = useState(false)
   const [rollen, setRollen] = useState<RolleOption[]>([])
   const [org, setOrg] = useState<Org | null>(null)
   const [offen, setOffen] = useState<string | null>(null)
@@ -258,6 +269,29 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
       setDetail(d => (d ? {...d, permissions: rechte} : d))
     } catch (err) {
       meldung(toast, err, 'Recht konnte nicht gesetzt werden')
+    }
+  }
+
+  /** Konto deaktivieren oder wieder freigeben – umkehrbar, nichts geht fort. */
+  async function aktivSetzen(id: string, aktiv: boolean) {
+    await speichern(id, {is_active: aktiv})
+  }
+
+  /** Konto endgültig löschen – ein anderer Weg als das Deaktivieren oben. */
+  async function endgueltigLoeschen() {
+    if (!loeschkandidat || loescht) return
+    setLoescht(true)
+    try {
+      await api(`/sysadmin/users/${loeschkandidat.id}`, {method: 'DELETE'})
+      toast(`${loeschkandidat.full_name} wurde endgültig gelöscht`)
+      setLoeschkandidat(null)
+      setOffen(null)
+      setDetail(null)
+      laden()
+    } catch (err) {
+      meldung(toast, err, 'Löschen fehlgeschlagen')
+    } finally {
+      setLoescht(false)
     }
   }
 
@@ -407,7 +441,7 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
                           </label>
                           <label>Status
                             <select value={detail.is_active ? 'ja' : 'nein'}
-                              onChange={e => speichern(b.id, {is_active: e.target.value === 'ja'})}>
+                              onChange={e => aktivSetzen(b.id, e.target.value === 'ja')}>
                               <option value="ja">aktiv</option>
                               <option value="nein">deaktiviert</option>
                             </select>
@@ -451,9 +485,48 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
                           )}
                         </div>
 
-                        <button type="button" onClick={() => passwortNeu(b.id, b.full_name)}>
-                          <KeyRound size={15} /> Neues Startpasswort
-                        </button>
+                        <div className="sysadmin-kontoaktionen">
+                          <button type="button" onClick={() => passwortNeu(b.id, b.full_name)}>
+                            <KeyRound size={15} /> Neues Startpasswort
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => aktivSetzen(b.id, !detail.is_active)}
+                            title={detail.is_active
+                              ? 'Anmeldung sperren – das Konto bleibt bestehen'
+                              : 'Anmeldung wieder freigeben'}
+                          >
+                            {detail.is_active
+                              ? <><UserX size={15} /> Konto deaktivieren</>
+                              : <><UserCheck size={15} /> Konto aktivieren</>}
+                          </button>
+
+                          {/* Getrennt vom Deaktivieren – und optisch als
+                              das gekennzeichnet, was es ist. Das eigene
+                              Konto steht nicht zur Wahl; der Server lehnt
+                              es ohnehin ab. */}
+                          <button
+                            type="button"
+                            className="sysadmin-loeschknopf"
+                            disabled={b.id === me?.id || !darfKontenLoeschen(me?.role)}
+                            title={b.id === me?.id
+                              ? 'Das eigene Konto lässt sich nicht löschen'
+                              : !darfKontenLoeschen(me?.role)
+                                ? 'Konten endgültig löschen darf nur ein Systemadministrator'
+                                : 'Konto dauerhaft entfernen – nicht rückgängig zu machen'}
+                            onClick={() => setLoeschkandidat(detail)}
+                          >
+                            <Trash2 size={15} /> Konto endgültig löschen
+                          </button>
+                        </div>
+
+                        <p className="muted sysadmin-loeschhinweis">
+                          <strong>Deaktivieren</strong> sperrt nur die Anmeldung – das Konto und
+                          alle Zuordnungen bleiben und lassen sich jederzeit wieder freigeben.{' '}
+                          <strong>Endgültig löschen</strong> entfernt das Konto samt Zugangsdaten;
+                          Verkäufe und Kunden bleiben als Unternehmenshistorie erhalten.
+                        </p>
                       </div>
                     )}
                   </td>
@@ -463,6 +536,40 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
           </tbody>
         </table>
       </div>
+
+      {loeschkandidat && (
+        <Modal title="Benutzerkonto endgültig löschen?" onClose={() => setLoeschkandidat(null)}>
+          <div className="loeschdialog">
+            <p>
+              Das Konto von <strong>{loeschkandidat.full_name}</strong> ({loeschkandidat.email})
+              wird dauerhaft gelöscht. <strong>Diese Aktion kann nicht rückgängig gemacht
+              werden.</strong>
+            </p>
+            <ul className="loeschdialog-liste">
+              <li>Zugangsdaten, Telefonnummer, Einzelrechte und Geräteanmeldungen werden entfernt.</li>
+              <li>Eine noch offene Sitzung dieses Kontos endet sofort.</li>
+              <li>Kunden, Verkäufe und Termine bleiben als Unternehmenshistorie erhalten.</li>
+            </ul>
+            <p className="muted">
+              Soll die Person nur nicht mehr arbeiten können, ist <strong>Konto deaktivieren</strong>{' '}
+              der richtige Weg – der ist umkehrbar.
+            </p>
+            <div className="form-actions">
+              <button type="button" onClick={() => setLoeschkandidat(null)}>
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                className="danger"
+                disabled={loescht}
+                onClick={endgueltigLoeschen}
+              >
+                <Trash2 size={15} /> {loescht ? 'Wird gelöscht…' : 'Endgültig löschen'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   )
 }
