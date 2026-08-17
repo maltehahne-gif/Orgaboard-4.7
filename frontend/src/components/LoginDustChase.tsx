@@ -84,6 +84,9 @@ export function LoginDustChase() {
       <div className="dustin-layer dustin-layer-back" />
       <div className="dustin-layer dustin-layer-mid" />
 
+      {/* Haengelampe rechts oben - die warme Lichtquelle aus der Vorlage. */}
+      <div className="dustin-lampe" />
+
       {/* Die Buehne gibt die Perspektive vor, die Kamera faehrt darin nach
           vorn, und erst darin sitzt das Bild. Der gruene Schein des
           Staubsaugers liegt mit im Kamerakasten - so bleibt er waehrend
@@ -110,6 +113,20 @@ export function LoginDustChase() {
             <div className="dustin-beam" />
           </div>
         </div>
+      </div>
+
+      {/*
+        Der Schriftzug an der Wand. Er steht im Baum nach der Figur, weil das
+        Bildmaterial einen eigenen dunklen Hintergrund mitbringt und ihn sonst
+        verdeckt. Er sitzt rechts aussen, wo die Figur nicht hinreicht - dort
+        liest er sich als das, was er sein soll: Leuchtschrift an der Wand
+        dahinter.
+      */}
+      <div className="dustin-wand">
+        <span className="dustin-wand-marke" />
+        <span>Ordnung.</span>
+        <span>Struktur.</span>
+        <span>Erfolg.</span>
       </div>
 
       {/* Licht, das der Staubsauger auf den Boden wirft. */}

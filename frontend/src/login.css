@@ -63,7 +63,7 @@
   min-height: 100dvh !important;
 
   display: grid !important;
-  grid-template-columns: minmax(0, 44%) minmax(0, 56%) !important;
+  grid-template-columns: minmax(0, 41%) minmax(0, 59%) !important;
   align-items: center !important;
   place-items: center !important;
 
@@ -116,6 +116,90 @@
   */
   pointer-events: none;
   user-select: none;
+}
+
+
+/* --- Raum: Lampe und Wandschrift ---------------------------------------- */
+
+/*
+   Beides sitzt hinter der Figur und faehrt die Kamerafahrt nicht mit: es
+   ist die Wand, nicht der Vordergrund. In der Vorlage haengt rechts oben
+   eine Lampe mit warmem Licht, darunter steht der Schriftzug in Gruen.
+*/
+.dustin-lampe {
+  position: absolute;
+  top: 0;
+  right: 2.5%;
+  width: 15%;
+  height: 30%;
+
+  pointer-events: none;
+
+  /*
+     Zwei Teile: der helle Kern im Schirm und der warme Kegel darunter. Ein
+     einzelner weicher Fleck saehe aus wie ein Fehler im Bild, nicht wie
+     Licht, das von irgendwo kommt.
+  */
+  background:
+    radial-gradient(58% 62% at 50% 30%, rgba(255, 206, 138, 0.30) 0%, rgba(255, 184, 104, 0.10) 46%, transparent 74%),
+    radial-gradient(20% 9% at 50% 15%, rgba(255, 240, 206, 0.92) 0%, rgba(255, 214, 150, 0.55) 55%, transparent 78%);
+}
+
+/* Die Aufhaengung - ein feiner Strich, sonst schwebt das Licht. */
+.dustin-lampe::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 13%;
+  background: linear-gradient(180deg, rgba(198, 210, 205, 0.55), rgba(198, 210, 205, 0.16));
+}
+
+.dustin-wand {
+  position: absolute;
+  top: 19%;
+  right: 8.5%;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+
+  pointer-events: none;
+  user-select: none;
+
+  color: rgba(74, 230, 138, 0.42);
+  font-size: clamp(14px, 1.35vw, 23px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.24;
+  text-align: left;
+  white-space: nowrap;
+
+  /* Neon: der Schein kommt aus dem Text selbst, nicht aus einem Kasten. */
+  text-shadow:
+    0 0 9px rgba(52, 215, 105, 0.55),
+    0 0 30px rgba(52, 215, 105, 0.3);
+
+  /* Leicht gekippt wie an einer Wand im Raum. */
+  transform: perspective(760px) rotateY(-15deg);
+  transform-origin: right center;
+}
+
+/* Der Umriss der Marke ueber dem Schriftzug - in der Vorlage haengt er
+   dort als Leuchtzeichen an derselben Wand. */
+.dustin-wand-marke {
+  width: clamp(30px, 2.6vw, 44px);
+  height: clamp(30px, 2.6vw, 44px);
+
+  margin-bottom: 10px;
+
+  border: 2px solid rgba(74, 230, 138, 0.34);
+  border-radius: 11px;
+
+  box-shadow:
+    0 0 12px rgba(52, 215, 105, 0.28),
+    inset 0 0 10px rgba(52, 215, 105, 0.18);
 }
 
 
@@ -256,10 +340,16 @@
 .dustin-media,
 .dustin-beam {
   position: absolute;
-  right: -2%;
+  right: -5%;
   bottom: 1%;
 
-  width: min(74%, 130vh);
+  /*
+     Groesse und Lage stammen aus der Vorlage: die Figur reicht dort von
+     etwa 19 % bis 85 % der Bildhoehe und steht frei rechts neben der
+     Karte. Die zweite Groesse in vh haelt sie auf flachen Bildschirmen
+     davon ab, oben und unten aus dem Bild zu laufen.
+  */
+  width: min(79%, 138vh);
 }
 
 .dustin-media {
@@ -478,20 +568,40 @@
    Anmeldekarte
    ============================================================================ */
 
+/*
+   Alle Masse stammen aus der Bildvorlage und sind auf deren Kartenbreite von
+   556 px bezogen. Deshalb steht hier bewusst kein `gap` am Formular, sondern
+   je Element ein eigener Abstand: die Vorlage hat zwischen Logo und
+   Ueberschrift einen anderen Abstand als zwischen zwei Feldern, und ein
+   gemeinsamer Grundabstand mit Korrekturen daran waere nur schwerer zu
+   lesen.
+*/
+
+.login-spalte {
+  position: relative;
+  z-index: 20;
+
+  width: min(556px, 100%);
+
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .login-page .login-card {
   position: relative !important;
   z-index: 20 !important;
 
-  width: min(430px, 100%) !important;
+  width: 100% !important;
   margin: 0 !important;
-  padding: clamp(26px, 2.6vw, 38px) !important;
+  padding: 56px !important;
 
   display: flex !important;
   flex-direction: column !important;
-  gap: 15px !important;
+  gap: 0 !important;
 
   border: 1px solid rgba(150, 232, 186, 0.16) !important;
-  border-radius: 24px !important;
+  border-radius: 28px !important;
 
   /* Dunkle, durchscheinende Flaeche - die Szene bleibt dahinter zu ahnen. */
   background:
@@ -525,10 +635,34 @@
   position: absolute;
   inset: 0 0 auto;
   height: 1px;
-  border-radius: 24px 24px 0 0;
+  border-radius: 28px 28px 0 0;
   background:
     linear-gradient(90deg, transparent 8%, rgba(154, 246, 197, 0.42) 50%, transparent 92%);
   pointer-events: none;
+}
+
+
+/* --- Marke ------------------------------------------------------------- */
+
+.login-page .login-card .brand {
+  gap: 14px;
+  padding: 0;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #f6faf8;
+}
+
+.login-page .login-card .brand-mark {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  box-shadow: 0 10px 26px -10px rgba(52, 215, 105, 0.75);
+}
+
+.login-page .login-card .brand-mark svg {
+  width: 24px;
+  height: 24px;
 }
 
 .login-page .login-card > svg,
@@ -536,42 +670,119 @@
   display: block;
 }
 
+
+/* --- Ueberschrift ------------------------------------------------------- */
+
 .login-page .login-card h1 {
-  margin: 6px 0 0 !important;
-  font-size: clamp(25px, 2.4vw, 31px);
-  font-weight: 700;
-  letter-spacing: -0.022em;
-  color: #f4faf7;
+  margin: 46px 0 0 !important;
+
+  /*
+     In der Vorlage steht "Willkommen zurück" auf einer Zeile. Die
+     Obergrenze ist deshalb genau so gewaehlt, dass die Zeile in die
+     Spaltenbreite der Karte passt - groesser gesetzt bricht sie um, und
+     zwei Zeilen verschieben die ganze Karte nach unten.
+  */
+  font-size: clamp(28px, 2.3vw, 38px);
+  font-weight: 800;
+  line-height: 1.14;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  color: #f7fbf9;
+}
+
+/* In der Vorlage steht nur das zweite Wort in Gruen. */
+.login-page .login-card h1 .login-akzent {
+  color: #3ddc74;
 }
 
 .login-page .login-card > p {
-  margin: 0 !important;
-  color: rgba(206, 224, 216, 0.7);
-  font-size: 14px;
+  margin: 14px 0 0 !important;
+  max-width: 34ch;
+
+  color: rgba(196, 213, 206, 0.72);
+  font-size: 16px;
   line-height: 1.55;
 }
 
-.login-page .login-card label {
+
+/* --- Felder ------------------------------------------------------------- */
+
+.login-page .login-card label.login-feld {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 
-  font-size: 12px;
+  margin-top: 26px;
+
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
-  color: rgba(186, 208, 199, 0.78);
+  letter-spacing: normal;
+  text-transform: none;
+  color: rgba(215, 228, 222, 0.9);
+}
+
+/* Der erste Feldblock steht weiter unter dem Fliesstext als die folgenden
+   untereinander. */
+.login-page .login-card > p + label.login-feld,
+.login-page .login-card > .login-feld:first-of-type {
+  margin-top: 36px;
+}
+
+/*
+   Rahmen, Fuellung und Rundung sitzen auf der Huelle, nicht am Eingabefeld -
+   nur so liegen Symbol und Feld in einer gemeinsamen Flaeche, statt dass
+   das Symbol daneben klebt.
+*/
+.login-page .login-card .login-eingabe {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  height: 52px;
+  padding: 0 16px;
+
+  border: 1px solid rgba(140, 190, 170, 0.2);
+  border-radius: 12px;
+
+  background: rgba(6, 14, 13, 0.62);
+
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.login-page .login-card .login-eingabe > svg {
+  flex: 0 0 auto;
+  color: rgba(163, 187, 178, 0.62);
+}
+
+.login-page .login-card .login-eingabe:hover {
+  border-color: rgba(150, 210, 182, 0.32);
+}
+
+.login-page .login-card .login-eingabe:focus-within {
+  border-color: rgba(52, 215, 105, 0.62);
+  background: rgba(8, 20, 17, 0.78);
+  box-shadow:
+    0 0 0 3px rgba(52, 215, 105, 0.14),
+    inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.login-page .login-card .login-eingabe:focus-within > svg {
+  color: rgba(90, 226, 140, 0.9);
 }
 
 .login-page .login-card input {
   width: 100%;
+  min-width: 0;
 
-  padding: 13px 15px !important;
+  height: 100%;
+  padding: 0 !important;
 
-  border: 1px solid rgba(140, 190, 170, 0.2) !important;
-  border-radius: 13px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
 
-  background: rgba(6, 14, 13, 0.62) !important;
+  background: transparent !important;
 
   color: #f2f7f4 !important;
   font: inherit;
@@ -581,24 +792,12 @@
   text-transform: none;
 
   outline: none;
-
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  box-shadow: none !important;
 }
 
 .login-page .login-card input::placeholder {
   color: rgba(170, 190, 182, 0.42);
-}
-
-.login-page .login-card input:hover {
-  border-color: rgba(150, 210, 182, 0.32) !important;
-}
-
-.login-page .login-card input:focus {
-  border-color: rgba(52, 215, 105, 0.62) !important;
-  background: rgba(8, 20, 17, 0.78) !important;
-  box-shadow:
-    0 0 0 3px rgba(52, 215, 105, 0.14),
-    inset 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+  font-weight: 400;
 }
 
 /* Fuellvorschlaege des Browsers sonst hellblau auf hell. */
@@ -609,31 +808,158 @@
   caret-color: #f2f7f4;
 }
 
-.login-page .login-card .primary {
-  margin-top: 4px;
-  padding: 14px 18px !important;
+/* Auge zum Anzeigen des Passworts. */
+.login-page .login-card .login-augen {
+  flex: 0 0 auto;
 
-  border: 1px solid rgba(74, 226, 124, 0.55) !important;
-  border-radius: 13px !important;
+  width: 30px;
+  height: 30px;
+  padding: 0 !important;
 
-  background: linear-gradient(180deg, #2fbf5d 0%, #1c9046 100%) !important;
+  display: grid;
+  place-items: center;
+
+  border: 0 !important;
+  border-radius: 8px !important;
+
+  background: transparent !important;
+  color: rgba(163, 187, 178, 0.68) !important;
+}
+
+.login-page .login-card .login-augen:hover {
+  color: rgba(214, 232, 224, 0.95) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+
+/* --- Passwort vergessen ------------------------------------------------- */
+
+.login-page .login-card .login-forgot-password {
+  align-self: flex-end;
+
+  margin-top: 16px;
+  padding: 0 !important;
+
+  border: 0 !important;
+  background: transparent !important;
+
+  color: #3ddc74 !important;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.login-page .login-card .login-forgot-password:hover {
+  color: #63ea94 !important;
+  text-decoration: underline;
+}
+
+
+/* --- Angemeldet bleiben -------------------------------------------------- */
+
+.login-page .login-card label.login-merken {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+
+  margin-top: 26px;
 
   font-size: 15px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  color: rgba(224, 236, 231, 0.88);
+
+  cursor: pointer;
+}
+
+/*
+   Das echte Kaestchen bleibt im Baum stehen und nur unsichtbar: nur so
+   bleiben Tastatur, Vorlesehilfe und der Klick auf die Beschriftung
+   erhalten. Sichtbar ist das Feld daneben.
+*/
+.login-page .login-card label.login-merken > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.login-page .login-card .login-haken {
+  flex: 0 0 auto;
+
+  width: 22px;
+  height: 22px;
+
+  display: grid;
+  place-items: center;
+
+  border: 1px solid rgba(140, 190, 170, 0.34);
+  border-radius: 6px;
+
+  background: rgba(6, 14, 13, 0.62);
+  color: transparent;
+
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.login-page .login-card label.login-merken > input:checked + .login-haken {
+  border-color: #35d16a;
+  background: #35d16a;
+  color: #05210f;
+}
+
+.login-page .login-card label.login-merken > input:focus-visible + .login-haken {
+  outline: 2px solid rgba(96, 240, 150, 0.75);
+  outline-offset: 2px;
+}
+
+
+/* --- Schaltflaeche ------------------------------------------------------- */
+
+.login-page .login-card .primary {
+  position: relative;
+
+  margin-top: 30px;
+  padding: 0 22px !important;
+
+  height: 66px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  border: 1px solid rgba(74, 226, 124, 0.55) !important;
+  border-radius: 14px !important;
+
+  background: linear-gradient(180deg, #3ccb6b 0%, #23a552 100%) !important;
+
+  color: #ffffff !important;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.01em;
 
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 12px 28px -12px rgba(38, 190, 96, 0.7) !important;
+    0 16px 34px -14px rgba(38, 190, 96, 0.7) !important;
 
   transition: filter 0.18s ease, transform 0.12s ease, box-shadow 0.18s ease;
+}
+
+/* Der Pfeil sitzt in der Vorlage rechts, der Text bleibt mittig. */
+.login-page .login-card .primary > svg {
+  position: absolute;
+  right: 24px;
+  flex: 0 0 auto;
 }
 
 .login-page .login-card .primary:hover:not(:disabled) {
   filter: brightness(1.08);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 16px 34px -12px rgba(38, 190, 96, 0.8) !important;
+    0 20px 40px -14px rgba(38, 190, 96, 0.8) !important;
 }
 
 .login-page .login-card .primary:active:not(:disabled) {
@@ -651,11 +977,50 @@
   outline-offset: 2px;
 }
 
-.login-page .login-card > small {
-  margin-top: 2px;
-  color: rgba(160, 180, 173, 0.5);
-  font-size: 11.5px;
+
+/* --- Meldungen und Nebenwege --------------------------------------------- */
+
+/*
+   Die Karte setzt ihre Abstaende je Element statt ueber einen gemeinsamen
+   `gap`. Diese vier Bausteine erscheinen nur in bestimmten Faellen - ohne
+   eigenen Abstand klebten sie am Feld darueber.
+*/
+.login-page .login-card .login-reset-info {
+  margin-top: 14px;
+}
+
+.login-page .login-card .login-reset-error,
+.login-page .login-card .login-reset-success {
+  margin-top: 20px;
+}
+
+.login-page .login-card .login-reset-back {
+  margin-top: 16px;
+}
+
+
+/* --- Hinweis unter der Karte --------------------------------------------- */
+
+/*
+   Steht ausserhalb der Karte, mittig darunter - so wie in der Vorlage.
+*/
+.login-sicherheit {
+  margin: 26px 0 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+
+  color: rgba(150, 172, 164, 0.62);
+  font-size: 13.5px;
   line-height: 1.5;
+  text-align: center;
+}
+
+.login-sicherheit > svg {
+  flex: 0 0 auto;
+  color: rgba(150, 172, 164, 0.62);
 }
 
 
@@ -666,8 +1031,17 @@
 @media (max-width: 1180px) {
 
   .login-page {
-    grid-template-columns: minmax(0, 48%) minmax(0, 52%) !important;
+    grid-template-columns: minmax(0, 46%) minmax(0, 54%) !important;
     padding: 28px clamp(18px, 3.4vw, 40px) !important;
+  }
+
+  /* Weniger Innenabstand, sonst wird die Karte breiter als die Spalte. */
+  .login-page .login-card {
+    padding: 44px 40px !important;
+  }
+
+  .login-page .login-card h1 {
+    margin-top: 38px !important;
   }
 
   /* Weiter nach rechts geschoben, damit die Figur frei neben der Karte
@@ -756,31 +1130,101 @@
     display: none;
   }
 
-  .login-page .login-card {
-    width: min(430px, 100%) !important;
-    margin: auto auto 0 !important;
-    padding: 24px 22px 26px !important;
-    gap: 13px !important;
-    border-radius: 22px !important;
+  /*
+     Dieselbe Anordnung wie am Rechner, nur enger: Abstaende, Schriftgrade
+     und Hoehen ruecken zusammen. Die Reihenfolge und alles, was dasteht,
+     bleibt gleich - nur so bleibt es dieselbe Seite.
+  */
+  .login-spalte {
+    width: min(440px, 100%);
+    margin: auto auto 0;
   }
 
-  .login-page .login-card h1 {
-    font-size: 25px;
+  .login-page .login-card {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 30px 24px 32px !important;
+    gap: 0 !important;
+    border-radius: 22px !important;
   }
 
   .login-page .login-card::before {
     border-radius: 22px 22px 0 0;
   }
 
+  .login-page .login-card .brand {
+    gap: 11px;
+    font-size: 22px;
+  }
+
+  .login-page .login-card .brand-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .login-page .login-card .brand-mark svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .login-page .login-card h1 {
+    margin-top: 26px !important;
+    font-size: 27px;
+  }
+
+  .login-page .login-card > p {
+    margin-top: 10px !important;
+    font-size: 15px;
+  }
+
+  .login-page .login-card > p + label.login-feld,
+  .login-page .login-card > .login-feld:first-of-type {
+    margin-top: 24px;
+  }
+
+  .login-page .login-card label.login-feld {
+    margin-top: 18px;
+  }
+
+  .login-page .login-card .login-eingabe {
+    height: 50px;
+  }
+
   /* Auf kleinen Geraeten sind Felder unter 16px ein Grund fuer den
      Zoom-Sprung von iOS. */
   .login-page .login-card input {
     font-size: 16px;
-    padding: 13px 14px !important;
+  }
+
+  .login-page .login-card .login-forgot-password {
+    margin-top: 13px;
+  }
+
+  .login-page .login-card label.login-merken {
+    margin-top: 18px;
   }
 
   .login-page .login-card .primary {
-    min-height: 48px;
+    height: 56px;
+    margin-top: 22px;
+    font-size: 16px;
+  }
+
+  .login-page .login-card .primary > svg {
+    right: 18px;
+  }
+
+  .login-sicherheit {
+    margin-top: 18px;
+    font-size: 12.5px;
+  }
+
+  /* Der Schriftzug an der Wand braucht Breite. Auf dem Telefon steht die
+     Figur oben und der Platz daneben fehlt - dort bleibt er weg. */
+  .dustin-wand,
+  .dustin-lampe {
+    display: none;
   }
 }
 

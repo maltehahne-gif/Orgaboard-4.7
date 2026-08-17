@@ -4,6 +4,16 @@ import {
   useState,
 } from 'react'
 
+import {
+  ArrowRight,
+  Check,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  ShieldCheck,
+} from 'lucide-react'
+
 import {useAuth} from '../lib/auth'
 import {Logo} from '../components/Logo'
 import {LoginDustChase} from '../components/LoginDustChase'
@@ -33,6 +43,19 @@ export function LoginPage(){
   const [message,setMessage]=useState('')
 
   const [busy,setBusy]=useState(false)
+
+  /*
+    Nur Darstellung: ob das Passwort im Klartext steht. Der Wert des Feldes
+    und alles, was beim Absenden passiert, bleibt davon unberuehrt.
+  */
+  const [passwortSichtbar,setPasswortSichtbar]=useState(false)
+
+  /*
+    Angemeldet bleiben. Die Sitzung haelt ohnehin ueber den Browserneustart
+    hinweg - das Sitzungscookie hat eine Laufzeit. Der Haken zeigt diesen
+    Zustand; an der Sitzungsbehandlung selbst wird hier nichts gedreht.
+  */
+  const [angemeldetBleiben,setAngemeldetBleiben]=useState(true)
 
 
   /*
@@ -318,6 +341,8 @@ export function LoginPage(){
       <LoginDustChase/>
 
 
+      <div className="login-spalte">
+
       <form
         className="login-card"
         onSubmit={
@@ -335,7 +360,10 @@ export function LoginPage(){
         {mode==='login' && (
           <>
             <h1>
-              Willkommen zurück
+              Willkommen{' '}
+              <span className="login-akzent">
+                zurück
+              </span>
             </h1>
 
             <p>
@@ -377,37 +405,86 @@ export function LoginPage(){
 
         {mode==='login' && (
           <>
-            <label>
+            <label className="login-feld">
               E-Mail
 
-              <input
-                type="email"
-                value={email}
-                onChange={event=>
-                  setEmail(
-                    event.target.value
-                  )
-                }
-                autoComplete="username"
-                required
-              />
+              <span className="login-eingabe">
+
+                <Mail
+                  size={18}
+                  aria-hidden="true"
+                />
+
+                <input
+                  type="email"
+                  value={email}
+                  onChange={event=>
+                    setEmail(
+                      event.target.value
+                    )
+                  }
+                  autoComplete="username"
+                  placeholder="deine@email.com"
+                  required
+                />
+              </span>
             </label>
 
 
-            <label>
+            <label className="login-feld">
               Passwort
 
-              <input
-                type="password"
-                value={password}
-                onChange={event=>
-                  setPassword(
-                    event.target.value
-                  )
-                }
-                autoComplete="current-password"
-                required
-              />
+              <span className="login-eingabe">
+
+                <Lock
+                  size={18}
+                  aria-hidden="true"
+                />
+
+                <input
+                  type={
+                    passwortSichtbar
+                      ? 'text'
+                      : 'password'
+                  }
+                  value={password}
+                  onChange={event=>
+                    setPassword(
+                      event.target.value
+                    )
+                  }
+                  autoComplete="current-password"
+                  required
+                />
+
+                {/*
+                  Nur ein Umschalter fuer die Anzeige. Er steht ausserhalb
+                  des Eingabefeldes im Markup, damit ein Klick darauf nicht
+                  als Klick ins Feld zaehlt, und traegt type="button" -
+                  sonst wuerde er das Formular abschicken.
+                */}
+                <button
+                  type="button"
+                  className="login-augen"
+                  onClick={()=>
+                    setPasswortSichtbar(
+                      sichtbar=>!sichtbar
+                    )
+                  }
+                  aria-label={
+                    passwortSichtbar
+                      ? 'Passwort verbergen'
+                      : 'Passwort anzeigen'
+                  }
+                  aria-pressed={passwortSichtbar}
+                  tabIndex={-1}
+                >
+                  {passwortSichtbar
+                    ? <EyeOff size={18}/>
+                    : <Eye size={18}/>
+                  }
+                </button>
+              </span>
             </label>
 
 
@@ -421,26 +498,58 @@ export function LoginPage(){
             >
               Passwort vergessen?
             </button>
+
+
+            <label className="login-merken">
+
+              <input
+                type="checkbox"
+                checked={angemeldetBleiben}
+                onChange={event=>
+                  setAngemeldetBleiben(
+                    event.target.checked
+                  )
+                }
+              />
+
+              <span
+                className="login-haken"
+                aria-hidden="true"
+              >
+                <Check size={14}/>
+              </span>
+
+              Angemeldet bleiben
+            </label>
           </>
         )}
 
 
         {mode==='forgot' && (
           <>
-            <label>
+            <label className="login-feld">
               E-Mail-Adresse
 
-              <input
-                type="email"
-                value={email}
-                onChange={event=>
-                  setEmail(
-                    event.target.value
-                  )
-                }
-                autoComplete="email"
-                required
-              />
+              <span className="login-eingabe">
+
+                <Mail
+                  size={18}
+                  aria-hidden="true"
+                />
+
+                <input
+                  type="email"
+                  value={email}
+                  onChange={event=>
+                    setEmail(
+                      event.target.value
+                    )
+                  }
+                  autoComplete="email"
+                  placeholder="deine@email.com"
+                  required
+                />
+              </span>
             </label>
 
 
@@ -454,39 +563,55 @@ export function LoginPage(){
 
         {mode==='reset' && (
           <>
-            <label>
+            <label className="login-feld">
               Neues Passwort
 
-              <input
-                type="password"
-                value={newPassword}
-                onChange={event=>
-                  setNewPassword(
-                    event.target.value
-                  )
-                }
-                autoComplete="new-password"
-                minLength={12}
-                required
-              />
+              <span className="login-eingabe">
+
+                <Lock
+                  size={18}
+                  aria-hidden="true"
+                />
+
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={event=>
+                    setNewPassword(
+                      event.target.value
+                    )
+                  }
+                  autoComplete="new-password"
+                  minLength={12}
+                  required
+                />
+              </span>
             </label>
 
 
-            <label>
+            <label className="login-feld">
               Passwort wiederholen
 
-              <input
-                type="password"
-                value={repeatPassword}
-                onChange={event=>
-                  setRepeatPassword(
-                    event.target.value
-                  )
-                }
-                autoComplete="new-password"
-                minLength={12}
-                required
-              />
+              <span className="login-eingabe">
+
+                <Lock
+                  size={18}
+                  aria-hidden="true"
+                />
+
+                <input
+                  type="password"
+                  value={repeatPassword}
+                  onChange={event=>
+                    setRepeatPassword(
+                      event.target.value
+                    )
+                  }
+                  autoComplete="new-password"
+                  minLength={12}
+                  required
+                />
+              </span>
             </label>
 
 
@@ -523,17 +648,24 @@ export function LoginPage(){
           type="submit"
         >
 
-          {busy
-            ? 'Bitte warten…'
+          <span>
+            {busy
+              ? 'Bitte warten…'
 
-            : mode==='login'
-              ? 'Anmelden'
+              : mode==='login'
+                ? 'Anmelden'
 
-              : mode==='forgot'
-                ? 'Reset-Link senden'
+                : mode==='forgot'
+                  ? 'Reset-Link senden'
 
-                : 'Neues Passwort speichern'
-          }
+                  : 'Neues Passwort speichern'
+            }
+          </span>
+
+          <ArrowRight
+            size={20}
+            aria-hidden="true"
+          />
 
         </button>
 
@@ -550,17 +682,21 @@ export function LoginPage(){
 
         )}
 
-
-        {mode==='login' && (
-          <small>
-            Die Entwicklungszugänge werden durch
-            das Seed-Skript angelegt.
-            Produktivpasswörter sind nicht
-            im Repository enthalten.
-          </small>
-        )}
-
       </form>
+
+
+      <p className="login-sicherheit">
+
+        <ShieldCheck
+          size={15}
+          aria-hidden="true"
+        />
+
+        Sicher. DSGVO-konform.
+        In Deutschland gehostet.
+      </p>
+
+      </div>
 
     </div>
   )
