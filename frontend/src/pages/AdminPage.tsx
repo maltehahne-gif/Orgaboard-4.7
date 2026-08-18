@@ -70,6 +70,7 @@ export function AdminPage() {
   const [ziele, setZiele] = useState({position: '', monthly_units_target: 30, weekly_revenue_target_euro: ''})
   const [startpasswort, setStartpasswort] = useState<{name: string; passwort: string} | null>(null)
   const [speichert, setSpeichert] = useState(false)
+  const [zeilenBusyId, setZeilenBusyId] = useState<string | null>(null)
 
   const laden = () =>
     api<AdminUser[]>('/admin/users')
@@ -115,7 +116,9 @@ export function AdminPage() {
   }
 
   async function umschalten(row: AdminUser, feld: 'is_active' | 'role') {
+    if (zeilenBusyId === row.id) return
     const wert = feld === 'is_active' ? !row.is_active : row.role === 'TEAM_LEADER' ? 'EMPLOYEE' : 'TEAM_LEADER'
+    setZeilenBusyId(row.id)
     try {
       await api(`/admin/users/${row.id}`, {method: 'PATCH', body: JSON.stringify({[feld]: wert})})
       await laden()
@@ -128,11 +131,15 @@ export function AdminPage() {
       )
     } catch (fehler) {
       toast(fehler instanceof Error ? fehler.message : 'Änderung fehlgeschlagen', 'error')
+    } finally {
+      setZeilenBusyId(null)
     }
   }
 
   async function passwortZuruecksetzen(row: AdminUser) {
+    if (zeilenBusyId === row.id) return
     if (!window.confirm(`Für ${row.full_name} ein neues Startpasswort erzeugen?\n\nDas bisherige Passwort wird sofort ungültig.`)) return
+    setZeilenBusyId(row.id)
     try {
       const antwort = await api<{start_password: string}>(`/admin/users/${row.id}/password`, {
         method: 'PATCH',
@@ -142,6 +149,8 @@ export function AdminPage() {
       setStartpasswort({name: row.full_name, passwort: antwort.start_password})
     } catch (fehler) {
       toast(fehler instanceof Error ? fehler.message : 'Zurücksetzen fehlgeschlagen', 'error')
+    } finally {
+      setZeilenBusyId(null)
     }
   }
 
@@ -257,7 +266,7 @@ export function AdminPage() {
                         <button
                           type="button"
                           onClick={() => umschalten(row, 'role')}
-                          disabled={!!rolleGesperrt}
+                          disabled={!!rolleGesperrt || zeilenBusyId === row.id}
                           title={rolleGesperrt ?? (row.role === 'TEAM_LEADER' ? 'Zu Mitarbeiter machen' : 'Zu Teamleiter machen')}
                         >
                           <ShieldCheck size={15} />
@@ -267,6 +276,7 @@ export function AdminPage() {
                       <button
                         type="button"
                         onClick={() => passwortZuruecksetzen(row)}
+                        disabled={zeilenBusyId === row.id}
                         title="Neues Startpasswort erzeugen"
                       >
                         <KeyRound size={15} />
@@ -276,7 +286,7 @@ export function AdminPage() {
                         type="button"
                         className={row.is_active ? 'icon-danger' : undefined}
                         onClick={() => umschalten(row, 'is_active')}
-                        disabled={!!statusGesperrt}
+                        disabled={!!statusGesperrt || zeilenBusyId === row.id}
                         title={statusGesperrt ?? (row.is_active ? 'Benutzer deaktivieren' : 'Benutzer wieder aktivieren')}
                       >
                         {row.is_active ? <UserX size={15} /> : <UserCheck size={15} />}

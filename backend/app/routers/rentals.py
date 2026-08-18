@@ -50,6 +50,19 @@ class RentalIn(BaseModel):
 ERINNERUNG_TAGE = 3
 
 
+def _normalisiertes_rueckgabedatum(status: RentalStatus, returned_at: datetime | None) -> datetime | None:
+    """Erzwingt die Datenregel unabhaengig vom Frontend.
+
+    status == RETURNED verlangt ein gesetztes returned_at - fehlt es, gilt
+    der Zeitpunkt dieser Anfrage. Jeder andere Status macht returned_at
+    bedeutungslos: ein Geraet, das wieder als "verliehen" gefuehrt wird,
+    darf kein Rueckgabedatum aus einer frueheren Rueckgabe mitschleppen.
+    """
+    if status == RentalStatus.RETURNED:
+        return returned_at or datetime.now(timezone.utc)
+    return None
+
+
 def due_state(r: Rental) -> dict:
     """Faelligkeit eines Verleihs.
 
@@ -261,7 +274,9 @@ async def create_rental(data: RentalIn, user: User = Depends(get_current_user), 
     c = db.get(Customer, data.customer_id); p = db.get(Product, data.product_id)
     if not c or not p or not p.verified or not p.active:
         raise HTTPException(status_code=400, detail="Kunde oder aktives, verifiziertes Produkt nicht gefunden")
-    r = Rental(employee_id=employee_id, **data.model_dump(exclude={"employee_id"}))
+    payload = data.model_dump(exclude={"employee_id"})
+    payload["returned_at"] = _normalisiertes_rueckgabedatum(data.status, data.returned_at)
+    r = Rental(employee_id=employee_id, **payload)
     db.add(r); db.flush(); audit(db, user, "rental.created", "rental", r.id, after=serialize(db, r)); db.commit()
     await manager.publish({"type":"data.changed","entity":"rental"}, employee_id=employee_id)
     return serialize(db, r)
@@ -274,7 +289,9 @@ async def update_rental(rental_id: str, data: RentalIn, user: User = Depends(get
         raise HTTPException(status_code=404, detail="Verleih nicht gefunden")
     scoped_employee_id(db, user, r.employee_id)
     before = serialize(db, r)
-    for key, value in data.model_dump(exclude={"employee_id"}).items():
+    payload = data.model_dump(exclude={"employee_id"})
+    payload["returned_at"] = _normalisiertes_rueckgabedatum(data.status, data.returned_at)
+    for key, value in payload.items():
         setattr(r, key, value)
     audit(db, user, "rental.updated", "rental", r.id, before=before, after=serialize(db, r)); db.commit()
     await manager.publish({"type":"data.changed","entity":"rental"}, employee_id=r.employee_id)
@@ -289,10 +306,7 @@ async def update_rental_status(rental_id: str, data: RentalStatusIn, user: User 
     scoped_employee_id(db, user, r.employee_id)
     before = {"status": r.status.value, "returned_at": r.returned_at.isoformat() if r.returned_at else None}
     r.status = data.status
-    if data.status == RentalStatus.RETURNED:
-        r.returned_at = data.returned_at or datetime.now(timezone.utc)
-    elif data.returned_at is not None:
-        r.returned_at = data.returned_at
+    r.returned_at = _normalisiertes_rueckgabedatum(data.status, data.returned_at)
     audit(db, user, "rental.status_changed", "rental", r.id, before=before, after={"status": r.status.value, "returned_at": r.returned_at.isoformat() if r.returned_at else None})
     db.commit()
     await manager.publish({"type":"data.changed","entity":"rental"}, employee_id=r.employee_id)

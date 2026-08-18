@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react'
 import {ChevronLeft, ChevronRight, Download, Lightbulb} from 'lucide-react'
 import {api, downloadFile} from '../lib/api'
 import {useToast} from '../components/Toast'
+import {LoadError} from '../components/LoadError'
 
 type Kennzahlen = {
   revenue_cents: number
@@ -81,6 +82,8 @@ export function ReportsPage() {
   const [offset, setOffset] = useState(1)
   const [bericht, setBericht] = useState<Bericht | null>(null)
   const [laedt, setLaedt] = useState(true)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
+  const [reloadNonce, setReloadNonce] = useState(0)
   const toast = useToast()
 
   useEffect(() => {
@@ -88,10 +91,17 @@ export function ReportsPage() {
     setLaedt(true)
     api<Bericht>(`/reports/${art}?offset=${offset}`)
       .then(daten => {
-        if (!abgebrochen) setBericht(daten)
+        if (!abgebrochen) {
+          setBericht(daten)
+          setLadefehler(null)
+        }
       })
       .catch(err => {
-        if (!abgebrochen) toast(err instanceof Error ? err.message : 'Konnte nicht laden', 'error')
+        if (!abgebrochen) {
+          const meldungText = err instanceof Error ? err.message : 'Konnte nicht laden'
+          toast(meldungText, 'error')
+          setLadefehler(meldungText)
+        }
       })
       .finally(() => {
         if (!abgebrochen) setLaedt(false)
@@ -99,7 +109,7 @@ export function ReportsPage() {
     return () => {
       abgebrochen = true
     }
-  }, [art, offset])
+  }, [art, offset, reloadNonce])
 
   /* Die Textfassung kommt fertig vom Server - so steht in der Datei genau
      das, was auch die Seite zeigt. */
@@ -174,6 +184,8 @@ export function ReportsPage() {
 
       {laedt && !bericht ? (
         <div className="loading">Bericht wird erstellt…</div>
+      ) : ladefehler ? (
+        <LoadError meldung={ladefehler} onRetry={() => setReloadNonce(n => n + 1)} />
       ) : !bericht || !m ? (
         <p className="muted">Kein Bericht verfügbar.</p>
       ) : (

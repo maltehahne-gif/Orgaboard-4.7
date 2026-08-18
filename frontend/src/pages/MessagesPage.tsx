@@ -1374,6 +1374,8 @@ export function MessagesPage(){
         <button
           type="button"
           className="chat-lightbox-close"
+          aria-label="Schließen"
+          title="Schließen"
           onClick={()=>setLightbox(null)}
         >
           <X size={22}/>

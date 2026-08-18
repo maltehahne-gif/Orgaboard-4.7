@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     smtp_from_email: str | None = None
     smtp_use_tls: bool = True
     password_reset_exp_minutes: int = 20
+    # Empfaenger fuer die Feedback-Funktion. Ein fester Vorgabewert ist hier
+    # bewusst kein Secret - anders als SMTP-Zugangsdaten ist die Zieladresse
+    # kein schuetzenswerter Wert, nur ein Konfigurationsdetail.
+    feedback_email_to: str = "orgaboard@gmail.com"
     # Web-Push. Ohne diese beiden Schluessel bleibt Push abgeschaltet - die
     # Anwendung laeuft vollstaendig weiter, nur ohne Benachrichtigung aufs
     # Geraet. Erzeugen mit:

@@ -51,9 +51,11 @@ export function LoginPage(){
   const [passwortSichtbar,setPasswortSichtbar]=useState(false)
 
   /*
-    Angemeldet bleiben. Die Sitzung haelt ohnehin ueber den Browserneustart
-    hinweg - das Sitzungscookie hat eine Laufzeit. Der Haken zeigt diesen
-    Zustand; an der Sitzungsbehandlung selbst wird hier nichts gedreht.
+    Angemeldet bleiben. Bestimmt, ob das Sitzungscookie einen
+    Browser-Neustart uebersteht (remember_me an das Backend, siehe
+    POST /auth/login). Ohne Haken ist es ein reines Sitzungscookie: es
+    verschwindet, sobald der Browser geschlossen wird, auch wenn das
+    Token selbst noch gueltig waere.
   */
   const [angemeldetBleiben,setAngemeldetBleiben]=useState(true)
 
@@ -131,7 +133,8 @@ export function LoginPage(){
 
       await login(
         email.trim(),
-        password
+        password,
+        angemeldetBleiben
       )
 
     }catch(err){

@@ -20,10 +20,12 @@ import {Link, useNavigate} from 'react-router-dom'
 import {api, formatDateTime, money} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
 import {useAuth} from '../lib/auth'
+import {darfVerwalten} from '../lib/roles'
 import type {Appointment, Customer, Product, Sale} from '../types'
 import {AppointmentWeek} from '../components/AppointmentWeek'
 import {AppointmentModal} from '../components/AppointmentModal'
 import {LineChart, Sparkline} from '../components/Charts'
+import {LoadError} from '../components/LoadError'
 import {addDays, appointmentPayload, appointmentTypeOption, downloadCalendarFile, startOfWorkWeek, type AppointmentDraft} from '../lib/appointments'
 import {useToast} from '../components/Toast'
 
@@ -182,7 +184,9 @@ export function DashboardPage() {
   const [weekStart, setWeekStart] = useState(() => startOfWorkWeek())
   const [editor, setEditor] = useState<Editor | null>(null)
   const [saving, setSaving] = useState(false)
-  const isTeamLeader = me?.role === 'TEAM_LEADER'
+  const [busyAppointmentId, setBusyAppointmentId] = useState<string | null>(null)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
+  const isTeamLeader = darfVerwalten(me?.role)
 
   const load = useCallback(async () => {
     const range = (from: Date) =>
@@ -207,8 +211,11 @@ export function DashboardPage() {
       setEmployees(employeeRows)
       setSales(saleRows)
       setMessages(messageRows)
+      setLadefehler(null)
     } catch (error) {
-      toast(error instanceof Error ? error.message : 'Dashboard konnte nicht geladen werden', 'error')
+      const meldung = error instanceof Error ? error.message : 'Dashboard konnte nicht geladen werden'
+      toast(meldung, 'error')
+      setLadefehler(meldung)
     }
   }, [isTeamLeader, toast, weekStart])
 
@@ -237,19 +244,25 @@ export function DashboardPage() {
   }
 
   async function toggleCompleted(appointment: Appointment) {
+    if (busyAppointmentId === appointment.id) return
     const status = appointment.status === 'completed' ? 'planned' : 'completed'
+    setBusyAppointmentId(appointment.id)
     try {
       await api(`/appointments/${appointment.id}/status`, {method: 'PATCH', body: JSON.stringify({status})})
       await load()
       toast(status === 'completed' ? 'Termin als erledigt markiert' : 'Termin wieder geöffnet')
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Status konnte nicht geändert werden', 'error')
+    } finally {
+      setBusyAppointmentId(null)
     }
   }
 
   async function remove(appointment: Appointment, confirmed = false) {
+    if (busyAppointmentId === appointment.id) return
     if (!confirmed && !window.confirm(`Termin „${appointment.customer_name || 'Termin'}“ wirklich löschen?`)) return
     setSaving(true)
+    setBusyAppointmentId(appointment.id)
     try {
       await api(`/appointments/${appointment.id}`, {method: 'DELETE'})
       setEditor(null)
@@ -259,6 +272,7 @@ export function DashboardPage() {
       toast(error instanceof Error ? error.message : 'Termin konnte nicht gelöscht werden', 'error')
     } finally {
       setSaving(false)
+      setBusyAppointmentId(null)
     }
   }
 
@@ -320,6 +334,13 @@ export function DashboardPage() {
       .slice(0, 3)
   }, [sales])
 
+  if (!dashboard && ladefehler) {
+    return (
+      <div className="page">
+        <LoadError meldung={ladefehler} onRetry={load} />
+      </div>
+    )
+  }
   if (!dashboard) return <div className="loading">Dashboard wird geladen…</div>
 
   const firstName = me?.full_name?.split(' ')[0]
@@ -580,6 +601,7 @@ export function DashboardPage() {
         onEdit={appointment => setEditor({appointment})}
         onToggleCompleted={toggleCompleted}
         onDelete={appointment => remove(appointment, true)}
+        busyAppointmentId={busyAppointmentId}
       />
 
       <div className="dash-row dash-row-two">

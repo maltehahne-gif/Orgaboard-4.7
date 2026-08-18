@@ -91,9 +91,11 @@ export function AppointmentModal({appointment,initialDay,initialCustomerId='',ow
           placeholder="Kunde suchen..."
           onChange={event=>{
             setCustomerSearch(event.target.value)
-            if(!event.target.value){
-              changeCustomer('')
-            }
+            // Erst ein bewusster Klick auf ein Suchergebnis setzt customer_id
+            // (siehe changeCustomer() unten). Jede Texteingabe setzt sie
+            // zurueck - sonst bliebe nach dem Umschreiben des Suchtexts der
+            // vorher gewaehlte Kunde unbemerkt bestehen.
+            changeCustomer('')
           }}
         />
 

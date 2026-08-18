@@ -1,9 +1,10 @@
-import {useEffect, useState} from 'react'
+import {useCallback, useEffect, useState} from 'react'
 import {AlertTriangle, CalendarX, Info, PackageX, TrendingDown} from 'lucide-react'
 import type {LucideIcon} from 'lucide-react'
 import {api, money} from '../lib/api'
 import {useToast} from '../components/Toast'
 import {ForecastCard} from '../components/ForecastCard'
+import {LoadError} from '../components/LoadError'
 import type {OrgLookup} from '../types'
 
 type EmployeeOption = {id:string; display_name:string}
@@ -54,6 +55,7 @@ export function ManagementCockpitPage(){
   const [org, setOrg] = useState<OrgLookup | null>(null)
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
 
   const [period, setPeriod] = useState('month')
   const [employeeId, setEmployeeId] = useState('')
@@ -66,7 +68,7 @@ export function ManagementCockpitPage(){
     api<EmployeeOption[]>('/team/employees').then(setEmployees).catch(() => setEmployees([]))
   }, [])
 
-  useEffect(() => {
+  const load = useCallback(() => {
     const params = new URLSearchParams({period})
     if (employeeId) params.set('employee_id', employeeId)
     if (teamId) params.set('team_id', teamId)
@@ -75,10 +77,19 @@ export function ManagementCockpitPage(){
 
     setLoading(true)
     api<Cockpit>(`/dashboard/cockpit?${params.toString()}`)
-      .then(setData)
-      .catch(err => toast(err instanceof Error ? err.message : 'Cockpit konnte nicht geladen werden', 'error'))
+      .then(cockpit => {
+        setData(cockpit)
+        setLadefehler(null)
+      })
+      .catch(err => {
+        const meldungText = err instanceof Error ? err.message : 'Cockpit konnte nicht geladen werden'
+        toast(meldungText, 'error')
+        setLadefehler(meldungText)
+      })
       .finally(() => setLoading(false))
-  }, [period, employeeId, teamId, districtId, regionId])
+  }, [period, employeeId, teamId, districtId, regionId, toast])
+
+  useEffect(load, [load])
 
   const maxReached = data ? Math.max(...data.funnel.stages.map(s => s.reached), 1) : 1
   const maxRevenue = data && data.products.length ? Math.max(...data.products.map(p => p.revenue_cents), 1) : 1
@@ -143,6 +154,8 @@ export function ManagementCockpitPage(){
 
       {loading && !data ? (
         <p className="muted">Cockpit wird geladen…</p>
+      ) : !data && ladefehler ? (
+        <LoadError meldung={ladefehler} onRetry={load} />
       ) : data && (
         <>
           <div className="stat-grid">

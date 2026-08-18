@@ -658,6 +658,8 @@ export function AppointmentCompletionModal({
                       <button
                         type="button"
                         className="icon-danger"
+                        aria-label={`Produkt ${index+1} entfernen`}
+                        title={`Produkt ${index+1} entfernen`}
                         onClick={()=>
                           setSaleItems(
                             current=>

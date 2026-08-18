@@ -177,6 +177,110 @@ def test_login_blocks_after_repeated_failures(client, employee_user):
     ).status_code == 429
 
 
+def test_password_reset_link_points_directly_to_login(client, employee_user, monkeypatch):
+    """B7: Der Link muss auf /login zeigen.
+
+    Zeigt er stattdessen auf die Startseite, faengt sie der Guard fuer einen
+    ausgeloggten Benutzer ab und leitet per <Navigate to="/login"/> um - ein
+    Redirect, der den Query-String mit dem Token verwirft, bevor die
+    Login-Seite ihn lesen kann.
+    """
+    import app.routers.auth as auth_module
+
+    monkeypatch.setattr(auth_module.settings, "smtp_host", "smtp.example.test")
+    monkeypatch.setattr(auth_module.settings, "smtp_from_email", "no-reply@example.test")
+
+    captured = {}
+
+    def fake_send(recipient, reset_url):
+        captured["reset_url"] = reset_url
+
+    monkeypatch.setattr(auth_module, "_send_password_reset_email", fake_send)
+
+    response = client.post(
+        "/api/v1/auth/password-reset/request",
+        json={"email": "mitarbeiter@example.com"},
+    )
+    assert response.status_code == 200
+    reset_url = captured["reset_url"]
+    assert reset_url.split("?")[0].endswith("/login")
+    assert "reset_token=" in reset_url
+
+
+def test_password_reset_rejects_invalid_token(client, employee_user):
+    response = client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": "kein-gueltiges-jwt", "new_password": "GanzNeuesPasswort1"},
+    )
+    assert response.status_code == 400
+
+
+def test_password_reset_rejects_expired_token(client, employee_user):
+    import jwt
+    from datetime import datetime, timedelta, timezone
+
+    from app.core.config import get_settings
+    from app.core.security import password_fingerprint
+
+    user_id, _ = employee_user
+    settings = get_settings()
+
+    db = SessionLocal()
+    try:
+        user = db.get(User, user_id)
+        pwd = password_fingerprint(user.password_hash)
+    finally:
+        db.close()
+
+    now = datetime.now(timezone.utc)
+    expired_payload = {
+        "sub": user_id,
+        "purpose": "password_reset",
+        "pwd": pwd,
+        "iat": int((now - timedelta(minutes=40)).timestamp()),
+        "exp": int((now - timedelta(minutes=20)).timestamp()),
+    }
+    expired_token = jwt.encode(expired_payload, settings.jwt_secret, algorithm="HS256")
+
+    response = client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": expired_token, "new_password": "GanzNeuesPasswort1"},
+    )
+    assert response.status_code == 400
+
+
+def test_password_reset_token_cannot_be_used_twice(client, employee_user):
+    """Nach einem erfolgreichen Reset macht der geaenderte Fingerabdruck denselben Link unbrauchbar."""
+    user_id, _ = employee_user
+    db = SessionLocal()
+    try:
+        token = create_password_reset_token(db.get(User, user_id))
+    finally:
+        db.close()
+
+    erster = client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": token, "new_password": "GanzNeuesPasswort1"},
+    )
+    assert erster.status_code == 200
+
+    zweiter = client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": token, "new_password": "NochEinAnderesPasswort2"},
+    )
+    assert zweiter.status_code == 400
+
+    # Das erste, per Reset gesetzte Passwort muss weiterhin gelten - der
+    # zweite (abgelehnte) Versuch darf nichts mehr veraendert haben.
+    login = _login(client, "mitarbeiter@example.com")
+    assert login.status_code == 401
+    ok = client.post(
+        "/api/v1/auth/login",
+        json={"email": "mitarbeiter@example.com", "password": "GanzNeuesPasswort1"},
+    )
+    assert ok.status_code == 200
+
+
 def test_public_jwt_secret_is_rejected_outside_development():
     """B5: Ein im Repository nachlesbares Secret darf nicht produktiv gelten."""
     from pydantic import ValidationError

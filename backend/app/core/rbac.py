@@ -34,6 +34,15 @@ def current_employee(db: Session, user: User) -> Employee:
 
 def scoped_employee_id(db: Session, user: User, requested_employee_id: str | None = None) -> str | None:
     if sieht_fremde_daten(user):
+        if requested_employee_id is None:
+            return None
+        # Nur die Sichtbarkeit war bisher geprueft, nicht die Existenz: eine
+        # erfundene oder vertippte ID lief unveraendert bis in die Zuordnung
+        # durch - in SQLite ohne Fremdschluessel-Durchsetzung unbemerkt, in
+        # Produktion (PostgreSQL) als rohe 500er-Antwort statt einer
+        # verstaendlichen Fehlermeldung.
+        if db.get(Employee, requested_employee_id) is None:
+            raise HTTPException(status_code=404, detail="Mitarbeiter nicht gefunden")
         return requested_employee_id
     employee = current_employee(db, user)
     if requested_employee_id and requested_employee_id != employee.id:

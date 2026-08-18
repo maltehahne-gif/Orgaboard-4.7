@@ -252,6 +252,15 @@ export function ProductPrices() {
                   key={z.product_id}
                   className={z.price ? 'preis-zeile' : 'preis-zeile ohne-preis'}
                   onClick={() => aufklappen(z)}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={aufgeklappt}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      aufklappen(z)
+                    }
+                  }}
                 >
                   <td className="preis-pfeil">
                     {aufgeklappt ? <ChevronDown size={15} /> : <ChevronRight size={15} />}

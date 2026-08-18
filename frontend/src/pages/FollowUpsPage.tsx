@@ -8,12 +8,13 @@ import {
   Phone,
   Plus,
   Search,
-  X,
 } from 'lucide-react'
 import {Link} from 'react-router-dom'
 import {api} from '../lib/api'
 import {useToast} from '../components/Toast'
 import {connectRealtime} from '../lib/realtime'
+import {LoadError} from '../components/LoadError'
+import {Modal} from '../components/Modal'
 import type {Customer} from '../types'
 import {ausIso, heuteIso, isoDatum} from '../lib/datum'
 
@@ -62,11 +63,15 @@ export function FollowUpsPage() {
   const [items, setItems] = useState<FollowUp[]>([])
   const [summary, setSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
   const [completing, setCompleting] = useState<FollowUp | null>(null)
   const [completeNote, setCompleteNote] = useState('')
+  const [completingBusy, setCompletingBusy] = useState(false)
+  const [postponeBusyId, setPostponeBusyId] = useState<string | null>(null)
   const toast = useToast()
 
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [customersError, setCustomersError] = useState(false)
   const [creating, setCreating] = useState(false)
   const [creatingBusy, setCreatingBusy] = useState(false)
   const [newCustomerId, setNewCustomerId] = useState('')
@@ -82,8 +87,11 @@ export function FollowUpsPage() {
       ])
       setItems(rows)
       setSummary(counts)
+      setLadefehler(null)
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Konnte nicht laden', 'error')
+      const meldungText = err instanceof Error ? err.message : 'Konnte nicht laden'
+      toast(meldungText, 'error')
+      setLadefehler(meldungText)
     } finally {
       setLoading(false)
     }
@@ -101,7 +109,10 @@ export function FollowUpsPage() {
   }, [load])
 
   useEffect(() => {
-    api<Customer[]>('/customers').then(setCustomers).catch(() => {})
+    api<Customer[]>('/customers').then(rows => {
+      setCustomers(rows)
+      setCustomersError(false)
+    }).catch(() => setCustomersError(true))
   }, [])
 
   const customerMatches = useMemo(() => {
@@ -150,7 +161,8 @@ export function FollowUpsPage() {
   }
 
   async function complete() {
-    if (!completing) return
+    if (!completing || completingBusy) return
+    setCompletingBusy(true)
     try {
       await api(`/followups/${completing.id}/complete`, {
         method: 'POST',
@@ -162,12 +174,16 @@ export function FollowUpsPage() {
       load()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Fehler', 'error')
+    } finally {
+      setCompletingBusy(false)
     }
   }
 
   async function postpone(item: FollowUp, days: number) {
+    if (postponeBusyId === item.id) return
     const next = ausIso(item.due_on)
     next.setDate(next.getDate() + days)
+    setPostponeBusyId(item.id)
     try {
       await api(`/followups/${item.id}`, {
         method: 'PUT',
@@ -177,6 +193,8 @@ export function FollowUpsPage() {
       load()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Fehler', 'error')
+    } finally {
+      setPostponeBusyId(null)
     }
   }
 
@@ -227,11 +245,11 @@ export function FollowUpsPage() {
 
         {item.status === 'open' && (
           <div className="followup-actions">
-            <button className="primary" onClick={() => setCompleting(item)}>
+            <button type="button" className="primary" onClick={() => setCompleting(item)}>
               <Check size={16} /> Erledigt
             </button>
-            <button onClick={() => postpone(item, 1)}>+1 Tag</button>
-            <button onClick={() => postpone(item, 7)}>+1 Woche</button>
+            <button type="button" disabled={postponeBusyId === item.id} onClick={() => postpone(item, 1)}>+1 Tag</button>
+            <button type="button" disabled={postponeBusyId === item.id} onClick={() => postpone(item, 7)}>+1 Woche</button>
           </div>
         )}
       </article>
@@ -289,6 +307,8 @@ export function FollowUpsPage() {
 
       {loading ? (
         <div className="loading">Wird geladen…</div>
+      ) : ladefehler ? (
+        <LoadError meldung={ladefehler} onRetry={() => { setLoading(true); load() }} />
       ) : items.length === 0 ? (
         <div className="empty card">
           {scope === 'today'
@@ -325,100 +345,87 @@ export function FollowUpsPage() {
       )}
 
       {completing && (
-        <div className="modal-backdrop" onMouseDown={() => setCompleting(null)}>
-          <div className="modal" onMouseDown={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>Nachfassen bei {completing.customer_name}</h3>
-              <button className="icon-button" onClick={() => setCompleting(null)}>
-                <X />
+        <Modal title={`Nachfassen bei ${completing.customer_name}`} onClose={() => setCompleting(null)} closeDisabled={completingBusy}>
+          <div className="form-grid">
+            <label className="span-2">
+              Was ist dabei herausgekommen? (optional)
+              <textarea
+                rows={4}
+                value={completeNote}
+                onChange={e => setCompleteNote(e.target.value)}
+                placeholder="z. B. Kunde meldet sich im September wieder"
+              />
+            </label>
+            <div className="form-actions span-2">
+              <button type="button" disabled={completingBusy} onClick={() => setCompleting(null)}>Abbrechen</button>
+              <button type="button" className="primary" disabled={completingBusy} onClick={complete}>
+                <Check size={16} /> {completingBusy ? 'Wird markiert…' : 'Als erledigt markieren'}
               </button>
             </div>
-            <div className="form-grid">
-              <label className="span-2">
-                Was ist dabei herausgekommen? (optional)
-                <textarea
-                  rows={4}
-                  value={completeNote}
-                  onChange={e => setCompleteNote(e.target.value)}
-                  placeholder="z. B. Kunde meldet sich im September wieder"
-                />
-              </label>
-              <div className="form-actions span-2">
-                <button onClick={() => setCompleting(null)}>Abbrechen</button>
-                <button className="primary" onClick={complete}>
-                  <Check size={16} /> Als erledigt markieren
-                </button>
-              </div>
-            </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {creating && (
-        <div className="modal-backdrop" onMouseDown={() => setCreating(false)}>
-          <div className="modal" onMouseDown={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>Neue Wiedervorlage</h3>
-              <button className="icon-button" onClick={() => setCreating(false)}>
-                <X />
+        <Modal title="Neue Wiedervorlage" onClose={() => setCreating(false)} closeDisabled={creatingBusy}>
+          <div className="form-grid">
+            <label className="span-2">
+              Kunde
+              <div className="search-field">
+                <Search size={16} />
+                <input
+                  value={newCustomerId ? customers.find(c => c.id === newCustomerId)?.full_name || '' : newCustomerSearch}
+                  onChange={e => {
+                    setNewCustomerId('')
+                    setNewCustomerSearch(e.target.value)
+                  }}
+                  placeholder="Kunde suchen…"
+                />
+              </div>
+              {customersError && (
+                <div className="followup-customer-empty">Kunden konnten nicht geladen werden.</div>
+              )}
+              {!newCustomerId && newCustomerSearch.trim() && (
+                <div className="followup-customer-results">
+                  {customerMatches.length === 0 && <div className="followup-customer-empty">Keine Treffer</div>}
+                  {customerMatches.map(c => (
+                    <button
+                      type="button"
+                      key={c.id}
+                      className="followup-customer-result"
+                      onClick={() => {
+                        setNewCustomerId(c.id)
+                        setNewCustomerSearch('')
+                      }}
+                    >
+                      <strong>{c.full_name}</strong>
+                      <small>{c.address}</small>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </label>
+            <label className="span-2">
+              Nachfassdatum
+              <input type="date" value={newDueOn} onChange={e => setNewDueOn(e.target.value)} />
+            </label>
+            <label className="span-2">
+              Notiz (optional)
+              <textarea
+                rows={3}
+                value={newNote}
+                onChange={e => setNewNote(e.target.value)}
+                placeholder="Worum geht es?"
+              />
+            </label>
+            <div className="form-actions span-2">
+              <button type="button" disabled={creatingBusy} onClick={() => setCreating(false)}>Abbrechen</button>
+              <button type="button" className="primary" disabled={creatingBusy || !newCustomerId} onClick={createFollowUp}>
+                <Plus size={16} /> {creatingBusy ? 'Legt an…' : 'Anlegen'}
               </button>
             </div>
-            <div className="form-grid">
-              <label className="span-2">
-                Kunde
-                <div className="search-field">
-                  <Search size={16} />
-                  <input
-                    value={newCustomerId ? customers.find(c => c.id === newCustomerId)?.full_name || '' : newCustomerSearch}
-                    onChange={e => {
-                      setNewCustomerId('')
-                      setNewCustomerSearch(e.target.value)
-                    }}
-                    placeholder="Kunde suchen…"
-                  />
-                </div>
-                {!newCustomerId && newCustomerSearch.trim() && (
-                  <div className="followup-customer-results">
-                    {customerMatches.length === 0 && <div className="followup-customer-empty">Keine Treffer</div>}
-                    {customerMatches.map(c => (
-                      <button
-                        type="button"
-                        key={c.id}
-                        className="followup-customer-result"
-                        onClick={() => {
-                          setNewCustomerId(c.id)
-                          setNewCustomerSearch('')
-                        }}
-                      >
-                        <strong>{c.full_name}</strong>
-                        <small>{c.address}</small>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </label>
-              <label className="span-2">
-                Nachfassdatum
-                <input type="date" value={newDueOn} onChange={e => setNewDueOn(e.target.value)} />
-              </label>
-              <label className="span-2">
-                Notiz (optional)
-                <textarea
-                  rows={3}
-                  value={newNote}
-                  onChange={e => setNewNote(e.target.value)}
-                  placeholder="Worum geht es?"
-                />
-              </label>
-              <div className="form-actions span-2">
-                <button onClick={() => setCreating(false)}>Abbrechen</button>
-                <button className="primary" disabled={creatingBusy || !newCustomerId} onClick={createFollowUp}>
-                  <Plus size={16} /> Anlegen
-                </button>
-              </div>
-            </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

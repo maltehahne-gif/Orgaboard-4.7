@@ -7,7 +7,7 @@ from app.core.config import get_settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import decode_session_token
 from app.models import Employee, User
-from app.routers import admin, appointments, assistant, auth, buntewoche, customers, dashboard, directory, followups, history, messages, notifications, offers, pipeline, presentations, products, profile, rentals, reports, sales, search, sysadmin, team, tradeins
+from app.routers import admin, appointments, assistant, auth, buntewoche, customers, dashboard, directory, feedback, followups, history, messages, notifications, offers, pipeline, presentations, products, profile, rentals, reports, sales, search, sysadmin, team, tradeins
 from app.services.bootstrap import betreiber_festlegen
 from app.services.realtime import SocketClient, manager
 
@@ -34,7 +34,7 @@ async def lifespan(_: FastAPI):
 app=FastAPI(title="OrgaBoard API",version="1.1.0",lifespan=lifespan)
 app.add_middleware(CORSMiddleware,allow_origins=[settings.frontend_origin],allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
 
-for router in [auth.router,admin.router,dashboard.router,customers.router,appointments.router,sales.router,offers.router,pipeline.router,presentations.router,products.router,rentals.router,buntewoche.router,messages.router,assistant.router,search.router,history.router,team.router,profile.router,directory.router,notifications.router,followups.router,tradeins.router,reports.router,sysadmin.router]:
+for router in [auth.router,admin.router,dashboard.router,customers.router,appointments.router,sales.router,offers.router,pipeline.router,presentations.router,products.router,rentals.router,buntewoche.router,messages.router,assistant.router,search.router,history.router,team.router,profile.router,directory.router,notifications.router,followups.router,tradeins.router,reports.router,sysadmin.router,feedback.router]:
     app.include_router(router,prefix=settings.api_prefix)
 
 @app.get("/health")

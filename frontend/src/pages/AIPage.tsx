@@ -106,7 +106,7 @@ export function AIPage(){
         {darfVerwalten(me?.role)&&TEAM_SCHNELLFRAGEN.map(([beschriftung,frage])=>
           <button key={beschriftung} onClick={()=>setInput(frage)}>{beschriftung}</button>)}
       </div>
-      <form className="chat-input" onSubmit={submit}><button type="button" className={listening?'mic active':'mic'} onClick={listen}><Mic size={20}/></button><input maxLength={4000} value={input} onChange={e=>setInput(e.target.value)} placeholder="Frage etwas oder gib eine Aktion in natürlicher Sprache ein…"/><button className="send" disabled={busy}><Send size={19}/></button></form>
+      <form className="chat-input" onSubmit={submit}><button type="button" className={listening?'mic active':'mic'} onClick={listen} aria-label={listening?'Spracheingabe stoppen':'Spracheingabe starten'} title={listening?'Spracheingabe stoppen':'Spracheingabe starten'}><Mic size={20}/></button><input maxLength={4000} value={input} onChange={e=>setInput(e.target.value)} placeholder="Frage etwas oder gib eine Aktion in natürlicher Sprache ein…"/><button className="send" disabled={busy} aria-label="Nachricht senden" title="Nachricht senden"><Send size={19}/></button></form>
       <small className="ai-disclaimer">Die KI kann Fehler machen. Geschäftsdaten werden nur über serverseitig geprüfte Tools gelesen oder geändert.</small>
     </section>
     <aside className="card ai-info">

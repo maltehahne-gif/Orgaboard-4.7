@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react'
+import {useEffect, useMemo, useRef, useState} from 'react'
 import {AlarmClock, Building2, CalendarClock, MapPin, Search, Users, X} from 'lucide-react'
 import {useNavigate} from 'react-router-dom'
 import {api, money} from '../lib/api'
@@ -7,6 +7,7 @@ import {darfVerwalten} from '../lib/roles'
 import {FUNNEL_ORDER, FUNNEL_COLUMN_LABELS} from '../lib/funnel'
 import type {OrgLookup, PipelineCard, PipelineResponse} from '../types'
 import {useToast} from '../components/Toast'
+import {LoadError} from '../components/LoadError'
 
 type EmployeeOption = {id:string; display_name:string}
 
@@ -29,6 +30,8 @@ export function CrmPipelinePage(){
   const [org, setOrg] = useState<OrgLookup | null>(null)
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
+  const [reloadNonce, setReloadNonce] = useState(0)
 
   const [q, setQ] = useState('')
   const [employeeId, setEmployeeId] = useState('')
@@ -44,6 +47,13 @@ export function CrmPipelinePage(){
     api<EmployeeOption[]>('/team/employees').then(setEmployees).catch(() => setEmployees([]))
   }, [isTeamLeader])
 
+  // Zaehlt jeden tatsaechlich abgeschickten Abruf durch. Kommt eine Antwort
+  // zurueck, die nicht mehr zum zuletzt gestarteten Abruf gehoert, wird sie
+  // verworfen - sonst koennte eine spaet eintreffende Antwort auf einen
+  // aelteren Filterstand (z. B. "M") das bereits sichtbare, neuere Ergebnis
+  // ("Ma") ueberschreiben.
+  const pipelineRequestId = useRef(0)
+
   useEffect(() => {
     const params = new URLSearchParams()
     if (q.trim()) params.set('q', q.trim())
@@ -56,11 +66,31 @@ export function CrmPipelinePage(){
 
     setLoading(true)
     const query = params.toString()
-    api<PipelineResponse>(`/pipeline${query ? `?${query}` : ''}`)
-      .then(setData)
-      .catch(err => toast(err instanceof Error ? err.message : 'Pipeline konnte nicht geladen werden', 'error'))
-      .finally(() => setLoading(false))
-  }, [q, employeeId, teamId, districtId, regionId, dateFrom, dateTo])
+
+    // Entprellt: wer schnell tippt, loest sonst pro Anschlag einen eigenen
+    // Abruf aus.
+    const timer = setTimeout(() => {
+      const myId = ++pipelineRequestId.current
+      api<PipelineResponse>(`/pipeline${query ? `?${query}` : ''}`)
+        .then(result => {
+          if (pipelineRequestId.current !== myId) return
+          setData(result)
+          setLadefehler(null)
+        })
+        .catch(err => {
+          if (pipelineRequestId.current !== myId) return
+          const meldungText = err instanceof Error ? err.message : 'Pipeline konnte nicht geladen werden'
+          toast(meldungText, 'error')
+          setLadefehler(meldungText)
+        })
+        .finally(() => {
+          if (pipelineRequestId.current !== myId) return
+          setLoading(false)
+        })
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [q, employeeId, teamId, districtId, regionId, dateFrom, dateTo, reloadNonce])
 
   const columns = useMemo(() => {
     const grouped: Record<string, PipelineCard[]> = {}
@@ -151,6 +181,8 @@ export function CrmPipelinePage(){
 
       {loading && !data ? (
         <p className="muted">Pipeline wird geladen…</p>
+      ) : !data && ladefehler ? (
+        <LoadError meldung={ladefehler} onRetry={() => setReloadNonce(n => n + 1)} />
       ) : (
         <div className="pipeline-board">
           {FUNNEL_ORDER.map(stage => (

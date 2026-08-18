@@ -19,6 +19,7 @@ import {ProductCombobox} from '../components/ProductCombobox'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
 import {darfVerwalten} from '../lib/roles'
+import {heuteIso} from '../lib/datum'
 import {useLocation, useNavigate} from 'react-router-dom'
 
 type CatalogProduct = Product & {
@@ -27,6 +28,7 @@ type CatalogProduct = Product & {
 }
 
 type ItemForm = {product_id:string; quantity:number; price_eur:string; search:string}
+type OfferEmployee = {id:string; display_name:string}
 
 const STATUS_OPTIONS: {value:string; label:string}[] = [
   {value:'', label:'Alle Status'},
@@ -37,8 +39,6 @@ const STATUS_OPTIONS: {value:string; label:string}[] = [
   {value:'expired', label:'Abgelaufen'},
   {value:'converted', label:'In Verkauf umgewandelt'},
 ]
-
-const dt = () => new Date().toISOString().slice(0, 10)
 
 function customerName(c:Customer){
   const any:any = c
@@ -59,6 +59,7 @@ export function OffersPage(){
   const [rows, setRows] = useState<Offer[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [products, setProducts] = useState<CatalogProduct[]>([])
+  const [employees, setEmployees] = useState<OfferEmployee[]>([])
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
 
@@ -73,6 +74,7 @@ export function OffersPage(){
 
   const [form, setForm] = useState({
     customer_id:'',
+    employee_id:'',
     valid_until:'',
     discount_percent:0,
     notes:'',
@@ -93,6 +95,11 @@ export function OffersPage(){
   useEffect(() => { load().catch(console.error) }, [])
 
   useEffect(() => {
+    if (!isTeamLeader) { setEmployees([]); return }
+    api<OfferEmployee[]>('/team/employees').then(setEmployees).catch(console.error)
+  }, [isTeamLeader])
+
+  useEffect(() => {
     const state = location.state as any
     if (state?.openCreate) {
       resetForm()
@@ -106,7 +113,7 @@ export function OffersPage(){
   }, [location.state])
 
   function resetForm(){
-    setForm({customer_id:'', valid_until:'', discount_percent:0, notes:'', items:[emptyItem()]})
+    setForm({customer_id:'', employee_id:'', valid_until:'', discount_percent:0, notes:'', items:[emptyItem()]})
     setCustomerSearch('')
     setCustomerSearchOpen(false)
   }
@@ -174,6 +181,7 @@ export function OffersPage(){
     event.preventDefault()
     if (busy) return
     if (!form.customer_id) { toast('Bitte einen Kunden auswählen.'); return }
+    if (isTeamLeader && !form.employee_id) { toast('Bitte einen Mitarbeiter auswählen.'); return }
     const invalid = form.items.some(item => !item.product_id || item.quantity <= 0 || !item.price_eur)
     if (invalid) { toast('Bitte bei jedem Eintrag ein Produkt auswählen.'); return }
 
@@ -183,6 +191,7 @@ export function OffersPage(){
         method:'POST',
         body: JSON.stringify({
           customer_id: form.customer_id,
+          employee_id: isTeamLeader ? form.employee_id : null,
           valid_until: form.valid_until || null,
           discount_percent: form.discount_percent,
           notes: form.notes || null,
@@ -380,9 +389,19 @@ export function OffersPage(){
       </div>
 
       {open && (
-        <Modal onClose={() => setOpen(false)} title="Angebot erstellen">
+        <Modal onClose={() => setOpen(false)} title="Angebot erstellen" closeDisabled={busy}>
           <form className="sale-fast-form" onSubmit={save}>
             <div className="sale-base-grid">
+              {isTeamLeader && (
+                <label>
+                  Mitarbeiter
+                  <select required value={form.employee_id} onChange={e => setForm({...form, employee_id: e.target.value})}>
+                    <option value="">Mitarbeiter auswählen</option>
+                    {employees.map(employee => <option key={employee.id} value={employee.id}>{employee.display_name}</option>)}
+                  </select>
+                </label>
+              )}
+
               <label className="sale-customer-label">
                 Kunde
                 <div className="sale-customer-search">
@@ -434,7 +453,7 @@ export function OffersPage(){
 
               <label>
                 Gültig bis
-                <input type="date" value={form.valid_until} min={dt()} onChange={e => setForm({...form, valid_until: e.target.value})} />
+                <input type="date" value={form.valid_until} min={heuteIso()} onChange={e => setForm({...form, valid_until: e.target.value})} />
               </label>
 
               {isTeamLeader && (
@@ -537,7 +556,7 @@ export function OffersPage(){
             </div>
 
             <div className="form-actions">
-              <button type="button" onClick={() => setOpen(false)}>Abbrechen</button>
+              <button type="button" onClick={() => setOpen(false)} disabled={busy}>Abbrechen</button>
               <button className="primary" type="submit" disabled={busy}>{busy ? 'Speichern…' : 'Angebot speichern'}</button>
             </div>
           </form>
