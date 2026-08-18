@@ -24,6 +24,7 @@ import {Link, useNavigate, useParams} from 'react-router-dom'
 import {api, formatDateTime} from '../lib/api'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
+import {darfVerwalten} from '../lib/roles'
 import {ausIso, heuteIso} from '../lib/datum'
 import {FUNNEL_ORDER} from '../lib/funnel'
 import {kartenHref, mailHref, telHref} from '../lib/mobile'
@@ -118,7 +119,7 @@ export function CustomerDetailPage() {
   const notizFeldRef = useRef<HTMLTextAreaElement | null>(null)
   const toast = useToast()
   const {me} = useAuth()
-  const isTeamLeader = me?.role === 'TEAM_LEADER'
+  const isTeamLeader = darfVerwalten(me?.role)
 
   /**
    * Auskunft nach Art. 15 DSGVO: alle gespeicherten Daten als Datei.

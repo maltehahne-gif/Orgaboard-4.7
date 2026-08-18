@@ -17,6 +17,7 @@ import {
 
 import {ProductPrices} from '../components/ProductPrices'
 import {useAuth} from '../lib/auth'
+import {darfVerwalten} from '../lib/roles'
 import {api} from '../lib/api'
 
 
@@ -59,7 +60,7 @@ function getPrice(product:ProductRecord){
 export function ProductsPage(){
 
   const {me}=useAuth()
-  const istTeamleiter=me?.role==='TEAM_LEADER'
+  const istTeamleiter=darfVerwalten(me?.role)
 
   // Katalog, Archiv und Preisverwaltung teilen sich die Seite.
   // Archivierte Produkte bleiben erhalten, weil Verkaeufe auf sie verweisen.

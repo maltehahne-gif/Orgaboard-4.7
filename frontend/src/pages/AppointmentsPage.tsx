@@ -8,6 +8,7 @@ import {AppointmentCompletionModal} from '../components/AppointmentCompletionMod
 import {appointmentPayload,appointmentStatuses,appointmentTypeOption,downloadCalendarFile,openDirections,type AppointmentDraft} from '../lib/appointments'
 import {connectRealtime} from '../lib/realtime'
 import {useAuth} from '../lib/auth'
+import {darfVerwalten} from '../lib/roles'
 import {useLocation,useNavigate} from 'react-router-dom'
 
 type TeamEmployee={id:string;display_name:string}
@@ -23,7 +24,7 @@ export function AppointmentsPage(){
   const [completion,setCompletion]=useState<Appointment|null>(null)
   const [saving,setSaving]=useState(false)
   const toast=useToast()
-  const isTeamLeader=me?.role==='TEAM_LEADER'
+  const isTeamLeader=darfVerwalten(me?.role)
   const location=useLocation()
   const navigate=useNavigate()
 

@@ -29,6 +29,7 @@ import {appleMapsHref,googleMapsHref,telefonnummerBereinigen as cleanPhone} from
 import {calculateOrder,scheduleStops} from '../lib/route'
 import type {Located,Position,StopPlan} from '../lib/route'
 import {useAuth} from '../lib/auth'
+import {darfVerwalten} from '../lib/roles'
 import {useToast} from '../components/Toast'
 import type {Appointment} from '../types'
 
@@ -446,7 +447,7 @@ export function RoutePlanningPage(){
 
   useEffect(()=>{
     if(
-      me?.role!=='TEAM_LEADER'
+      !darfVerwalten(me?.role)
     ){
       setEmployeeId(
         me?.employee?.id||''
@@ -1054,7 +1055,7 @@ export function RoutePlanningPage(){
     </div>
 
 
-    {me?.role==='TEAM_LEADER'&&
+    {darfVerwalten(me?.role)&&
       <section className="card route-employee-select">
         <label>
           Route für Mitarbeiter

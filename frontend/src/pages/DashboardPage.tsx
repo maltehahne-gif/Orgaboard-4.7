@@ -20,6 +20,7 @@ import {Link, useNavigate} from 'react-router-dom'
 import {api, formatDateTime, money} from '../lib/api'
 import {connectRealtime} from '../lib/realtime'
 import {useAuth} from '../lib/auth'
+import {darfVerwalten} from '../lib/roles'
 import type {Appointment, Customer, Product, Sale} from '../types'
 import {AppointmentWeek} from '../components/AppointmentWeek'
 import {AppointmentModal} from '../components/AppointmentModal'
@@ -182,7 +183,7 @@ export function DashboardPage() {
   const [weekStart, setWeekStart] = useState(() => startOfWorkWeek())
   const [editor, setEditor] = useState<Editor | null>(null)
   const [saving, setSaving] = useState(false)
-  const isTeamLeader = me?.role === 'TEAM_LEADER'
+  const isTeamLeader = darfVerwalten(me?.role)
 
   const load = useCallback(async () => {
     const range = (from: Date) =>
