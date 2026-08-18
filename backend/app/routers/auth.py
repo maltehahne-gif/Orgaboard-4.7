@@ -26,6 +26,10 @@ settings = get_settings()
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
+    # "Angemeldet bleiben": ob das Sitzungscookie ein Browser-Neustart
+    # ueberdauern soll. True bleibt der bisherige Standard, damit ein Client,
+    # der das Feld nicht mitschickt, sich weiterhin wie zuvor verhaelt.
+    remember_me: bool = True
 
 
 class PasswordChangeIn(BaseModel):
@@ -64,8 +68,14 @@ def login(data: LoginIn, request: Request, response: Response, db: Session = Dep
     login_limiter.reset(key)
     token = create_session_token(user)
     csrf = make_csrf_token()
-    response.set_cookie("orgaboard_session", token, httponly=True, secure=settings.cookie_secure, samesite="lax", max_age=settings.jwt_exp_minutes * 60, path="/")
-    response.set_cookie("orgaboard_csrf", csrf, httponly=False, secure=settings.cookie_secure, samesite="lax", max_age=settings.jwt_exp_minutes * 60, path="/")
+    # Die Gueltigkeit des Tokens selbst (jwt_exp_minutes) bleibt in beiden
+    # Faellen gleich - "Angemeldet bleiben" entscheidet nur, ob das Cookie
+    # einen Browser-Neustart uebersteht. Ohne Haken setzt der Browser kein
+    # Ablaufdatum: ein reines Sitzungscookie, das mit dem Schliessen des
+    # Browsers verschwindet, auch wenn das Token selbst noch gueltig waere.
+    max_age = settings.jwt_exp_minutes * 60 if data.remember_me else None
+    response.set_cookie("orgaboard_session", token, httponly=True, secure=settings.cookie_secure, samesite="lax", max_age=max_age, path="/")
+    response.set_cookie("orgaboard_csrf", csrf, httponly=False, secure=settings.cookie_secure, samesite="lax", max_age=max_age, path="/")
     return user_payload(db, user)
 
 

@@ -2,7 +2,7 @@ import React, {createContext, useContext, useEffect, useState} from 'react'
 import {AUTH_EXPIRED_EVENT, api} from './api'
 import type {Me} from '../types'
 
-type AuthValue={me:Me|null;loading:boolean;login:(email:string,password:string)=>Promise<void>;logout:()=>Promise<void>;refresh:()=>Promise<void>}
+type AuthValue={me:Me|null;loading:boolean;login:(email:string,password:string,rememberMe?:boolean)=>Promise<void>;logout:()=>Promise<void>;refresh:()=>Promise<void>}
 const AuthContext=createContext<AuthValue|null>(null)
 
 export function AuthProvider({children}:{children:React.ReactNode}){
@@ -22,7 +22,7 @@ export function AuthProvider({children}:{children:React.ReactNode}){
     return ()=>window.removeEventListener(AUTH_EXPIRED_EVENT,aufSitzungsablauf)
   },[])
 
-  const login=async(email:string,password:string)=>{setMe(await api<Me>('/auth/login',{method:'POST',body:JSON.stringify({email,password})}))}
+  const login=async(email:string,password:string,rememberMe=true)=>{setMe(await api<Me>('/auth/login',{method:'POST',body:JSON.stringify({email,password,remember_me:rememberMe})}))}
   const logout=async()=>{await api('/auth/logout',{method:'POST'});setMe(null)}
   return <AuthContext.Provider value={{me,loading,login,logout,refresh}}>{children}</AuthContext.Provider>
 }
