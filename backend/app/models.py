@@ -804,6 +804,49 @@ class PushSubscription(Base):
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class FeedbackCategory(str, enum.Enum):
+    BUG = "bug"
+    IMPROVEMENT = "improvement"
+    FEATURE_REQUEST = "feature_request"
+    DESIGN = "design"
+    PERFORMANCE = "performance"
+    OTHER = "other"
+
+
+class Feedback(Base):
+    """Rueckmeldung eines angemeldeten Benutzers, per Mail an den Betreiber.
+
+    Wird zuerst gespeichert, danach per Mail verschickt (siehe
+    routers/feedback.py) - so geht eine Rueckmeldung nicht verloren, nur weil
+    der Mailserver gerade kurz nicht erreichbar ist. email_sent haelt fest,
+    ob der Versand tatsaechlich geklappt hat; ein Fehlschlag zaehlt
+    ausdruecklich nicht als Erfolg.
+    """
+
+    __tablename__ = "feedback"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    # Eindeutige, fuer Menschen lesbare Referenz - taucht in der Mail, im
+    # Log und in der Erfolgsmeldung auf. z. B. FDB-2026-000123.
+    reference: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    # Wer das Feedback geschickt hat, steht ausschliesslich aus der
+    # angemeldeten Sitzung fest - niemals aus Angaben im Request.
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    category: Mapped[FeedbackCategory] = mapped_column(Enum(FeedbackCategory), index=True)
+    subject: Mapped[str] = mapped_column(String(200))
+    message: Mapped[str] = mapped_column(Text)
+    # Route, aus der heraus gesendet wurde, z. B. "/verkaeufe". Rein
+    # informativ, deshalb optional.
+    page_path: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, index=True)
+    email_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Nur eine kurze, sichere Fehlermeldung - niemals Zugangsdaten oder
+    # andere Geheimnisse (siehe services/mail.py: dort werden keine
+    # Anmeldedaten in Ausnahmen eingebettet).
+    email_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
