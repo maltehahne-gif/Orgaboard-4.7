@@ -9745,6 +9745,11 @@ to{
 .sale-cancelled-cell{display:flex;align-items:center;gap:6px}
 .sale-cancelled-flag{display:inline-flex;align-items:center;gap:6px;color:var(--danger);font-size:13px}
 
+/* Verkaufstabelle: stornierte Zeile eindeutig, aber weiterhin lesbar */
+.table-card tr.is-cancelled{background:rgba(224,60,60,.08)}
+.table-card tr.is-cancelled td{color:var(--muted)}
+.sales-report-cancelled-toggle{flex-direction:row!important;align-items:center;gap:7px!important;font-size:13px}
+
 /* Nachfassen: Kundensuche im "Neue Wiedervorlage"-Formular */
 .followup-customer-results{margin-top:8px;border:1px solid #23383d;border-radius:10px;overflow:hidden;max-height:220px;overflow-y:auto}
 .followup-customer-result{display:flex;flex-direction:column;width:100%;text-align:left;padding:10px 12px;border:0;border-bottom:1px solid #18272b;background:#0b1418;color:#f5f7f6}
