@@ -34,7 +34,16 @@ import {Modal} from '../components/Modal'
 import {ProductCombobox} from '../components/ProductCombobox'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
+import {darfVerwalten} from '../lib/roles'
+import {jetztLokal, zeiteingabeZuIso} from '../lib/datum'
 import {useLocation,useNavigate} from 'react-router-dom'
+
+const SALE_CHANNELS: {value:string; label:string}[] = [
+  {value:'field', label:'Außendienst'},
+  {value:'promotion', label:'Promotion'},
+  {value:'k70', label:'K70'},
+  {value:'other', label:'Sonstiges'},
+]
 
 
 type CatalogProduct = Product & {
@@ -71,13 +80,6 @@ type SalesEmployeeOption = {
   id:string
   display_name:string
 }
-
-
-const dt=()=>(
-  new Date()
-    .toISOString()
-    .slice(0,16)
-)
 
 
 function productPriceCents(
@@ -157,7 +159,7 @@ export function SalesPage(){
   const {me}=useAuth()
 
   const isTeamLeader=
-    me?.role==='TEAM_LEADER'
+    darfVerwalten(me?.role)
 
   const location=useLocation()
   const navigate=useNavigate()
@@ -220,7 +222,8 @@ export function SalesPage(){
 
   const [form,setForm]=useState({
     customer_id:'',
-    sold_at:dt(),
+    employee_id:'',
+    sold_at:jetztLokal(),
     channel:'other',
     notes:'',
     items:[
@@ -282,7 +285,8 @@ export function SalesPage(){
 
     setForm({
       customer_id:'',
-      sold_at:dt(),
+      employee_id:'',
+      sold_at:jetztLokal(),
       channel:'other',
       notes:'',
       items:[
@@ -801,6 +805,31 @@ export function SalesPage(){
     if(busy)return
 
 
+    // Ein Kunde gilt erst als ausgewaehlt, wenn er ueber die Ergebnisliste
+    // angeklickt wurde - der Suchtext allein reicht nicht. customer_id wird
+    // bei jeder Texteingabe zurueckgesetzt (siehe onChange unten), deshalb
+    // ist dieser Wert hier zuverlaessig leer, solange keine bewusste Auswahl
+    // stattgefunden hat.
+    if(!form.customer_id){
+
+      toast(
+        'Bitte einen Kunden aus der Liste auswählen.'
+      )
+
+      return
+    }
+
+
+    if(isTeamLeader && !form.employee_id){
+
+      toast(
+        'Bitte einen Mitarbeiter auswählen.'
+      )
+
+      return
+    }
+
+
     const invalid=
       form.items.some(
         item=>
@@ -832,13 +861,17 @@ export function SalesPage(){
           body:JSON.stringify({
 
             customer_id:
-              form.customer_id
-              || null,
+              form.customer_id,
+
+            employee_id:
+              isTeamLeader
+                ? form.employee_id
+                : null,
 
             sold_at:
-              new Date(
+              zeiteingabeZuIso(
                 form.sold_at
-              ).toISOString(),
+              ),
 
             channel:
               form.channel,
@@ -1351,6 +1384,38 @@ export function SalesPage(){
 
           <div className="sale-base-grid">
 
+            {isTeamLeader && (
+              <label>
+                Mitarbeiter
+
+                <select
+                  value={form.employee_id}
+                  required
+                  onChange={event=>
+                    setForm({
+                      ...form,
+                      employee_id:
+                        event.target.value,
+                    })
+                  }
+                >
+                  <option value="">
+                    Mitarbeiter auswählen
+                  </option>
+
+                  {employees.map(
+                    employee=>
+                      <option
+                        key={employee.id}
+                        value={employee.id}
+                      >
+                        {employee.display_name}
+                      </option>
+                  )}
+                </select>
+              </label>
+            )}
+
             <label className="sale-customer-label">
               Kunde
 
@@ -1508,17 +1573,15 @@ export function SalesPage(){
                   })
                 }
               >
-                <option value="other">
-                  Sonstiges
-                </option>
-
-                <option value="field">
-                  Außendienst
-                </option>
-
-                <option value="online">
-                  Online
-                </option>
+                {SALE_CHANNELS.map(
+                  kanal=>
+                    <option
+                      key={kanal.value}
+                      value={kanal.value}
+                    >
+                      {kanal.label}
+                    </option>
+                )}
               </select>
             </label>
 
