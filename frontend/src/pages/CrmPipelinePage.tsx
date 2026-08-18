@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react'
+import {useEffect, useMemo, useRef, useState} from 'react'
 import {AlarmClock, Building2, CalendarClock, MapPin, Search, Users, X} from 'lucide-react'
 import {useNavigate} from 'react-router-dom'
 import {api, money} from '../lib/api'
@@ -44,6 +44,13 @@ export function CrmPipelinePage(){
     api<EmployeeOption[]>('/team/employees').then(setEmployees).catch(() => setEmployees([]))
   }, [isTeamLeader])
 
+  // Zaehlt jeden tatsaechlich abgeschickten Abruf durch. Kommt eine Antwort
+  // zurueck, die nicht mehr zum zuletzt gestarteten Abruf gehoert, wird sie
+  // verworfen - sonst koennte eine spaet eintreffende Antwort auf einen
+  // aelteren Filterstand (z. B. "M") das bereits sichtbare, neuere Ergebnis
+  // ("Ma") ueberschreiben.
+  const pipelineRequestId = useRef(0)
+
   useEffect(() => {
     const params = new URLSearchParams()
     if (q.trim()) params.set('q', q.trim())
@@ -56,10 +63,27 @@ export function CrmPipelinePage(){
 
     setLoading(true)
     const query = params.toString()
-    api<PipelineResponse>(`/pipeline${query ? `?${query}` : ''}`)
-      .then(setData)
-      .catch(err => toast(err instanceof Error ? err.message : 'Pipeline konnte nicht geladen werden', 'error'))
-      .finally(() => setLoading(false))
+
+    // Entprellt: wer schnell tippt, loest sonst pro Anschlag einen eigenen
+    // Abruf aus.
+    const timer = setTimeout(() => {
+      const myId = ++pipelineRequestId.current
+      api<PipelineResponse>(`/pipeline${query ? `?${query}` : ''}`)
+        .then(result => {
+          if (pipelineRequestId.current !== myId) return
+          setData(result)
+        })
+        .catch(err => {
+          if (pipelineRequestId.current !== myId) return
+          toast(err instanceof Error ? err.message : 'Pipeline konnte nicht geladen werden', 'error')
+        })
+        .finally(() => {
+          if (pipelineRequestId.current !== myId) return
+          setLoading(false)
+        })
+    }, 300)
+
+    return () => clearTimeout(timer)
   }, [q, employeeId, teamId, districtId, regionId, dateFrom, dateTo])
 
   const columns = useMemo(() => {
