@@ -16,3 +16,6 @@ python-dateutil>=2.9,<3
 email-validator>=2.2,<3
 pytest>=8.4,<9
 pywebpush>=2.0,<3
+# Nur fuer die Playwright-E2E-Suite (frontend/e2e): faengt Mails lokal ab,
+# statt sie zu verschicken - siehe app/tools/fake_smtp.py.
+aiosmtpd>=1.4,<2
