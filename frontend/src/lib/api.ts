@@ -1,5 +1,19 @@
 const BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
+// Name des Ereignisses, das bei einer abgelaufenen oder fehlenden Sitzung
+// ausgelöst wird. AuthProvider (lib/auth.tsx) hört zentral genau hier zu und
+// räumt den Auth-Zustand auf - so muss keine einzelne Seite ihr eigenes
+// 401 behandeln, und die Behandlung läuft für jeden Aufruf gleich.
+export const AUTH_EXPIRED_EVENT = 'orgaboard:auth-expired'
+
+// Endpunkte, deren eigener 401 kein "Sitzung abgelaufen" bedeutet, sondern
+// schlicht "falsche Zugangsdaten" bzw. Teil des Login-Vorgangs selbst ist.
+// Sie laufen zwar durch dieselbe Fehlerbehandlung (Meldung aus dem Server),
+// lösen aber nicht zusätzlich das globale Auth-Aufräumen aus - das wäre für
+// einen falschen Tippfehler im Passwort unnötig und könnte den ohnehin schon
+// angezeigten Login-Formularfehler überschreiben.
+const AUTH_EVENT_EXEMPT_PATHS = ['/auth/login']
+
 function csrfToken(): string {
   const match = document.cookie.split('; ').find(x => x.startsWith('orgaboard_csrf='))
   return match ? decodeURIComponent(match.split('=').slice(1).join('=')) : ''
@@ -14,6 +28,9 @@ export async function api<T>(path:string, options:RequestInit = {}):Promise<T> {
   if (!response.ok) {
     let detail = `Fehler ${response.status}`
     try { const data = await response.json(); detail = data.detail || detail } catch {}
+    if (response.status === 401 && !AUTH_EVENT_EXEMPT_PATHS.includes(path)) {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT))
+    }
     throw new Error(detail)
   }
   if (response.status === 204) return undefined as T

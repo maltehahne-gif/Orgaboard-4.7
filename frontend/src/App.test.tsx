@@ -1,8 +1,16 @@
 import {cleanup, render, screen} from '@testing-library/react'
 import {BrowserRouter} from 'react-router-dom'
-import {afterEach, describe, expect, it, vi} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('./lib/auth', () => ({useAuth: vi.fn()}))
+
+// Nach dem Login wird eine echte, authentifizierte Seite gerendert (siehe
+// weiter unten) - deren Datenabrufe sollen hier nicht wirklich übers Netz
+// gehen, nur die Ziel-URL des Rücksprungs wird geprüft.
+vi.mock('./lib/api', async () => {
+  const echt = await vi.importActual<typeof import('./lib/api')>('./lib/api')
+  return {...echt, api: vi.fn().mockResolvedValue([])}
+})
 
 // jsdom kennt matchMedia nicht. Die Anmeldeseite fragt es für
 // "prefers-reduced-motion" ab (LoginDustChase) - ohne den Ersatz bricht
@@ -24,10 +32,19 @@ if (!window.matchMedia) {
 // spielt beim Anzeigen ein Hintergrundvideo ab.
 window.HTMLMediaElement.prototype.play = () => Promise.resolve()
 
+import {api} from './lib/api'
 import {useAuth} from './lib/auth'
 import App from './App'
 
 const mockUseAuth = vi.mocked(useAuth)
+
+// restoreMocks (vite.config.ts) setzt jede Mock-Implementierung vor jedem
+// Test zurück - ohne diese Zeile würde nur der jeweils erste Test, der eine
+// authentifizierte Seite rendert, eine funktionierende api()-Mock-Antwort
+// bekommen.
+beforeEach(() => {
+  vi.mocked(api).mockResolvedValue([])
+})
 
 function alsGast() {
   mockUseAuth.mockReturnValue({
@@ -63,6 +80,7 @@ function setUrl(pfad: string) {
 afterEach(() => {
   cleanup()
   window.history.pushState({}, '', '/')
+  sessionStorage.clear()
 })
 
 /**
@@ -128,5 +146,73 @@ describe('Passwort-Reset-Link verliert das Token nicht mehr', () => {
     )
 
     expect(screen.getByRole('heading', {name: /Willkommen/})).toBeTruthy()
+  })
+})
+
+/**
+ * Abgelaufene Sitzung / erster Aufruf ohne Login: der Guard merkt sich, wo
+ * der Benutzer eigentlich hinwollte, und die Login-Seite kehrt nach einer
+ * erfolgreichen Anmeldung genau dorthin zurück statt immer zur Startseite.
+ */
+describe('Rücksprung nach dem Login', () => {
+  it('merkt sich die ursprünglich aufgerufene Seite für den Rücksprung', () => {
+    alsGast()
+    setUrl('/produkte')
+
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    )
+
+    expect(window.location.pathname).toBe('/login')
+    expect(sessionStorage.getItem('orgaboard:redirect-after-login')).toBe('/produkte')
+  })
+
+  it('kehrt nach dem Login zur gemerkten Seite zurück', () => {
+    sessionStorage.setItem('orgaboard:redirect-after-login', '/produkte')
+    alsAngemeldet()
+    setUrl('/login')
+
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    )
+
+    expect(window.location.pathname).toBe('/produkte')
+    // Verbraucht - ein zweiter Login ohne neuen Umweg landet wieder auf der Startseite.
+    expect(sessionStorage.getItem('orgaboard:redirect-after-login')).toBeNull()
+  })
+
+  it('landet ohne gemerkten Pfad wie gewohnt auf der Startseite', () => {
+    alsAngemeldet()
+    setUrl('/login')
+
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    )
+
+    expect(window.location.pathname).toBe('/')
+  })
+
+  it('ignoriert einen gemerkten Pfad, der nach außen zeigen würde', () => {
+    // Kann so nie entstehen (merkeRuecksprung speichert nur location.pathname),
+    // ist aber die Absicherung gegen eine externe Weiterleitung, falls sich
+    // das je ändert.
+    sessionStorage.setItem('orgaboard:redirect-after-login', '//angreifer.example')
+    alsAngemeldet()
+    setUrl('/login')
+
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    )
+
+    expect(window.location.pathname).toBe('/')
+    expect(window.location.hostname).not.toBe('angreifer.example')
   })
 })

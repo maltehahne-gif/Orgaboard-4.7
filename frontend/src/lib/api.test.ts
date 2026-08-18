@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest'
-import {formatDateTime, money} from './api'
+import {afterEach, describe, expect, it, vi} from 'vitest'
+import {api, AUTH_EXPIRED_EVENT, formatDateTime, money} from './api'
 
 /* Beträge und Datumsangaben stehen auf jeder Seite. Wenn die Formatierung
    kippt, sieht das nicht nach einem Fehler aus, sondern nach einer falschen
@@ -41,5 +41,59 @@ describe('formatDateTime', () => {
     expect(formatDateTime(null)).toBe('–')
     expect(formatDateTime(undefined)).toBe('–')
     expect(formatDateTime('')).toBe('–')
+  })
+})
+
+/* Zentrale 401-Behandlung: jeder Aufruf über api() meldet eine abgelaufene
+   oder fehlende Sitzung über ein einziges Ereignis, statt dass jede Seite es
+   selbst behandeln muss (siehe lib/auth.tsx, das genau darauf hört). */
+describe('api – abgelaufene Sitzung', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function stubResponse(status: number, detail: string) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({detail}), {status, headers: {'content-type': 'application/json'}}),
+      ),
+    )
+  }
+
+  it('löst bei 401 das Auth-Ereignis aus', async () => {
+    stubResponse(401, 'Nicht angemeldet')
+    const handler = vi.fn()
+    window.addEventListener(AUTH_EXPIRED_EVENT, handler)
+
+    await expect(api('/sales')).rejects.toThrow('Nicht angemeldet')
+    expect(handler).toHaveBeenCalledTimes(1)
+
+    window.removeEventListener(AUTH_EXPIRED_EVENT, handler)
+  })
+
+  it('löst das Ereignis bei anderen Fehlern nicht aus', async () => {
+    stubResponse(403, 'Kein Zugriff')
+    const handler = vi.fn()
+    window.addEventListener(AUTH_EXPIRED_EVENT, handler)
+
+    await expect(api('/sales')).rejects.toThrow('Kein Zugriff')
+    expect(handler).not.toHaveBeenCalled()
+
+    window.removeEventListener(AUTH_EXPIRED_EVENT, handler)
+  })
+
+  it('löst das Ereignis bei einem falschen Login-Passwort nicht aus', async () => {
+    // Ein 401 beim Login-Versuch selbst ist "falsches Passwort", keine
+    // abgelaufene Sitzung - das globale Aufräumen würde hier nichts
+    // Sinnvolles tun und könnte die Login-Fehlermeldung verwirren.
+    stubResponse(401, 'E-Mail oder Passwort ist falsch')
+    const handler = vi.fn()
+    window.addEventListener(AUTH_EXPIRED_EVENT, handler)
+
+    await expect(api('/auth/login', {method: 'POST', body: '{}'})).rejects.toThrow()
+    expect(handler).not.toHaveBeenCalled()
+
+    window.removeEventListener(AUTH_EXPIRED_EVENT, handler)
   })
 })
