@@ -7,6 +7,7 @@ import {darfVerwalten} from '../lib/roles'
 import {FUNNEL_ORDER, FUNNEL_COLUMN_LABELS} from '../lib/funnel'
 import type {OrgLookup, PipelineCard, PipelineResponse} from '../types'
 import {useToast} from '../components/Toast'
+import {LoadError} from '../components/LoadError'
 
 type EmployeeOption = {id:string; display_name:string}
 
@@ -29,6 +30,8 @@ export function CrmPipelinePage(){
   const [org, setOrg] = useState<OrgLookup | null>(null)
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
+  const [reloadNonce, setReloadNonce] = useState(0)
 
   const [q, setQ] = useState('')
   const [employeeId, setEmployeeId] = useState('')
@@ -72,10 +75,13 @@ export function CrmPipelinePage(){
         .then(result => {
           if (pipelineRequestId.current !== myId) return
           setData(result)
+          setLadefehler(null)
         })
         .catch(err => {
           if (pipelineRequestId.current !== myId) return
-          toast(err instanceof Error ? err.message : 'Pipeline konnte nicht geladen werden', 'error')
+          const meldungText = err instanceof Error ? err.message : 'Pipeline konnte nicht geladen werden'
+          toast(meldungText, 'error')
+          setLadefehler(meldungText)
         })
         .finally(() => {
           if (pipelineRequestId.current !== myId) return
@@ -84,7 +90,7 @@ export function CrmPipelinePage(){
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [q, employeeId, teamId, districtId, regionId, dateFrom, dateTo])
+  }, [q, employeeId, teamId, districtId, regionId, dateFrom, dateTo, reloadNonce])
 
   const columns = useMemo(() => {
     const grouped: Record<string, PipelineCard[]> = {}
@@ -175,6 +181,8 @@ export function CrmPipelinePage(){
 
       {loading && !data ? (
         <p className="muted">Pipeline wird geladen…</p>
+      ) : !data && ladefehler ? (
+        <LoadError meldung={ladefehler} onRetry={() => setReloadNonce(n => n + 1)} />
       ) : (
         <div className="pipeline-board">
           {FUNNEL_ORDER.map(stage => (

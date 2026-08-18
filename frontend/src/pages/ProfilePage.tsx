@@ -4,6 +4,7 @@ import {useAuth} from '../lib/auth'
 import {useToast} from '../components/Toast'
 import {APP_VERSION, CHANGELOG} from '../lib/changelog'
 import {NotificationSettings} from '../components/NotificationSettings'
+import {LoadError} from '../components/LoadError'
 
 type P = {
   id: string
@@ -55,18 +56,26 @@ export function ProfilePage() {
   const [p, setP] = useState<P | null>(null)
   const [ziele, setZiele] = useState<Zielfelder | null>(null)
   const [pw, setPw] = useState({current_password: '', new_password: ''})
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
+  const [zieleBusy, setZieleBusy] = useState(false)
+  const [pwBusy, setPwBusy] = useState(false)
   const toast = useToast()
 
-  useEffect(() => {
+  const load = () => {
     api<P>('/profile').then(daten => {
       setP(daten)
       setZiele(ausProfil(daten))
+      setLadefehler(null)
+    }).catch(err => {
+      setLadefehler(err instanceof Error ? err.message : 'Profil konnte nicht geladen werden')
     })
-  }, [])
+  }
+
+  useEffect(load, [])
 
   async function targets(e: FormEvent) {
     e.preventDefault()
-    if (!p || !ziele) return
+    if (!p || !ziele || zieleBusy) return
 
     const einheiten = Number(ziele.einheiten)
     if (!Number.isInteger(einheiten) || einheiten < 1) {
@@ -82,6 +91,7 @@ export function ProfilePage() {
       daily_total_target_cents: inCent(ziele.gesamt),
     }
 
+    setZieleBusy(true)
     try {
       await api('/profile', {method: 'PUT', body: JSON.stringify(daten)})
       setP(daten)
@@ -91,11 +101,15 @@ export function ProfilePage() {
       toast('Ziele gespeichert')
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Fehler', 'error')
+    } finally {
+      setZieleBusy(false)
     }
   }
 
   async function password(e: FormEvent) {
     e.preventDefault()
+    if (pwBusy) return
+    setPwBusy(true)
     try {
       await api('/auth/change-password', {method: 'POST', body: JSON.stringify(pw)})
       setPw({current_password: '', new_password: ''})
@@ -103,9 +117,18 @@ export function ProfilePage() {
       toast('Passwort geändert')
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Fehler', 'error')
+    } finally {
+      setPwBusy(false)
     }
   }
 
+  if (!p && ladefehler) {
+    return (
+      <div className="page">
+        <LoadError meldung={ladefehler} onRetry={load} />
+      </div>
+    )
+  }
   if (!p || !ziele) return <div className="loading">Profil wird geladen…</div>
 
   return (
@@ -167,7 +190,7 @@ export function ProfilePage() {
           </p>
 
           <div className="form-actions span-2">
-            <button className="primary">Ziele speichern</button>
+            <button className="primary" disabled={zieleBusy}>{zieleBusy ? 'Speichert…' : 'Ziele speichern'}</button>
           </div>
         </form>
 
@@ -202,7 +225,7 @@ export function ProfilePage() {
           </label>
 
           <div className="form-actions span-2">
-            <button className="primary">Passwort ändern</button>
+            <button className="primary" disabled={pwBusy}>{pwBusy ? 'Ändert…' : 'Passwort ändern'}</button>
           </div>
         </form>
       </div>

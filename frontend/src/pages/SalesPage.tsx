@@ -205,6 +205,9 @@ export function SalesPage(){
   const [exporting,setExporting]=
     useState(false)
 
+  const [stornoBusyId,setStornoBusyId]=
+    useState<string|null>(null)
+
   const [customerSearch,setCustomerSearch]=
     useState('')
 
@@ -957,11 +960,14 @@ export function SalesPage(){
     sale:Sale
   ){
 
+    if(stornoBusyId===sale.id)return
+
     if(!window.confirm(
       'Storno zurücknehmen?\n\n'
       +'Der Verkauf zählt danach wieder in allen Auswertungen.'
     ))return
 
+    setStornoBusyId(sale.id)
     try{
 
       await api(
@@ -980,6 +986,8 @@ export function SalesPage(){
           : 'Der Verkauf konnte nicht wiederhergestellt werden.',
         'error'
       )
+    }finally{
+      setStornoBusyId(null)
     }
   }
 
@@ -987,6 +995,8 @@ export function SalesPage(){
   async function stornieren(
     sale:Sale
   ){
+
+    if(stornoBusyId===sale.id)return
 
     const grund=window.prompt(
       'Verkauf stornieren?\n\n'
@@ -1002,6 +1012,7 @@ export function SalesPage(){
       return
     }
 
+    setStornoBusyId(sale.id)
     try{
 
       await api(
@@ -1023,6 +1034,8 @@ export function SalesPage(){
           : 'Der Verkauf konnte nicht storniert werden.',
         'error'
       )
+    }finally{
+      setStornoBusyId(null)
     }
   }
 
@@ -1333,6 +1346,7 @@ export function SalesPage(){
                           <button
                             type="button"
                             className="icon-button"
+                            disabled={stornoBusyId===sale.id}
                             onClick={()=>
                               wiederherstellen(sale)
                             }
@@ -1346,6 +1360,7 @@ export function SalesPage(){
                       <button
                         type="button"
                         className="danger-button"
+                        disabled={stornoBusyId===sale.id}
                         onClick={()=>
                           stornieren(sale)
                         }
@@ -1374,6 +1389,7 @@ export function SalesPage(){
           setOpen(false)
         }
         title="Verkauf erfassen"
+        closeDisabled={busy}
       >
 
         <form
@@ -1877,6 +1893,7 @@ export function SalesPage(){
 
             <button
               type="button"
+              disabled={busy}
               onClick={()=>
                 setOpen(false)
               }

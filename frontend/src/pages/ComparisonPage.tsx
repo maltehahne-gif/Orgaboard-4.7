@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react'
 import {AlertTriangle} from 'lucide-react'
 import {api, money} from '../lib/api'
 import {useToast} from '../components/Toast'
+import {LoadError} from '../components/LoadError'
 import type {OrgLookup} from '../types'
 
 type EmployeeOption = {id:string; display_name:string}
@@ -40,6 +41,8 @@ export function ComparisonPage(){
   const [org, setOrg] = useState<OrgLookup | null>(null)
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
+  const [reloadNonce, setReloadNonce] = useState(0)
 
   const [level, setLevel] = useState('employee')
   const [period, setPeriod] = useState('month')
@@ -66,10 +69,17 @@ export function ComparisonPage(){
 
     setLoading(true)
     api<Comparison>(`/team/comparison?${params.toString()}`)
-      .then(setData)
-      .catch(err => toast(err instanceof Error ? err.message : 'Vergleich konnte nicht geladen werden', 'error'))
+      .then(result => {
+        setData(result)
+        setLadefehler(null)
+      })
+      .catch(err => {
+        const meldungText = err instanceof Error ? err.message : 'Vergleich konnte nicht geladen werden'
+        toast(meldungText, 'error')
+        setLadefehler(meldungText)
+      })
       .finally(() => setLoading(false))
-  }, [level, period, dateFrom, dateTo, teamId, districtId, regionId])
+  }, [level, period, dateFrom, dateTo, teamId, districtId, regionId, reloadNonce])
 
   const rows = [...(data?.rows ?? [])].sort((a, b) => b.revenue_cents - a.revenue_cents)
   const employeeCountLabel = employees.length
@@ -151,6 +161,8 @@ export function ComparisonPage(){
 
       {loading && !data ? (
         <p className="muted">Vergleich wird geladen…</p>
+      ) : !data && ladefehler ? (
+        <LoadError meldung={ladefehler} onRetry={() => setReloadNonce(n => n + 1)} />
       ) : rows.length === 0 ? (
         <p className="muted">
           {level === 'employee' && employeeCountLabel === 0

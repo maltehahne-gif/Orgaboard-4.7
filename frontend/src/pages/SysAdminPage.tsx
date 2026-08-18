@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import {api, money} from '../lib/api'
 import {Modal} from '../components/Modal'
+import {LoadError} from '../components/LoadError'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
 import {darfKontenLoeschen} from '../lib/roles'
@@ -135,11 +136,21 @@ function meldung(toast: ToastFn, err: unknown, ersatz: string) {
 
 function Kennzahlen({toast}: {toast: ToastFn}) {
   const [daten, setDaten] = useState<Uebersicht | null>(null)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
 
-  useEffect(() => {
-    api<Uebersicht>('/sysadmin/overview').then(setDaten).catch(err => meldung(toast, err, 'Konnte nicht laden'))
-  }, [])
+  const laden = useCallback(() => {
+    api<Uebersicht>('/sysadmin/overview').then(d => {
+      setDaten(d)
+      setLadefehler(null)
+    }).catch(err => {
+      meldung(toast, err, 'Konnte nicht laden')
+      setLadefehler(err instanceof Error ? err.message : 'Konnte nicht laden')
+    })
+  }, [toast])
 
+  useEffect(laden, [laden])
+
+  if (!daten && ladefehler) return <LoadError meldung={ladefehler} onRetry={laden} />
   if (!daten) return <div className="loading">Kennzahlen werden geladen…</div>
 
   const kacheln: Array<[string, string, string?]> = [
@@ -216,6 +227,8 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
   const [neu, setNeu] = useState({...LEERER_BENUTZER})
   const [suche, setSuche] = useState('')
   const [busy, setBusy] = useState(false)
+  const [zeilenBusy, setZeilenBusy] = useState<string | null>(null)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
 
   const laden = useCallback(() => {
     Promise.all([
@@ -226,8 +239,12 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
       setListe(b)
       setRollen(r)
       setOrg(o)
-    }).catch(err => meldung(toast, err, 'Konnte nicht laden'))
-  }, [])
+      setLadefehler(null)
+    }).catch(err => {
+      meldung(toast, err, 'Konnte nicht laden')
+      setLadefehler(err instanceof Error ? err.message : 'Konnte nicht laden')
+    })
+  }, [toast])
 
   useEffect(laden, [laden])
 
@@ -250,6 +267,8 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
   }
 
   async function speichern(id: string, felder: Record<string, unknown>) {
+    if (zeilenBusy === id) return
+    setZeilenBusy(id)
     try {
       await api(`/sysadmin/users/${id}`, {method: 'PUT', body: JSON.stringify(felder)})
       toast('Gespeichert')
@@ -257,10 +276,14 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
       setDetail(await api<Benutzer>(`/sysadmin/users/${id}`))
     } catch (err) {
       meldung(toast, err, 'Speichern fehlgeschlagen')
+    } finally {
+      setZeilenBusy(null)
     }
   }
 
   async function rechtSetzen(id: string, permission: string, allowed: boolean | null) {
+    if (zeilenBusy === id) return
+    setZeilenBusy(id)
     try {
       const rechte = await api<Recht[]>(`/sysadmin/users/${id}/permissions`, {
         method: 'PUT',
@@ -269,6 +292,8 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
       setDetail(d => (d ? {...d, permissions: rechte} : d))
     } catch (err) {
       meldung(toast, err, 'Recht konnte nicht gesetzt werden')
+    } finally {
+      setZeilenBusy(null)
     }
   }
 
@@ -296,7 +321,9 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
   }
 
   async function passwortNeu(id: string, name: string) {
+    if (zeilenBusy === id) return
     if (!window.confirm(`Neues Startpasswort für ${name} erzeugen?\n\nDas alte gilt dann nicht mehr.`)) return
+    setZeilenBusy(id)
     try {
       const {start_password} = await api<{start_password: string}>(
         `/sysadmin/users/${id}/password`, {method: 'POST'})
@@ -304,6 +331,8 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
       laden()
     } catch (err) {
       meldung(toast, err, 'Passwort konnte nicht gesetzt werden')
+    } finally {
+      setZeilenBusy(null)
     }
   }
 
@@ -337,6 +366,7 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
     }
   }
 
+  if (!liste && ladefehler) return <LoadError meldung={ladefehler} onRetry={laden} />
   if (!liste) return <div className="loading">Benutzer werden geladen…</div>
 
   const begriff = suche.trim().toLowerCase()
@@ -408,7 +438,20 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
           </thead>
           <tbody>
             {gefiltert.map(b => [
-              <tr key={b.id} className="preis-zeile" onClick={() => aufklappen(b.id)}>
+              <tr
+                key={b.id}
+                className="preis-zeile"
+                onClick={() => aufklappen(b.id)}
+                role="button"
+                tabIndex={0}
+                aria-expanded={offen === b.id}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    aufklappen(b.id)
+                  }
+                }}
+              >
                 <td className="preis-pfeil"><UserCog size={15} /></td>
                 <td><strong>{b.full_name}</strong></td>
                 <td>{b.email}</td>
@@ -427,20 +470,20 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
                       <div className="sysadmin-detail">
                         <div className="sysadmin-felder">
                           <label>Rolle
-                            <select value={detail.role}
+                            <select value={detail.role} disabled={zeilenBusy === b.id}
                               onChange={e => speichern(b.id, {role: e.target.value})}>
                               {rollen.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                             </select>
                           </label>
                           <label>Team
-                            <select value={detail.employee?.team_id ?? ''}
+                            <select value={detail.employee?.team_id ?? ''} disabled={zeilenBusy === b.id}
                               onChange={e => speichern(b.id, {team_id: e.target.value})}>
                               <option value="">– kein Team –</option>
                               {teams.map(t => <option key={t.id} value={t.id}>{t.pfad}</option>)}
                             </select>
                           </label>
                           <label>Status
-                            <select value={detail.is_active ? 'ja' : 'nein'}
+                            <select value={detail.is_active ? 'ja' : 'nein'} disabled={zeilenBusy === b.id}
                               onChange={e => aktivSetzen(b.id, e.target.value === 'ja')}>
                               <option value="ja">aktiv</option>
                               <option value="nein">deaktiviert</option>
@@ -472,6 +515,7 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
                                   <input
                                     type="checkbox"
                                     checked={r.effective}
+                                    disabled={zeilenBusy === b.id}
                                     onChange={e => rechtSetzen(
                                       b.id, r.permission,
                                       e.target.checked === r.from_role ? null : e.target.checked,
@@ -486,12 +530,13 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
                         </div>
 
                         <div className="sysadmin-kontoaktionen">
-                          <button type="button" onClick={() => passwortNeu(b.id, b.full_name)}>
+                          <button type="button" disabled={zeilenBusy === b.id} onClick={() => passwortNeu(b.id, b.full_name)}>
                             <KeyRound size={15} /> Neues Startpasswort
                           </button>
 
                           <button
                             type="button"
+                            disabled={zeilenBusy === b.id}
                             onClick={() => aktivSetzen(b.id, !detail.is_active)}
                             title={detail.is_active
                               ? 'Anmeldung sperren – das Konto bleibt bestehen'
@@ -578,11 +623,18 @@ function Benutzerverwaltung({toast}: {toast: ToastFn}) {
 
 function Struktur({toast}: {toast: ToastFn}) {
   const [org, setOrg] = useState<Org | null>(null)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
   const [neu, setNeu] = useState({region: '', bezirk: {region_id: '', name: ''}, team: {district_id: '', name: ''}})
 
   const laden = useCallback(() => {
-    api<Org>('/sysadmin/org').then(setOrg).catch(err => meldung(toast, err, 'Konnte nicht laden'))
-  }, [])
+    api<Org>('/sysadmin/org').then(o => {
+      setOrg(o)
+      setLadefehler(null)
+    }).catch(err => {
+      meldung(toast, err, 'Konnte nicht laden')
+      setLadefehler(err instanceof Error ? err.message : 'Konnte nicht laden')
+    })
+  }, [toast])
 
   useEffect(laden, [laden])
 
@@ -608,6 +660,7 @@ function Struktur({toast}: {toast: ToastFn}) {
     }
   }
 
+  if (!org && ladefehler) return <LoadError meldung={ladefehler} onRetry={laden} />
   if (!org) return <div className="loading">Struktur wird geladen…</div>
 
   const bezirke = org.regions.flatMap(r => r.districts.map(d => ({id: d.id, pfad: `${r.name} › ${d.name}`})))
@@ -736,15 +789,25 @@ function Struktur({toast}: {toast: ToastFn}) {
 function Einstellungen({toast}: {toast: ToastFn}) {
   const [liste, setListe] = useState<Einstellung[] | null>(null)
   const [werte, setWerte] = useState<Record<string, string>>({})
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
+  const [speichernBusy, setSpeichernBusy] = useState<string | null>(null)
 
-  useEffect(() => {
+  const laden = useCallback(() => {
     api<Einstellung[]>('/sysadmin/settings').then(e => {
       setListe(e)
       setWerte(Object.fromEntries(e.map(x => [x.key, x.value?.v == null ? '' : String(x.value.v)])))
-    }).catch(err => meldung(toast, err, 'Konnte nicht laden'))
-  }, [])
+      setLadefehler(null)
+    }).catch(err => {
+      meldung(toast, err, 'Konnte nicht laden')
+      setLadefehler(err instanceof Error ? err.message : 'Konnte nicht laden')
+    })
+  }, [toast])
+
+  useEffect(laden, [laden])
 
   async function speichern(key: string) {
+    if (speichernBusy === key) return
+    setSpeichernBusy(key)
     try {
       await api(`/sysadmin/settings/${key}`, {
         method: 'PUT',
@@ -753,9 +816,12 @@ function Einstellungen({toast}: {toast: ToastFn}) {
       toast('Gespeichert')
     } catch (err) {
       meldung(toast, err, 'Speichern fehlgeschlagen')
+    } finally {
+      setSpeichernBusy(null)
     }
   }
 
+  if (!liste && ladefehler) return <LoadError meldung={ladefehler} onRetry={laden} />
   if (!liste) return <div className="loading">Einstellungen werden geladen…</div>
 
   return (
@@ -766,9 +832,11 @@ function Einstellungen({toast}: {toast: ToastFn}) {
           <label key={e.key}>
             {e.label}
             <span>
-              <input value={werte[e.key] ?? ''}
+              <input value={werte[e.key] ?? ''} disabled={speichernBusy === e.key}
                 onChange={ev => setWerte({...werte, [e.key]: ev.target.value})} />
-              <button type="button" onClick={() => speichern(e.key)}>Speichern</button>
+              <button type="button" disabled={speichernBusy === e.key} onClick={() => speichern(e.key)}>
+                {speichernBusy === e.key ? 'Speichert…' : 'Speichern'}
+              </button>
             </span>
             <small className="muted">{e.key}</small>
           </label>

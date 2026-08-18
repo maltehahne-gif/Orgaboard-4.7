@@ -1,7 +1,9 @@
 import {
   FormEvent,
   useEffect,
+  useId,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 
@@ -16,6 +18,7 @@ import {
 } from 'lucide-react'
 
 import {ProductPrices} from '../components/ProductPrices'
+import {LoadError} from '../components/LoadError'
 import {useAuth} from '../lib/auth'
 import {darfVerwalten} from '../lib/roles'
 import {api} from '../lib/api'
@@ -100,11 +103,66 @@ export function ProductsPage(){
   const [busy,setBusy]=
     useState(false)
 
+  // Barrierefreiheit fuer den eigenen (nicht ueber die zentrale <Modal>
+  // laufenden) Dialog "Neues Produkt": eigenes Erscheinungsbild bleibt
+  // erhalten, Fokus-Verhalten und Escape entsprechen trotzdem der zentralen
+  // Modal-Komponente.
+  const formTitleId=useId()
+  const formDialogRef=useRef<HTMLFormElement|null>(null)
+  const formTrigger=useRef<HTMLElement|null>(null)
+
+  useEffect(()=>{
+    if(!showForm)return
+
+    formTrigger.current=document.activeElement as HTMLElement|null
+    formDialogRef.current?.focus()
+
+    function onKeyDown(event:KeyboardEvent){
+      if(event.key==='Escape'){
+        if(busy)return
+        event.preventDefault()
+        setShowForm(false)
+        return
+      }
+
+      if(event.key!=='Tab')return
+      const dialog=formDialogRef.current
+      if(!dialog)return
+      const fokusierbar=Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      )
+      if(fokusierbar.length===0)return
+      const erste=fokusierbar[0]
+      const letzte=fokusierbar[fokusierbar.length-1]
+      if(event.shiftKey&&document.activeElement===erste){
+        event.preventDefault()
+        letzte.focus()
+      }else if(!event.shiftKey&&document.activeElement===letzte){
+        event.preventDefault()
+        erste.focus()
+      }
+    }
+
+    document.addEventListener('keydown',onKeyDown)
+    return ()=>{
+      document.removeEventListener('keydown',onKeyDown)
+      formTrigger.current?.focus?.()
+    }
+  },[showForm,busy])
+
   const [message,setMessage]=
     useState('')
 
   const [error,setError]=
     useState('')
+
+  const [ladefehler,setLadefehler]=
+    useState('')
+
+  const [aktivBusyId,setAktivBusyId]=
+    useState<string|null>(null)
 
   const [form,setForm]=useState({
     name:'',
@@ -130,10 +188,15 @@ export function ProductsPage(){
           ? result
           : []
       )
+      setLadefehler('')
 
     }catch(err){
 
-      console.error(err)
+      setLadefehler(
+        err instanceof Error
+          ? err.message
+          : 'Produkte konnten nicht geladen werden'
+      )
 
     }
   }
@@ -148,6 +211,8 @@ export function ProductsPage(){
     product:ProductRecord,
     aktiv:boolean
   ){
+    if(aktivBusyId===product.id)return
+    setAktivBusyId(product.id)
     try{
       await api(
         `/products/${product.id}/active`,
@@ -168,6 +233,8 @@ export function ProductsPage(){
           ? err.message
           : 'Konnte nicht geändert werden'
       )
+    }finally{
+      setAktivBusyId(null)
     }
   }
 
@@ -663,6 +730,7 @@ export function ProductsPage(){
         {sortierteProdukte.length===1?'Produkt':'Produkte'}
       </div>
 
+      {ladefehler && <LoadError meldung={ladefehler} onRetry={load} />}
 
       <div className="simple-product-grid">
 
@@ -731,6 +799,7 @@ export function ProductsPage(){
                   <button
                     type="button"
                     className="product-archive-button"
+                    disabled={aktivBusyId===product.id}
                     onClick={()=>setzeAktiv(
                       product,
                       zeigeArchiv
@@ -762,9 +831,9 @@ export function ProductsPage(){
 
         <div
           className="simple-product-modal-backdrop"
-          onMouseDown={()=>
-            setShowForm(false)
-          }
+          onMouseDown={()=>{
+            if(!busy)setShowForm(false)
+          }}
         >
 
           <form
@@ -773,12 +842,17 @@ export function ProductsPage(){
             onMouseDown={event=>
               event.stopPropagation()
             }
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={formTitleId}
+            ref={formDialogRef}
+            tabIndex={-1}
           >
 
             <div className="simple-product-modal-head">
 
               <div>
-                <h2>
+                <h2 id={formTitleId}>
                   Neues Produkt
                 </h2>
 
@@ -790,6 +864,8 @@ export function ProductsPage(){
               <button
                 type="button"
                 className="simple-product-close"
+                aria-label="Schließen"
+                disabled={busy}
                 onClick={()=>
                   setShowForm(false)
                 }
@@ -888,6 +964,7 @@ export function ProductsPage(){
 
               <button
                 type="button"
+                disabled={busy}
                 onClick={()=>
                   setShowForm(false)
                 }

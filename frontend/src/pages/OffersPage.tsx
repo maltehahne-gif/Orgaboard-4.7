@@ -389,7 +389,7 @@ export function OffersPage(){
       </div>
 
       {open && (
-        <Modal onClose={() => setOpen(false)} title="Angebot erstellen">
+        <Modal onClose={() => setOpen(false)} title="Angebot erstellen" closeDisabled={busy}>
           <form className="sale-fast-form" onSubmit={save}>
             <div className="sale-base-grid">
               {isTeamLeader && (
@@ -556,7 +556,7 @@ export function OffersPage(){
             </div>
 
             <div className="form-actions">
-              <button type="button" onClick={() => setOpen(false)}>Abbrechen</button>
+              <button type="button" onClick={() => setOpen(false)} disabled={busy}>Abbrechen</button>
               <button className="primary" type="submit" disabled={busy}>{busy ? 'Speichern…' : 'Angebot speichern'}</button>
             </div>
           </form>

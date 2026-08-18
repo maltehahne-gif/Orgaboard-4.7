@@ -2,6 +2,7 @@ import {FormEvent, useCallback, useEffect, useState} from 'react'
 import {Pencil, Plus, Search, Trash2} from 'lucide-react'
 import {api, formatDateTime} from '../lib/api'
 import {Modal} from '../components/Modal'
+import {LoadError} from '../components/LoadError'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
 import type {Customer, TradeIn} from '../types'
@@ -57,6 +58,8 @@ export function TradeInsPage() {
   const [bearbeitet, setBearbeitet] = useState<TradeIn | null>(null)
   const [formular, setFormular] = useState(leer)
   const [speichert, setSpeichert] = useState(false)
+  const [loeschtId, setLoeschtId] = useState<string | null>(null)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
 
   const laden = useCallback(() => {
     const params = new URLSearchParams()
@@ -66,8 +69,15 @@ export function TradeInsPage() {
     const query = params.toString()
 
     api<TradeIn[]>(`/tradeins${query ? `?${query}` : ''}`)
-      .then(setRows)
-      .catch(fehler => toast(fehler instanceof Error ? fehler.message : 'Laden fehlgeschlagen', 'error'))
+      .then(rows => {
+        setRows(rows)
+        setLadefehler(null)
+      })
+      .catch(fehler => {
+        const meldungText = fehler instanceof Error ? fehler.message : 'Laden fehlgeschlagen'
+        toast(meldungText, 'error')
+        setLadefehler(meldungText)
+      })
     api<Summary>('/tradeins/summary').then(setSummary).catch(() => setSummary(null))
   }, [statusFilter, suche, toast, zustandFilter])
 
@@ -124,13 +134,17 @@ export function TradeInsPage() {
   }
 
   async function loeschen(row: TradeIn) {
+    if (loeschtId === row.id) return
     if (!window.confirm(`Altgerät „${row.model}“ von ${row.customer_name} wirklich löschen?`)) return
+    setLoeschtId(row.id)
     try {
       await api(`/tradeins/${row.id}`, {method: 'DELETE'})
       laden()
       toast('Altgerät gelöscht')
     } catch (fehler) {
       toast(fehler instanceof Error ? fehler.message : 'Löschen fehlgeschlagen', 'error')
+    } finally {
+      setLoeschtId(null)
     }
   }
 
@@ -223,6 +237,7 @@ export function TradeInsPage() {
                     <button
                       type="button"
                       className="icon-danger"
+                      disabled={loeschtId === row.id}
                       onClick={() => loeschen(row)}
                       title="Löschen"
                     >
@@ -234,7 +249,8 @@ export function TradeInsPage() {
             ))}
           </tbody>
         </table>
-        {!rows.length && (
+        {!rows.length && ladefehler && <LoadError meldung={ladefehler} onRetry={laden} />}
+        {!rows.length && !ladefehler && (
           <div className="empty">
             {suche || statusFilter || zustandFilter
               ? 'Keine Altgeräte zu diesen Filtern.'
@@ -247,6 +263,7 @@ export function TradeInsPage() {
         <Modal
           title={bearbeitet ? 'Altgerät bearbeiten' : 'Altgerät erfassen'}
           onClose={() => setOffen(false)}
+          closeDisabled={speichert}
         >
           <form className="form-grid" onSubmit={speichern}>
             <label className="span-2">
@@ -328,7 +345,7 @@ export function TradeInsPage() {
             </label>
 
             <div className="form-actions span-2">
-              <button type="button" onClick={() => setOffen(false)}>
+              <button type="button" disabled={speichert} onClick={() => setOffen(false)}>
                 Abbrechen
               </button>
               <button className="primary" disabled={speichert || !me}>

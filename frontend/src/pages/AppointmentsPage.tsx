@@ -3,6 +3,7 @@ import {CalendarPlus,CheckCircle2,MapPinned,Pencil,Trash2} from 'lucide-react'
 import {api,formatDateTime} from '../lib/api'
 import type {Appointment,Customer,Product} from '../types'
 import {useToast} from '../components/Toast'
+import {LoadError} from '../components/LoadError'
 import {AppointmentModal} from '../components/AppointmentModal'
 import {AppointmentCompletionModal} from '../components/AppointmentCompletionModal'
 import {appointmentPayload,appointmentStatuses,appointmentTypeOption,downloadCalendarFile,openDirections,type AppointmentDraft} from '../lib/appointments'
@@ -23,6 +24,9 @@ export function AppointmentsPage(){
   const [editor,setEditor]=useState<Editor|null>(null)
   const [completion,setCompletion]=useState<Appointment|null>(null)
   const [saving,setSaving]=useState(false)
+  const [ladend,setLadend]=useState(true)
+  const [ladefehler,setLadefehler]=useState<string|null>(null)
+  const [statusBusyId,setStatusBusyId]=useState<string|null>(null)
   const toast=useToast()
   const isTeamLeader=darfVerwalten(me?.role)
   const location=useLocation()
@@ -47,7 +51,12 @@ export function AppointmentsPage(){
       ]
       const [appointments,customerRows,productRows,employeeRows]=await Promise.all(requests)
       setRows(appointments);setCustomers(customerRows);setProducts(productRows);setEmployees(employeeRows)
-    }catch(error){toast(error instanceof Error?error.message:'Termine konnten nicht geladen werden','error')}
+      setLadefehler(null)
+    }catch(error){
+      const meldungText=error instanceof Error?error.message:'Termine konnten nicht geladen werden'
+      toast(meldungText,'error')
+      setLadefehler(meldungText)
+    }finally{setLadend(false)}
   },[isTeamLeader,toast])
 
   useEffect(()=>{load();return connectRealtime(event=>{if(!event?.entity || event.entity==='appointment')load()})},[load])
@@ -64,11 +73,13 @@ export function AppointmentsPage(){
   }
 
   async function changeStatus(appointment:Appointment,status:string){
+    if(statusBusyId===appointment.id)return
     if(status==='completed'&&appointment.status!=='completed'){
       setCompletion(appointment)
       return
     }
 
+    setStatusBusyId(appointment.id)
     try{
       await api(`/appointments/${appointment.id}/status`,{
         method:'PATCH',
@@ -83,10 +94,11 @@ export function AppointmentsPage(){
           :'Status konnte nicht geändert werden',
         'error',
       )
-    }
+    }finally{setStatusBusyId(null)}
   }
 
   async function remove(appointment:Appointment,confirmed=false){
+    if(saving)return
     if(!confirmed&&!window.confirm(`Termin „${appointment.customer_name||'Termin'}“ wirklich löschen?`))return
     setSaving(true)
     try{await api(`/appointments/${appointment.id}`,{method:'DELETE'});setEditor(null);await load();toast('Termin gelöscht')}
@@ -96,7 +108,9 @@ export function AppointmentsPage(){
 
   return <div className="page">
     <div className="page-head"><div><h1>Termine</h1><p>Planen, bestätigen, verschieben und sauber dokumentieren.</p></div><button className="primary" onClick={()=>setEditor({initialDay:new Date()})}><CalendarPlus size={18}/> Termin anlegen</button></div>
-    <div className="cards-list">
+    {ladend&&<div className="loading">Termine werden geladen…</div>}
+    {!ladend&&ladefehler&&<LoadError meldung={ladefehler} onRetry={()=>{setLadend(true);load()}}/>}
+    {!ladend&&!ladefehler&&<div className="cards-list">
       {rows.length===0&&<div className="card empty">Noch keine Termine vorhanden.</div>}
       {rows.map(appointment=>{const type=appointmentTypeOption(appointment.appointment_type);return <div className={`card appointment-card appointment-list-status-${appointment.status}`} key={appointment.id}>
         <div className="appointment-list-copy">
@@ -106,14 +120,14 @@ export function AppointmentsPage(){
           {appointment.products.length>0&&<small>Geplant: {appointment.products.map(product=>product.name).join(', ')}</small>}
         </div>
         <div className="appointment-list-actions">
-          <select aria-label="Terminstatus" value={appointment.status} onChange={event=>changeStatus(appointment,event.target.value)}>{appointmentStatuses.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select>
+          <select aria-label="Terminstatus" value={appointment.status} disabled={statusBusyId===appointment.id} onChange={event=>changeStatus(appointment,event.target.value)}>{appointmentStatuses.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select>
           {appointment.address&&<button type="button" className="appointment-directions-action" onClick={()=>openDirections(appointment.address!)} title={`Wegbeschreibung zu ${appointment.address}`}><MapPinned size={16}/> Wegbeschreibung</button>}
           {appointment.status!=='completed'&&appointment.status!=='cancelled'&&<button type="button" className="appointment-complete-action" onClick={()=>setCompletion(appointment)}><CheckCircle2 size={16}/> Durchgeführt</button>}
           <button type="button" onClick={()=>setEditor({appointment})}><Pencil size={16}/> Bearbeiten</button>
-          <button type="button" className="icon-danger" onClick={()=>remove(appointment)} aria-label="Termin löschen" title="Termin löschen"><Trash2 size={16}/></button>
+          <button type="button" className="icon-danger" disabled={saving} onClick={()=>remove(appointment)} aria-label="Termin löschen" title="Termin löschen"><Trash2 size={16}/></button>
         </div>
       </div>})}
-    </div>
+    </div>}
     {completion&&<AppointmentCompletionModal
       appointment={completion}
       products={products}

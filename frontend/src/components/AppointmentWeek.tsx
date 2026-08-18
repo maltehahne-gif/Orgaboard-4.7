@@ -29,6 +29,8 @@ type Props={
   onEdit:(appointment:Appointment)=>void
   onToggleCompleted:(appointment:Appointment)=>void
   onDelete:(appointment:Appointment)=>void
+  /** Termin-ID, fuer die gerade ein Status-/Loeschaufruf laeuft - verhindert Doppel-Klicks. */
+  busyAppointmentId?:string|null
 }
 
 
@@ -47,7 +49,8 @@ export function AppointmentWeek({
  onCreate,
  onEdit,
  onToggleCompleted,
- onDelete
+ onDelete,
+ busyAppointmentId
 }:Props){
 
  const rows=[...appointments]
@@ -229,6 +232,7 @@ aria-label={appointment.status==='completed'
 ?`Termin mit ${appointment.customer_name} wieder öffnen`
 :`Termin mit ${appointment.customer_name} als erledigt markieren`}
 title={appointment.status==='completed'?'Wieder öffnen':'Als erledigt markieren'}
+disabled={busyAppointmentId===appointment.id}
 onClick={()=>onToggleCompleted(appointment)}
 >
 {
@@ -244,6 +248,7 @@ appointment.status==='completed'
 <button
 aria-label={`Termin mit ${appointment.customer_name} löschen`}
 title="Löschen"
+disabled={busyAppointmentId===appointment.id}
 onClick={()=>onDelete(appointment)}
 >
 <Trash2 size={15}/>

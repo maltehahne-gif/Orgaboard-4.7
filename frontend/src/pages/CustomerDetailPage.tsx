@@ -23,6 +23,7 @@ import {
 import {Link, useNavigate, useParams} from 'react-router-dom'
 import {api, formatDateTime} from '../lib/api'
 import {useToast} from '../components/Toast'
+import {LoadError} from '../components/LoadError'
 import {useAuth} from '../lib/auth'
 import {darfVerwalten} from '../lib/roles'
 import {ausIso, heuteIso} from '../lib/datum'
@@ -116,6 +117,9 @@ export function CustomerDetailPage() {
   const [nachfassOffen, setNachfassOffen] = useState(false)
   const [nachfass, setNachfass] = useState({datum: heuteIso(), notiz: ''})
   const [nachfassBusy, setNachfassBusy] = useState(false)
+  const [anonymisierenBusy, setAnonymisierenBusy] = useState(false)
+  const [erledigtBusy, setErledigtBusy] = useState(false)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
   const notizFeldRef = useRef<HTMLTextAreaElement | null>(null)
   const toast = useToast()
   const {me} = useAuth()
@@ -147,7 +151,7 @@ export function CustomerDetailPage() {
 
   /** Löschung nach Art. 17 DSGVO - unwiderruflich, deshalb zweistufig. */
   async function anonymisieren() {
-    if (!customerId || !data) return
+    if (!customerId || !data || anonymisierenBusy) return
     const name = data.customer.full_name
     if (!window.confirm(
       `Personenbezogene Daten von ${name} unwiderruflich entfernen?\n\n` +
@@ -162,12 +166,15 @@ export function CustomerDetailPage() {
       return
     }
 
+    setAnonymisierenBusy(true)
     try {
       await api(`/customers/${customerId}/anonymize`, {method: 'POST'})
       toast('Kunde wurde anonymisiert')
       load()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Anonymisierung fehlgeschlagen', 'error')
+    } finally {
+      setAnonymisierenBusy(false)
     }
   }
 
@@ -205,7 +212,8 @@ export function CustomerDetailPage() {
   }
 
   async function nachfassenErledigt() {
-    if (!data?.next_follow_up) return
+    if (!data?.next_follow_up || erledigtBusy) return
+    setErledigtBusy(true)
     try {
       await api(`/followups/${data.next_follow_up.id}/complete`, {
         method: 'POST',
@@ -215,6 +223,8 @@ export function CustomerDetailPage() {
       load()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Fehler', 'error')
+    } finally {
+      setErledigtBusy(false)
     }
   }
 
@@ -222,8 +232,11 @@ export function CustomerDetailPage() {
     if (!customerId) return
     try {
       setData(await api<Timeline>(`/customers/${customerId}/timeline`))
+      setLadefehler(null)
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Konnte nicht laden', 'error')
+      const meldung = err instanceof Error ? err.message : 'Konnte nicht laden'
+      toast(meldung, 'error')
+      setLadefehler(meldung)
     }
   }, [customerId])
 
@@ -251,6 +264,13 @@ export function CustomerDetailPage() {
     }
   }
 
+  if (!data && ladefehler) {
+    return (
+      <div className="page">
+        <LoadError meldung={ladefehler} onRetry={load} />
+      </div>
+    )
+  }
   if (!data) return <div className="loading">Kundenakte wird geladen…</div>
 
   const {customer, events} = data
@@ -284,9 +304,9 @@ export function CustomerDetailPage() {
             <Download size={16} /> Datenauskunft
           </button>
           {isTeamLeader && (
-            <button type="button" className="danger-button" onClick={anonymisieren}
+            <button type="button" className="danger-button" onClick={anonymisieren} disabled={anonymisierenBusy}
               title="Personenbezug unwiderruflich entfernen (Art. 17 DSGVO)">
-              <ShieldOff size={16} /> Anonymisieren
+              <ShieldOff size={16} /> {anonymisierenBusy ? 'Wird anonymisiert…' : 'Anonymisieren'}
             </button>
           )}
         </div>
@@ -433,8 +453,8 @@ export function CustomerDetailPage() {
 
           <div className="nachfass-aktionen">
             {data.next_follow_up && (
-              <button type="button" onClick={nachfassenErledigt}>
-                <CheckCircle2 size={15} /> Erledigt
+              <button type="button" onClick={nachfassenErledigt} disabled={erledigtBusy}>
+                <CheckCircle2 size={15} /> {erledigtBusy ? 'Wird erledigt…' : 'Erledigt'}
               </button>
             )}
             <button
