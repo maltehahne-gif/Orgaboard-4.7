@@ -44,5 +44,8 @@ export function money(cents:number|null|undefined) {
 
 export function formatDateTime(value:string|null|undefined) {
   if (!value) return '–'
-  return new Intl.DateTimeFormat('de-DE',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value))
+  // Fest in Europe/Berlin, unabhängig von der Systemzeitzone des Geräts -
+  // siehe lib/datum.ts. Zwei Mitarbeiter sollen dieselbe Uhrzeit lesen,
+  // auch wenn einer von ihnen gerade im Ausland unterwegs ist.
+  return new Intl.DateTimeFormat('de-DE',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Berlin'}).format(new Date(value))
 }

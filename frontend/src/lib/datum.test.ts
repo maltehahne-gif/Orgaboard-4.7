@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from 'vitest'
-import {ausIso, heuteIso, isoDatum, montagIso} from './datum'
+import {ausIso, heuteIso, isoDatum, jetztLokal, lokaleZeiteingabe, montagIso, zeiteingabeZuIso} from './datum'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -69,5 +69,60 @@ describe('Kalendertage im lokalen Kalender', () => {
     expect(isoDatum(d)).toBe('2026-03-29')
     d.setDate(d.getDate() + 1)
     expect(isoDatum(d)).toBe('2026-03-30')
+  })
+})
+
+/**
+ * `toISOString().slice(0, 16)` liefert die Uhrzeit in UTC. In Deutschland
+ * weicht das im Sommer um zwei, im Winter um eine Stunde von der Ortszeit ab
+ * - genau der Fehler, den lokaleZeiteingabe/zeiteingabeZuIso beheben.
+ */
+describe('Uhrzeiten für datetime-local in Europe/Berlin', () => {
+  it('zeigt einen UTC-Zeitpunkt im Sommer (Sommerzeit, UTC+2) als Ortszeit', () => {
+    // 15.07.2026, 12:00 UTC = 14:00 Ortszeit (CEST).
+    const zeitpunkt = new Date(Date.UTC(2026, 6, 15, 12, 0, 0))
+    expect(lokaleZeiteingabe(zeitpunkt)).toBe('2026-07-15T14:00')
+  })
+
+  it('zeigt einen UTC-Zeitpunkt im Winter (Winterzeit, UTC+1) als Ortszeit', () => {
+    // 15.01.2026, 12:00 UTC = 13:00 Ortszeit (CET).
+    const zeitpunkt = new Date(Date.UTC(2026, 0, 15, 12, 0, 0))
+    expect(lokaleZeiteingabe(zeitpunkt)).toBe('2026-01-15T13:00')
+  })
+
+  it('rechnet eine Sommerzeit-Eingabe korrekt in UTC um', () => {
+    expect(zeiteingabeZuIso('2026-07-15T14:00')).toBe('2026-07-15T12:00:00.000Z')
+  })
+
+  it('rechnet eine Winterzeit-Eingabe korrekt in UTC um', () => {
+    expect(zeiteingabeZuIso('2026-01-15T13:00')).toBe('2026-01-15T12:00:00.000Z')
+  })
+
+  it('liefert für "jetzt" denselben Wert wie lokaleZeiteingabe(new Date())', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(Date.UTC(2026, 6, 15, 12, 0, 0)))
+    expect(jetztLokal()).toBe('2026-07-15T14:00')
+  })
+
+  it('bleibt beim Hin- und Herrechnen rund um beide Zeitumstellungen beim selben Wert', () => {
+    // 29.03.2026: Umstellung auf Sommerzeit. 25.10.2026: Umstellung auf
+    // Winterzeit. Absichtlich außerhalb der übersprungenen bzw.
+    // doppeldeutigen Stunde selbst - die Umrechnung an den Tagen drumherum
+    // muss trotzdem exakt stimmen.
+    for (const wert of [
+      '2026-03-28T10:00',
+      '2026-03-30T10:00',
+      '2026-10-24T10:00',
+      '2026-10-26T10:00',
+      '2026-01-01T00:05',
+      '2026-12-31T23:55',
+    ]) {
+      expect(lokaleZeiteingabe(zeiteingabeZuIso(wert))).toBe(wert)
+    }
+  })
+
+  it('behandelt eine bereits gespeicherte ISO-Zeit aus dem Backend korrekt', () => {
+    // Wie sie z. B. als sold_at oder issued_at zurückkommt.
+    expect(lokaleZeiteingabe('2026-08-17T09:30:00.000Z')).toBe('2026-08-17T11:30')
   })
 })

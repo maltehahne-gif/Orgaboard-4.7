@@ -1,5 +1,6 @@
 import type {Appointment} from '../types'
 import {kartenHref} from './mobile'
+import {lokaleZeiteingabe, zeiteingabeZuIso} from './datum'
 
 export type AppointmentDraft = {
   customer_id:string
@@ -38,10 +39,12 @@ export function appointmentTypeOption(value:string){
   return appointmentTypeOptions.find(option=>option.value===value) || appointmentTypeOptions[3]
 }
 
-export function toDateTimeLocal(value:Date|string) {
-  const date = value instanceof Date ? value : new Date(value)
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0,16)
-}
+/**
+ * Zentrale Uhrzeit-Umrechnung für datetime-local-Felder, fest in
+ * Europe/Berlin - siehe lib/datum.ts für die Begründung. Der Name bleibt
+ * bestehen, weil er an mehreren Stellen importiert wird.
+ */
+export const toDateTimeLocal = lokaleZeiteingabe
 
 export function startOfWorkWeek(value = new Date()) {
   const date = new Date(value)
@@ -105,8 +108,8 @@ export function appointmentPayload(form:AppointmentDraft) {
     ...appointment,
     customer_id:form.customer_id || null,
     employee_id:form.employee_id || null,
-    start_at:new Date(form.start_at).toISOString(),
-    end_at:form.end_at ? new Date(form.end_at).toISOString() : null,
+    start_at:zeiteingabeZuIso(form.start_at),
+    end_at:form.end_at ? zeiteingabeZuIso(form.end_at) : null,
     notes:form.notes.trim() || null,
   }
 }
