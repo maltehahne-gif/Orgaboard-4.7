@@ -15,6 +15,7 @@ import {
   LogOut,
   AlarmClock,
   Mail,
+  MessageSquarePlus,
   Menu,
   Package,
   PackageCheck,
@@ -110,6 +111,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: 'Verwaltung',
     items: [
       {to: '/verlauf', label: 'Verlauf', icon: History},
+      {to: '/feedback', label: 'Feedback', icon: MessageSquarePlus},
       {to: '/profil', label: 'Profil', icon: Settings},
     ],
   },

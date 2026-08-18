@@ -1,3 +1,4 @@
+import {useEffect} from 'react'
 import {Navigate,Route,Routes,useLocation} from 'react-router-dom'
 import {useAuth} from './lib/auth'
 import {darfVerwalten, istSystemAdmin} from './lib/roles'
@@ -28,6 +29,7 @@ import {ComparisonPage} from './pages/ComparisonPage'
 import {TradeInsPage} from './pages/TradeInsPage'
 import {ReportsPage} from './pages/ReportsPage'
 import {SysAdminPage} from './pages/SysAdminPage'
+import {FeedbackPage} from './pages/FeedbackPage'
 
 // Merkt sich den Pfad, von dem aus ein Benutzer zum Login umgeleitet wurde -
 // egal ob beim ersten Aufruf ohne Sitzung oder weil sie zwischendurch
@@ -71,4 +73,22 @@ function LoginRoute(){
   if(me&&!hatResetToken)return <Navigate to={holeUndLoescheRuecksprung()} replace/>
   return <LoginPage/>
 }
-export default function App(){return <Routes><Route path="/login" element={<LoginRoute/>}/><Route element={<Guard/>}><Route index element={<DashboardPage/>}/><Route path="ki" element={<AIPage/>}/><Route path="termine" element={<AppointmentsPage/>}/><Route path="routenplanung" element={<RoutePlanningPage/>}/><Route path="kunden" element={<CustomersPage/>}/><Route path="kunden/:customerId" element={<CustomerDetailPage/>}/><Route path="pipeline" element={<CrmPipelinePage/>}/><Route path="nachfassen" element={<FollowUpsPage/>}/><Route path="verlauf" element={<HistoryPage/>}/><Route path="produkte" element={<ProductsPage/>}/><Route path="angebote" element={<OffersPage/>}/><Route path="verkaeufe" element={<SalesPage/>}/><Route path="verkaufstabelle" element={<SalesReportPage/>}/><Route path="berichte" element={<ReportsPage/>}/><Route path="verleih" element={<RentalsPage/>}/><Route path="altgeraete" element={<TradeInsPage/>}/><Route path="buntewoche" element={<BuntewochePage/>}/><Route path="nachrichten" element={<MessagesPage/>}/><Route path="profil" element={<ProfilePage/>}/><Route path="cockpit" element={<TL><ManagementCockpitPage/></TL>}/><Route path="vergleich" element={<TL><ComparisonPage/></TL>}/><Route path="team" element={<TL><TeamPage/></TL>}/><Route path="teamstatistiken" element={<TL><TeamStatsPage/></TL>}/><Route path="verwaltung" element={<TL><AdminPage/></TL>}/><Route path="system" element={<SA><SysAdminPage/></SA>}/></Route><Route path="*" element={<Navigate to="/" replace/>}/></Routes>}
+
+// Merkt sich die zuletzt besuchte Seite ausserhalb von /feedback, damit die
+// Feedback-Seite "Aktuelle Seite" sinnvoll vorbelegen kann - die eigene
+// Route waere sonst immer nur "/feedback" selbst, nie die Seite, auf der das
+// Problem eigentlich auftrat.
+let letzterPfadVorFeedback='/'
+export function letzterBesuchterPfad(){return letzterPfadVorFeedback}
+
+function Pfadverfolgung(){
+  const location=useLocation()
+  useEffect(()=>{
+    if(location.pathname!=='/feedback'){
+      letzterPfadVorFeedback=location.pathname
+    }
+  },[location.pathname])
+  return null
+}
+
+export default function App(){return <><Pfadverfolgung/><Routes><Route path="/login" element={<LoginRoute/>}/><Route element={<Guard/>}><Route index element={<DashboardPage/>}/><Route path="ki" element={<AIPage/>}/><Route path="termine" element={<AppointmentsPage/>}/><Route path="routenplanung" element={<RoutePlanningPage/>}/><Route path="kunden" element={<CustomersPage/>}/><Route path="kunden/:customerId" element={<CustomerDetailPage/>}/><Route path="pipeline" element={<CrmPipelinePage/>}/><Route path="nachfassen" element={<FollowUpsPage/>}/><Route path="verlauf" element={<HistoryPage/>}/><Route path="feedback" element={<FeedbackPage/>}/><Route path="produkte" element={<ProductsPage/>}/><Route path="angebote" element={<OffersPage/>}/><Route path="verkaeufe" element={<SalesPage/>}/><Route path="verkaufstabelle" element={<SalesReportPage/>}/><Route path="berichte" element={<ReportsPage/>}/><Route path="verleih" element={<RentalsPage/>}/><Route path="altgeraete" element={<TradeInsPage/>}/><Route path="buntewoche" element={<BuntewochePage/>}/><Route path="nachrichten" element={<MessagesPage/>}/><Route path="profil" element={<ProfilePage/>}/><Route path="cockpit" element={<TL><ManagementCockpitPage/></TL>}/><Route path="vergleich" element={<TL><ComparisonPage/></TL>}/><Route path="team" element={<TL><TeamPage/></TL>}/><Route path="teamstatistiken" element={<TL><TeamStatsPage/></TL>}/><Route path="verwaltung" element={<TL><AdminPage/></TL>}/><Route path="system" element={<SA><SysAdminPage/></SA>}/></Route><Route path="*" element={<Navigate to="/" replace/>}/></Routes></>}

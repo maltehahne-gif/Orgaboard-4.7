@@ -1,4 +1,5 @@
 import {cleanup, render, screen} from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {BrowserRouter} from 'react-router-dom'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
@@ -63,6 +64,23 @@ function alsAngemeldet() {
       email: 'a@b.de',
       full_name: 'Anna Beispiel',
       role: 'EMPLOYEE',
+      must_change_password: false,
+      employee: null,
+    } as any,
+    loading: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+    refresh: vi.fn(),
+  })
+}
+
+function alsAngemeldetMitRolle(role: 'EMPLOYEE' | 'TEAM_LEADER' | 'REGIONAL_LEAD' | 'SYSTEM_ADMIN') {
+  mockUseAuth.mockReturnValue({
+    me: {
+      id: 'u1',
+      email: 'a@b.de',
+      full_name: 'Anna Beispiel',
+      role,
       must_change_password: false,
       employee: null,
     } as any,
@@ -215,4 +233,36 @@ describe('Rücksprung nach dem Login', () => {
     expect(window.location.pathname).toBe('/')
     expect(window.location.hostname).not.toBe('angreifer.example')
   })
+})
+
+/**
+ * Feedback muss für jede angemeldete Rolle in der Hauptnavigation stehen
+ * und zur echten Feedback-Seite führen - für alle vier Rollen gleich,
+ * nicht nur für Teamleiter oder höher.
+ */
+describe('Feedback in der Hauptnavigation', () => {
+  it.each(['EMPLOYEE', 'TEAM_LEADER', 'REGIONAL_LEAD', 'SYSTEM_ADMIN'] as const)(
+    'zeigt %s einen Feedback-Link, der zur Feedback-Seite führt',
+    async role => {
+      alsAngemeldetMitRolle(role)
+      // /produkte statt / (Dashboard): das Dashboard ruft mehrere
+      // unterschiedlich geformte Endpunkte ab, die die generische
+      // api()-Mock-Antwort ([]) hier nicht sauber bedienen kann.
+      setUrl('/produkte')
+
+      render(
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>,
+      )
+
+      const links = screen.getAllByRole('link', {name: /Feedback/})
+      expect(links.length).toBeGreaterThan(0)
+
+      await userEvent.click(links[0])
+
+      expect(await screen.findByRole('heading', {name: 'Feedback'})).toBeTruthy()
+      expect(window.location.pathname).toBe('/feedback')
+    },
+  )
 })
