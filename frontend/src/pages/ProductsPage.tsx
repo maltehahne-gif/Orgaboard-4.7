@@ -499,7 +499,7 @@ export function ProductsPage(){
         </div>
 
 
-        {ansicht!=='preise'&&
+        {istTeamleiter&&ansicht!=='preise'&&
           <button
             className="primary"
             type="button"
