@@ -357,8 +357,14 @@ def request_password_reset(
 
     base_url = _password_reset_frontend_url(request)
 
+    # Der Link zeigt direkt auf /login, nicht auf die Startseite: die
+    # Startseite steckt hinter dem Guard und leitet einen ausgeloggten
+    # Benutzer serverseitig zu /login um. Dieser Redirect (per <Navigate>)
+    # ersetzt die Adresse jedoch komplett und nimmt den Query-String dabei
+    # nicht mit - das Token ging so beim Redirect verloren, bevor die
+    # Login-Seite es lesen konnte.
     reset_url = (
-        f"{base_url}/?"
+        f"{base_url}/login?"
         + urlencode(
             {
                 "reset_token": token,
