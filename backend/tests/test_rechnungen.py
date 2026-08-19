@@ -190,6 +190,39 @@ def test_rechnung_traegt_den_ausstellenden_mitarbeiter_mit_anschrift(client):
     assert aussteller["phone"] == "0176/20204188"
 
 
+def test_erfasst_eine_fuehrungsrolle_fuer_jemanden_bleibt_dessen_name_auf_der_rechnung(client):
+    """Auf dem Beleg steht der Berater, der beim Kunden war.
+
+    Erfasst eine Teamleitung einen Verkauf für einen Mitarbeiter nach, hat
+    der Kunde trotzdem den Mitarbeiter vor sich gehabt - er unterschreibt
+    unten rechts als Kundenberater. Stünde dort die Teamleitung, wäre der
+    Beleg schlicht falsch.
+    """
+    mitarbeiter = anlegen(
+        "anna@example.com", "Anna Mitarbeiterin",
+        street="Musterweg", house_number="3", postal_code="24340", city="Eckernförde",
+    )
+    anlegen("chefin@example.com", "Clara Chefin", rolle=Role.TEAM_LEADER)
+    kopf = anmelden(client, "chefin@example.com")
+
+    antwort = client.post(
+        "/api/v1/sales",
+        headers=kopf,
+        json={
+            "customer_id": mitarbeiter["customer"],
+            "employee_id": mitarbeiter["employee"],
+            "sold_at": datetime.now(timezone.utc).isoformat(),
+            "channel": "field",
+            "items": [{"product_id": produkt(), "quantity": 1, "unit_price_cents": 250000}],
+        },
+    )
+    assert antwort.status_code == 200, antwort.text
+
+    rechnung = client.get("/api/v1/invoices").json()[0]
+    assert rechnung["issuer"]["name"] == "Anna Mitarbeiterin"
+    assert rechnung["issuer"]["street"] == "Musterweg 3"
+
+
 def test_rechnung_traegt_kunde_positionen_und_datum(client):
     p = anlegen("mira@example.com", "Mira Musterfrau")
     kopf = anmelden(client, "mira@example.com")

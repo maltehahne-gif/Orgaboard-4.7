@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.core.rbac import require_team_leader, scoped_employee_id
 from app.core.security import get_current_user, require_csrf
 from app.core.timeutils import datum_plausibel, fruehestes_datum, local_today, spaetestes_datum
-from app.models import Customer, Product, Sale, SaleChannel, SaleItem, User
+from app.models import Appointment, Customer, Product, Sale, SaleChannel, SaleItem, User
 from app.services.realtime import manager
 from app.services.serializers import employee_name, sale_k70_total, sale_total, sale_units
 from app.services.stats import is_k70_category, refresh_weekly_stat
@@ -214,6 +214,16 @@ async def create_sale(data: SaleIn, user: User = Depends(get_current_user), db: 
         raise HTTPException(status_code=403, detail="Kunde gehört nicht zu diesem Mitarbeiter")
     if not data.items:
         raise HTTPException(status_code=400, detail="Ein Verkauf benötigt mindestens ein Produkt")
+    # Der Termin lief bisher ungeprueft durch. Ein fremder Termin haengt
+    # damit am eigenen Verkauf - und seine Terminart und seine
+    # Vorfuehrungen stehen in der eigenen Verkaufstabelle
+    # (services/verkaufstabelle.py), obwohl sie zu jemand anderem gehoeren.
+    if data.appointment_id:
+        termin = db.get(Appointment, data.appointment_id)
+        if not termin:
+            raise HTTPException(status_code=404, detail="Termin nicht gefunden")
+        if termin.employee_id != employee_id:
+            raise HTTPException(status_code=403, detail="Der Termin gehört zu einem anderen Mitarbeiter")
     resolved: list[tuple[Product, SaleItemIn]] = []
     for item in data.items:
         p = db.get(Product, item.product_id)
