@@ -2,6 +2,7 @@ import {ChangeEvent, FormEvent, useEffect, useRef, useState} from 'react'
 import {AlertTriangle, ChevronDown, ChevronRight, Trash2, Upload} from 'lucide-react'
 import {api} from '../lib/api'
 import {useToast} from './Toast'
+import {ImportSummary, type ImportErgebnis} from './ImportSummary'
 import {heuteIso} from '../lib/datum'
 
 type Preis = {
@@ -57,6 +58,7 @@ export function ProductPrices() {
   const [form, setForm] = useState({betrag: '', ab: heuteIso(), quelle: ''})
   const [busy, setBusy] = useState(false)
   const [importiere, setImportiere] = useState(false)
+  const [importErgebnis, setImportErgebnis] = useState<ImportErgebnis | null>(null)
   const dateiRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
 
@@ -169,8 +171,17 @@ export function ProductPrices() {
           ? `${ergebnis.gesetzt} Preise gesetzt, ${ergebnis.uebersprungen} übersprungen`
           : `${ergebnis.gesetzt} Preise gesetzt`,
       )
-      if (ergebnis.hinweise.length) console.info('Preisimport übersprungen:', ergebnis.hinweise)
+      // Sichtbar statt nur in der Konsole - sonst bleibt unklar, welche
+      // Zeilen warum keinen Preis bekommen haben.
+      setImportErgebnis({
+        angelegt: ergebnis.gesetzt,
+        uebersprungen: ergebnis.uebersprungen,
+        hinweise: ergebnis.hinweise,
+        einheit: 'Preise',
+        taetigkeit: 'gesetzt',
+      })
     } catch (err) {
+      setImportErgebnis(null)
       toast(err instanceof Error ? err.message : 'Import fehlgeschlagen', 'error')
     } finally {
       setImportiere(false)
@@ -216,6 +227,10 @@ export function ProductPrices() {
           <Upload size={16} /> {importiere ? 'Import läuft…' : 'Preise importieren'}
         </button>
       </div>
+
+      {importErgebnis && (
+        <ImportSummary ergebnis={importErgebnis} onClose={() => setImportErgebnis(null)} />
+      )}
 
       {daten.without_price > 0 && (
         <div className="preis-hinweis">

@@ -52,7 +52,7 @@ export function FeedbackPage() {
 
     setBusy(true)
     try {
-      const antwort = await api<{ok: boolean; reference: string; email_sent: boolean}>('/feedback', {
+      const antwort = await api<{ok: boolean; reference: string; recipients: number}>('/feedback', {
         method: 'POST',
         body: JSON.stringify({
           category: form.category,
@@ -75,7 +75,10 @@ export function FeedbackPage() {
       <div className="page-head">
         <div>
           <h1>Feedback</h1>
-          <p>Melde einen Fehler, eine Idee oder alles andere, was OrgaBoard besser machen würde.</p>
+          <p>
+            Melde einen Fehler, eine Idee oder alles andere, was OrgaBoard besser machen würde.
+            Dein Feedback geht als private Nachricht an die Systemadministration – niemand sonst sieht es.
+          </p>
         </div>
       </div>
 
@@ -140,7 +143,7 @@ export function FeedbackPage() {
 
         {success && (
           <div className="info-box span-2" role="status" aria-live="polite">
-            Vielen Dank! Dein Feedback wurde erfolgreich übermittelt.
+            Dein Feedback wurde gesendet. Vielen Dank.
             <br />
             <small>Referenz: {success.reference}</small>
           </div>

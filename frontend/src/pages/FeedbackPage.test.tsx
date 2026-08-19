@@ -54,7 +54,7 @@ describe('Feedback-Seite – Validierung', () => {
     // required verhindert hier bereits, dass das Formular überhaupt
     // abgeschickt wird - genau das ist die erste Verteidigungslinie.
     expect(mockApi).not.toHaveBeenCalled()
-    expect(screen.queryByText(/erfolgreich übermittelt/)).toBeNull()
+    expect(screen.queryByText(/Dein Feedback wurde gesendet\. Vielen Dank\./)).toBeNull()
   })
 
   it('verlangt Betreff und Nachricht vor dem Absenden (nur Leerzeichen)', async () => {
@@ -84,24 +84,24 @@ describe('Feedback-Seite – Validierung', () => {
 
 describe('Feedback-Seite – Absenden', () => {
   it('sendet gültiges Feedback und zeigt die Erfolgsmeldung mit Referenz', async () => {
-    mockApi.mockResolvedValue({ok: true, reference: 'FDB-2026-000042', email_sent: true})
+    mockApi.mockResolvedValue({ok: true, reference: 'FDB-2026-000042', recipients: 1})
     render(<FeedbackPage />)
 
     await ausfuellen()
     await userEvent.click(screen.getByRole('button', {name: /Feedback senden/}))
 
-    expect(await screen.findByText(/erfolgreich übermittelt/)).toBeTruthy()
+    expect(await screen.findByText(/Dein Feedback wurde gesendet\. Vielen Dank\./)).toBeTruthy()
     expect(screen.getByText(/FDB-2026-000042/)).toBeTruthy()
     expect(mockApi).toHaveBeenCalledWith('/feedback', expect.objectContaining({method: 'POST'}))
   })
 
   it('setzt das Formular nach erfolgreichem Absenden zurück', async () => {
-    mockApi.mockResolvedValue({ok: true, reference: 'FDB-2026-000042', email_sent: true})
+    mockApi.mockResolvedValue({ok: true, reference: 'FDB-2026-000042', recipients: 1})
     render(<FeedbackPage />)
 
     await ausfuellen()
     await userEvent.click(screen.getByRole('button', {name: /Feedback senden/}))
-    await screen.findByText(/erfolgreich übermittelt/)
+    await screen.findByText(/Dein Feedback wurde gesendet\. Vielen Dank\./)
 
     expect((screen.getByLabelText(/Betreff/) as HTMLInputElement).value).toBe('')
     expect((screen.getByLabelText(/Nachricht/) as HTMLTextAreaElement).value).toBe('')
@@ -121,7 +121,7 @@ describe('Feedback-Seite – Absenden', () => {
     expect(button.hasAttribute('disabled')).toBe(true)
     expect(mockApi).toHaveBeenCalledTimes(1)
 
-    loeseAuf({ok: true, reference: 'FDB-2026-000042', email_sent: true})
+    loeseAuf({ok: true, reference: 'FDB-2026-000042', recipients: 1})
     await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false))
   })
 
@@ -136,7 +136,7 @@ describe('Feedback-Seite – Absenden', () => {
     const meldung = await screen.findByRole('alert')
     expect(meldung.textContent).toBe('Feedback konnte nicht gesendet werden.')
     await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false))
-    expect(screen.queryByText(/erfolgreich übermittelt/)).toBeNull()
+    expect(screen.queryByText(/Dein Feedback wurde gesendet\. Vielen Dank\./)).toBeNull()
   })
 
   it('zeigt die 429-Meldung des Servers bei zu vielen Einsendungen', async () => {
@@ -153,7 +153,7 @@ describe('Feedback-Seite – Absenden', () => {
 
 describe('Feedback-Seite – Tastaturbedienung', () => {
   it('lässt sich vollständig mit der Tastatur ausfüllen und absenden', async () => {
-    mockApi.mockResolvedValue({ok: true, reference: 'FDB-2026-000042', email_sent: true})
+    mockApi.mockResolvedValue({ok: true, reference: 'FDB-2026-000042', recipients: 1})
     render(<FeedbackPage />)
 
     await userEvent.tab() // Kategorie
@@ -174,6 +174,46 @@ describe('Feedback-Seite – Tastaturbedienung', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', {name: /Feedback senden/}))
     await userEvent.keyboard('{Enter}')
 
-    expect(await screen.findByText(/erfolgreich übermittelt/)).toBeTruthy()
+    expect(await screen.findByText(/Dein Feedback wurde gesendet\. Vielen Dank\./)).toBeTruthy()
+  })
+})
+
+/* Feedback läuft seit dieser Runde vollständig intern über das
+   Nachrichtensystem. Die Oberfläche darf deshalb nirgends mehr behaupten,
+   etwas sei "gespeichert, aber nicht versendet" - das war genau die
+   Meldung, nach der Benutzer erneut klickten und ein zweites Feedback
+   hinterliessen. */
+describe('Feedback-Seite – keine Mail-Halbwahrheiten mehr', () => {
+  it('zeigt nach Erfolg genau die zugesagte Bestätigung', async () => {
+    mockApi.mockResolvedValue({ok: true, reference: 'FDB-2026-000042', recipients: 2})
+    render(<FeedbackPage />)
+
+    await ausfuellen()
+    await userEvent.click(screen.getByRole('button', {name: /Feedback senden/}))
+
+    const bestaetigung = await screen.findByRole('status')
+    expect(bestaetigung.textContent).toContain('Dein Feedback wurde gesendet. Vielen Dank.')
+    expect(bestaetigung.textContent).toContain('FDB-2026-000042')
+    expect(bestaetigung.textContent).not.toMatch(/Versand/)
+    expect(bestaetigung.textContent).not.toMatch(/E-Mail/)
+  })
+
+  it('nennt Versand per E-Mail an keiner Stelle der Seite', () => {
+    render(<FeedbackPage />)
+    expect(document.body.textContent).not.toMatch(/E-Mail/)
+    expect(document.body.textContent).not.toMatch(/Mailversand/)
+  })
+
+  it('rendert einen Serverfehler als Text, niemals als [object Object]', async () => {
+    // Wie ihn lib/api.ts aus einer FastAPI-Antwort erzeugt.
+    mockApi.mockRejectedValue(new Error('subject: Field required'))
+    render(<FeedbackPage />)
+
+    await ausfuellen()
+    await userEvent.click(screen.getByRole('button', {name: /Feedback senden/}))
+
+    const meldung = await screen.findByRole('alert')
+    expect(meldung.textContent).toBe('subject: Field required')
+    expect(document.body.textContent).not.toContain('[object Object]')
   })
 })

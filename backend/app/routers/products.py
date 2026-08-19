@@ -466,14 +466,32 @@ def set_active(
 
 @router.post("/import", dependencies=[Depends(require_csrf)])
 def import_product(data: ProductImport, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Produkt anlegen oder aktualisieren - inklusive optionalem Preis.
+
+    Der Name ist der Schluessel: ein bereits vorhandenes Produkt wird
+    aktualisiert statt ein zweites mit gleichem Namen anzulegen. Ein
+    mitgeschickter Preis laeuft ueber dieselbe Zeitachsen-Logik wie
+    POST /products/{id}/prices - sonst stuenden nach dem zweiten Speichern
+    zwei gleichzeitig gueltige Preise nebeneinander.
+    """
     require_team_leader(user)
-    if data.verified and not data.source_url:
+    if not data.name.strip():
+        raise HTTPException(status_code=400, detail="Ein Produkt braucht einen Namen")
+    if data.verified and not data.source_url.strip():
         raise HTTPException(status_code=400, detail="Verifizierte Produktdaten benötigen eine nachvollziehbare Quelle")
-    if data.price and data.price.verified and not data.price.source_url:
+    if data.price and data.price.verified and not data.price.source_url.strip():
         raise HTTPException(status_code=400, detail="Verifizierte Preise benötigen eine Quelle")
+
     payload = data.model_dump()
+    preis_daten = payload.pop("price", None)
+    payload["name"] = data.name.strip()
     p = upsert_verified_product(db, payload)
     db.flush()
+
+    if preis_daten:
+        _preis_anlegen(db, p.id, PriceIn(**preis_daten))
+        db.flush()
+
     audit(db, user, "product.imported", "product", p.id, after={"name": p.name, "source_url": p.source_url, "verified": p.verified})
     db.commit()
     return product_out(db, p)

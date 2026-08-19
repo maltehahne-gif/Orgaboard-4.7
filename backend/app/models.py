@@ -814,13 +814,14 @@ class FeedbackCategory(str, enum.Enum):
 
 
 class Feedback(Base):
-    """Rueckmeldung eines angemeldeten Benutzers, per Mail an den Betreiber.
+    """Rueckmeldung eines angemeldeten Benutzers an den Betreiber.
 
-    Wird zuerst gespeichert, danach per Mail verschickt (siehe
-    routers/feedback.py) - so geht eine Rueckmeldung nicht verloren, nur weil
-    der Mailserver gerade kurz nicht erreichbar ist. email_sent haelt fest,
-    ob der Versand tatsaechlich geklappt hat; ein Fehlschlag zaehlt
-    ausdruecklich nicht als Erfolg.
+    Die Zustellung laeuft vollstaendig intern ueber das Nachrichtensystem:
+    Feedback und die privaten Nachrichten an die aktiven
+    Systemadministratoren entstehen in einer einzigen Transaktion (siehe
+    routers/feedback.py). Deshalb gibt es keinen Zustand "gespeichert, aber
+    nicht zugestellt" mehr - und damit auch keine Dublette, die entsteht,
+    weil ein Benutzer nach einem halben Erfolg erneut auf Senden klickt.
     """
 
     __tablename__ = "feedback"
@@ -839,11 +840,17 @@ class Feedback(Base):
     page_path: Mapped[str | None] = mapped_column(String(300), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, index=True)
+    # Wann das Feedback intern zugestellt wurde und an wie viele
+    # Systemadministratoren. Beides wird im selben Commit gesetzt wie das
+    # Feedback selbst - ein Eintrag ohne delivered_at kann es deshalb nicht
+    # geben.
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    admin_message_count: Mapped[int] = mapped_column(Integer, default=0)
+    # Die drei email_*-Spalten stammen aus der Zeit, als Feedback per Mail
+    # verschickt wurde. Sie bleiben stehen, damit vorhandene Eintraege ihre
+    # Historie behalten; neu geschrieben wird hier nichts mehr.
     email_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Nur eine kurze, sichere Fehlermeldung - niemals Zugangsdaten oder
-    # andere Geheimnisse (siehe services/mail.py: dort werden keine
-    # Anmeldedaten in Ausnahmen eingebettet).
     email_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 

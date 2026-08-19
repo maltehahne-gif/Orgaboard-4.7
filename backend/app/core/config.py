@@ -49,10 +49,11 @@ class Settings(BaseSettings):
     smtp_from_email: str | None = None
     smtp_use_tls: bool = True
     password_reset_exp_minutes: int = 20
-    # Empfaenger fuer die Feedback-Funktion. Ein fester Vorgabewert ist hier
-    # bewusst kein Secret - anders als SMTP-Zugangsdaten ist die Zieladresse
-    # kein schuetzenswerter Wert, nur ein Konfigurationsdetail.
-    feedback_email_to: str = "orgaboard@gmail.com"
+    # Feedback braucht bewusst keine Einstellung mehr: es wird intern ueber
+    # das Nachrichtensystem an die aktiven Systemadministratoren zugestellt
+    # (routers/feedback.py). Empfaenger ergeben sich aus Role.SYSTEM_ADMIN,
+    # nicht aus einer Adresse in einer Konfigurationsdatei - eine Adresse
+    # laeuft irgendwann ins Leere, eine Rolle nicht.
     # Web-Push. Ohne diese beiden Schluessel bleibt Push abgeschaltet - die
     # Anwendung laeuft vollstaendig weiter, nur ohne Benachrichtigung aufs
     # Geraet. Erzeugen mit:

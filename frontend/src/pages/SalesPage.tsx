@@ -23,6 +23,7 @@ import {
   formatDateTime,
   money,
 } from '../lib/api'
+import {positionenFehler, preisInCent} from '../lib/positionen'
 
 import type {
   Customer,
@@ -33,6 +34,7 @@ import type {
 import {Modal} from '../components/Modal'
 import {ProductCombobox} from '../components/ProductCombobox'
 import {useToast} from '../components/Toast'
+import {LoadError} from '../components/LoadError'
 import {useAuth} from '../lib/auth'
 import {darfVerwalten} from '../lib/roles'
 import {jetztLokal, zeiteingabeZuIso} from '../lib/datum'
@@ -202,6 +204,9 @@ export function SalesPage(){
   const [busy,setBusy]=
     useState(false)
 
+  const [ladefehler,setLadefehler]=
+    useState<string|null>(null)
+
   const [exporting,setExporting]=
     useState(false)
 
@@ -258,11 +263,22 @@ export function SalesPage(){
     setRows(salesData)
     setCustomers(customerData)
     setProducts(productData)
+    setLadefehler(null)
+  }
+
+
+  /* Ein fehlgeschlagener Abruf ging vorher nur in die Entwicklerkonsole.
+     Auf dem Bildschirm stand dann eine leere Verkaufsliste - nicht zu
+     unterscheiden von "es gibt noch keine Verkäufe". */
+  function laden(){
+    load().catch(err=>
+      setLadefehler(err instanceof Error?err.message:'Die Verkaufsdaten sind gerade nicht erreichbar.')
+    )
   }
 
 
   useEffect(()=>{
-    load().catch(console.error)
+    laden()
   },[])
 
 
@@ -279,7 +295,9 @@ export function SalesPage(){
       '/team/employees'
     )
       .then(setEmployees)
-      .catch(console.error)
+      .catch(err=>
+        setLadefehler(err instanceof Error?err.message:'Die Mitarbeiterliste ist gerade nicht erreichbar.')
+      )
 
   },[isTeamLeader])
 
@@ -833,21 +851,15 @@ export function SalesPage(){
     }
 
 
-    const invalid=
-      form.items.some(
-        item=>
-          !item.product_id
-          || item.quantity<=0
-          || !item.price_eur
-      )
+    // Preis und Menge werden hier in die Werte umgerechnet, die das
+    // Backend erwartet. Aus einer Fehleingabe entstünde dabei still ein
+    // NaN, das JSON.stringify zu `null` macht - der Server lehnte dann ein
+    // Feld ab, das im Formular gar nicht vorkommt.
+    const positionsfehler=
+      positionenFehler(form.items)
 
-
-    if(invalid){
-
-      toast(
-        'Bitte bei jedem Eintrag ein Produkt auswählen.'
-      )
-
+    if(positionsfehler){
+      toast(positionsfehler,'error')
       return
     }
 
@@ -896,12 +908,8 @@ export function SalesPage(){
                     ),
 
                   unit_price_cents:
-                    Math.round(
-                      Number(
-                        item.price_eur
-                          .replace(',','.')
-                      )
-                      * 100
+                    preisInCent(
+                      item.price_eur
                     ),
                 })
               ),
@@ -1082,6 +1090,8 @@ export function SalesPage(){
         </div>
 
       </div>
+
+      {ladefehler&&<LoadError meldung={ladefehler} onRetry={laden}/>}
 
 
       <section className="sales-filter-panel card">

@@ -24,6 +24,12 @@ import {darfVerwalten} from '../lib/roles'
 import {api} from '../lib/api'
 
 
+// Herkunftskennzeichen für Produkte und Preise, die jemand hier von Hand
+// eingetragen hat. Das Backend verlangt zu jedem verifizierten Produkt und
+// jedem verifizierten Preis eine Quelle - "von Hand erfasst" ist eine
+// ehrliche Angabe, eine erfundene Vorwerk-URL wäre es nicht.
+const QUELLE_MANUELL = 'manual-entry'
+
 type ProductRecord = {
   id:string
   name:string
@@ -473,6 +479,13 @@ export function ProductsPage(){
             variants:[],
             accessories:[],
 
+            // Das Backend verlangt eine Quelle auf Produktebene, nicht nur
+            // beim Preis - ohne sie antwortete es mit einem 422, und im
+            // Dialog stand nur "[object Object]". Ein von Hand angelegtes
+            // Produkt hat keine externe Quelle; QUELLE_MANUELL hält
+            // genau das fest, statt eine Herkunft zu erfinden.
+            source_url:QUELLE_MANUELL,
+
             source_kind:
               'manual_verified',
 
@@ -484,8 +497,7 @@ export function ProductsPage(){
 
               currency:'EUR',
 
-              source_url:
-                'manual-entry',
+              source_url:QUELLE_MANUELL,
 
               verified:true,
             },

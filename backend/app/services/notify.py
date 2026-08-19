@@ -307,18 +307,42 @@ def anlaesse_ermitteln(db: Session, user: User) -> list[Anlass]:
     return anlaesse
 
 
-def benachrichtigungen_auffrischen(db: Session, user: User) -> list[Notification]:
-    """Faellige Anlaesse als Benachrichtigungen anlegen.
+def sichtbare_kategorien(db: Session, user_id: str) -> set[NotificationCategory]:
+    """Anlaesse, die dieser Benutzer im Postfach sehen moechte.
 
-    Gibt die neu angelegten Eintraege zurueck - genau die, die anschliessend
-    als Push verschickt werden sollen. Bereits bekannte Anlaesse liefern
-    nichts, damit niemand dieselbe Meldung zweimal bekommt.
+    Getrennt von der Frage, ob ein Anlass ueberhaupt entsteht: ein Eintrag
+    kann allein fuer den Push angelegt worden sein (in_app aus, push an).
+    Beim Auflisten wird er dann uebergangen.
+    """
+    gesetzt = einstellungen(db, user_id)
+    return {k for k in NotificationCategory if moechte(gesetzt, k, "in_app")}
+
+
+def benachrichtigungen_auffrischen(db: Session, user: User) -> tuple[list[Notification], list[Notification]]:
+    """Faellige Anlaesse anlegen. Gibt (alle neuen, davon zu pushende) zurueck.
+
+    Zwei Entscheidungen, die vorher zusammenfielen und beide falsch waren:
+
+    1. Ein Anlass entstand nur, wenn in_app gewuenscht war. Wer das Postfach
+       abgeschaltet, den Push aber angelassen hatte, bekam gar nichts.
+    2. Verschickt wurde jeder neue Eintrag - die Push-Einstellung des
+       Benutzers wurde beim Versand nie gelesen. "Push aus" schickte
+       trotzdem.
+
+    Deshalb: angelegt wird, sobald einer der beiden Kanaele ihn will; die
+    zweite Liste enthaelt nur die, die auch wirklich als Push hinausgehen
+    duerfen. Der Datenbankeintrag bleibt in beiden Faellen noetig - er ist
+    zugleich der Merker, damit derselbe Anlass nicht bei jedem Abruf erneut
+    verschickt wird.
     """
     gesetzt = einstellungen(db, user.id)
     neu: list[Notification] = []
+    zu_pushen: list[Notification] = []
 
     for anlass in anlaesse_ermitteln(db, user):
-        if not moechte(gesetzt, anlass.category, "in_app"):
+        im_postfach = moechte(gesetzt, anlass.category, "in_app")
+        per_push = moechte(gesetzt, anlass.category, "push")
+        if not im_postfach and not per_push:
             continue
 
         vorhanden = db.scalar(
@@ -348,7 +372,9 @@ def benachrichtigungen_auffrischen(db: Session, user: User) -> list[Notification
         except IntegrityError:
             continue
         neu.append(eintrag)
+        if per_push:
+            zu_pushen.append(eintrag)
 
     if neu:
         db.commit()
-    return neu
+    return neu, zu_pushen

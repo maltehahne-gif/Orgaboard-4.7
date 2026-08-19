@@ -9,6 +9,12 @@ async function login(page: import('@playwright/test').Page, user = E2E_USERS.emp
   await expect(page.getByRole('heading', {name: 'Dashboard'})).toBeVisible()
 }
 
+async function logout(page: import('@playwright/test').Page) {
+  await page.context().clearCookies()
+  await page.goto('/login')
+  await expect(page.getByRole('button', {name: 'Anmelden'})).toBeVisible()
+}
+
 test.describe('Feedback (TEST 11)', () => {
   test('vollständiger Ablauf: einloggen, Feedback öffnen, ausfüllen, senden', async ({page}) => {
     await login(page)
@@ -33,7 +39,7 @@ test.describe('Feedback (TEST 11)', () => {
     await senden.click()
     await senden.click()
 
-    await expect(page.getByText('Vielen Dank! Dein Feedback wurde erfolgreich übermittelt.')).toBeVisible()
+    await expect(page.getByText('Dein Feedback wurde gesendet. Vielen Dank.')).toBeVisible()
     await expect(page.getByText(/Referenz: FDB-\d{4}-\d{6}/)).toBeVisible()
 
     // Formular danach sauber zurückgesetzt.
@@ -48,42 +54,126 @@ test.describe('Feedback (TEST 11)', () => {
 
     await page.route('**/api/v1/feedback', route =>
       route.fulfill({
-        status: 502,
+        status: 500,
         contentType: 'application/json',
-        body: JSON.stringify({detail: 'Dein Feedback wurde gespeichert, aber der Versand ist fehlgeschlagen. Bitte versuche es erneut.'}),
+        body: JSON.stringify({detail: 'Feedback konnte nicht gesendet werden. Bitte versuche es erneut.'}),
       }),
     )
 
-    await page.getByLabel('Betreff').fill('E2E: simulierter Mailfehler')
-    await page.getByLabel('Nachricht', {exact: true}).fill('Dieser Versand wird über eine simulierte 502-Antwort abgefangen.')
+    await page.getByLabel('Betreff').fill('E2E: simulierter Serverfehler')
+    await page.getByLabel('Nachricht', {exact: true}).fill('Dieser Vorgang wird über eine simulierte 500-Antwort abgefangen.')
     const senden = page.getByRole('button', {name: 'Feedback senden'})
     await senden.click()
 
-    await expect(page.getByRole('alert')).toContainText('Versand ist fehlgeschlagen')
-    await expect(page.getByText(/erfolgreich übermittelt/)).toHaveCount(0)
+    await expect(page.getByRole('alert')).toContainText('Feedback konnte nicht gesendet werden')
+    await expect(page.getByText(/Dein Feedback wurde gesendet/)).toHaveCount(0)
     await expect(senden).toBeEnabled()
   })
 
-  test('zeigt die 429-Meldung, wenn das Rate-Limit erreicht ist', async ({page}) => {
-    // Eigene Benutzerin, damit Einsendungen aus den anderen Tests dieser
-    // Datei das Kontingent (5 je 10 Minuten) nicht schon vorbelastet haben.
-    await login(page, E2E_USERS.teamLeader)
+  test('ein FastAPI-Validierungsfehler wird lesbar - niemals [object Object]', async ({page}) => {
+    await login(page)
     await page.goto('/feedback')
 
-    // Serverseitig 5 Einsendungen je 10 Minuten - die sechste muss die
-    // Ratenbegrenzung auslösen (echter Aufruf, kein simulierter).
-    for (let i = 0; i < 5; i += 1) {
-      await page.getByLabel('Betreff').fill(`E2E Rate-Limit ${i}`)
-      await page.getByLabel('Nachricht', {exact: true}).fill('Nachricht zum Austesten des Rate-Limits im E2E-Test.')
-      await page.getByRole('button', {name: 'Feedback senden'}).click()
-      await expect(page.getByText(/erfolgreich übermittelt/)).toBeVisible()
-    }
+    // Genau die Form, die FastAPI bei einem 422 liefert.
+    await page.route('**/api/v1/feedback', route =>
+      route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: [{type: 'missing', loc: ['body', 'subject'], msg: 'Field required'}],
+        }),
+      }),
+    )
 
-    await page.getByLabel('Betreff').fill('E2E Rate-Limit 6')
-    await page.getByLabel('Nachricht', {exact: true}).fill('Diese sechste Einsendung soll abgelehnt werden.')
+    await page.getByLabel('Betreff').fill('E2E: Validierungsfehler')
+    await page.getByLabel('Nachricht', {exact: true}).fill('Der 422 muss als lesbarer Satz im Formular ankommen.')
     await page.getByRole('button', {name: 'Feedback senden'}).click()
 
-    await expect(page.getByRole('alert')).toContainText(/kurzer Zeit mehrere Feedbacks/)
+    await expect(page.getByRole('alert')).toContainText('subject: Field required')
+    await expect(page.locator('body')).not.toContainText('[object Object]')
+  })
+
+  /**
+   * Feedback per Formular abschicken. Bewusst mit wechselnden Absendern in
+   * den folgenden Tests: serverseitig sind fünf Einsendungen je zehn
+   * Minuten und Benutzer erlaubt, und die sechste würde mit 429 abgelehnt -
+   * der Test wäre dann rot, ohne dass etwas kaputt ist.
+   */
+  async function feedbackSenden(
+    page: import('@playwright/test').Page,
+    betreff: string,
+    kategorie = 'bug',
+  ) {
+    await page.goto('/feedback')
+    await page.getByLabel('Kategorie').selectOption(kategorie)
+    await page.getByLabel('Betreff').fill(betreff)
+    await page.getByLabel('Nachricht', {exact: true}).fill(
+      'Diese Rückmeldung darf ausschließlich bei der Systemadministration ankommen.',
+    )
+    await page.getByRole('button', {name: 'Feedback senden'}).click()
+    await expect(page.getByText('Dein Feedback wurde gesendet. Vielen Dank.')).toBeVisible()
+  }
+
+  /** Alle Nachrichten, die dieses Konto überhaupt abrufen darf. */
+  async function nachrichtenText(page: import('@playwright/test').Page) {
+    const antwort = await page.request.get('/api/v1/messages')
+    expect(antwort.ok()).toBe(true)
+    return JSON.stringify(await antwort.json())
+  }
+
+  test('der Systemadministrator bekommt das Feedback als private Nachricht', async ({page}) => {
+    const betreff = `E2E Vertraulich ${Date.now()}`
+
+    await login(page, E2E_USERS.employee)
+    await feedbackSenden(page, betreff, 'improvement')
+
+    // Die Absenderin selbst behält keine sichtbare Kopie: für Mitarbeiter
+    // existiert das Konto eines Systemadministrators nicht
+    // (backend/app/core/benutzerscope.py). Eine Nachricht "an Ida X" wäre
+    // genau die Auskunft, die dort bewusst zurückgehalten wird.
+    expect(await nachrichtenText(page)).not.toContain(betreff)
+
+    await logout(page)
+    await login(page, E2E_USERS.systemAdmin)
+
+    // Erst über die API - unabhängig davon, welche Unterhaltung die
+    // Oberfläche gerade offen hat.
+    expect(await nachrichtenText(page)).toContain(betreff)
+
+    // Und dann so, wie der Systemadministrator es tatsächlich sieht: als
+    // ungelesene private Nachricht in der Unterhaltung mit der Absenderin.
+    await page.goto('/nachrichten')
+    await page.getByRole('button', {name: /Björn Hahne/}).click()
+    await expect(page.getByText(betreff).first()).toBeVisible()
+    await expect(page.getByText('Verbesserung').first()).toBeVisible()
+  })
+
+  test.describe('Feedback bleibt vertraulich', () => {
+    for (const [bezeichnung, absender, mitleser] of [
+      ['Teamleiter', E2E_USERS.otherEmployee, E2E_USERS.teamLeader],
+      ['anderer Mitarbeiter', E2E_USERS.thirdEmployee, E2E_USERS.employee],
+    ] as const) {
+      test(`${bezeichnung} sieht fremdes Feedback nicht`, async ({page}) => {
+        const betreff = `E2E Geheim ${bezeichnung} ${Date.now()}`
+
+        await login(page, absender)
+        await feedbackSenden(page, betreff)
+
+        await logout(page)
+        await login(page, mitleser)
+
+        // Weder in irgendeiner Unterhaltung ...
+        expect(await nachrichtenText(page)).not.toContain(betreff)
+
+        // ... noch als ungelesene Nachricht ...
+        const ungelesen = await page.request.get('/api/v1/messages/unread')
+        expect((await ungelesen.json()).total).toBe(0)
+
+        // ... noch über die globale Suche.
+        const suche = await page.request.get(`/api/v1/search?q=${encodeURIComponent('E2E Geheim')}`)
+        expect(JSON.stringify(await suche.json())).not.toContain(betreff)
+      })
+    }
   })
 
   test('ist vollständig über die Tastatur bedienbar', async ({page}) => {
@@ -104,7 +194,7 @@ test.describe('Feedback (TEST 11)', () => {
     await expect(page.getByRole('button', {name: 'Feedback senden'})).toBeFocused()
     await page.keyboard.press('Enter')
 
-    await expect(page.getByText(/erfolgreich übermittelt/)).toBeVisible()
+    await expect(page.getByText(/Dein Feedback wurde gesendet\. Vielen Dank\./)).toBeVisible()
   })
 
   test.describe('Mobile Viewport', () => {
@@ -127,7 +217,7 @@ test.describe('Feedback (TEST 11)', () => {
       await page.getByLabel('Betreff').fill('E2E: Mobilansicht')
       await page.getByLabel('Nachricht', {exact: true}).fill('Getestet auf einem 390px breiten Viewport ohne horizontales Scrollen.')
       await page.getByRole('button', {name: 'Feedback senden'}).click()
-      await expect(page.getByText(/erfolgreich übermittelt/)).toBeVisible()
+      await expect(page.getByText(/Dein Feedback wurde gesendet\. Vielen Dank\./)).toBeVisible()
     })
   })
 })

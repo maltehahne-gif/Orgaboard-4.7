@@ -143,3 +143,77 @@ describe('GlobalSearch – keine veralteten Ergebnisse (Request-Race)', () => {
     expect(screen.queryByRole('option', {name: /Kunde Eins/})).toBeNull()
   }, 10000)
 })
+
+/* Die drei Zustände der Suche sahen vorher alle gleich aus: das
+   Ergebnisfeld blieb einfach zu. Ein Serverfehler war damit von "keine
+   Treffer" nicht zu unterscheiden - der Benutzer suchte weiter nach etwas,
+   das die Suche gerade gar nicht beantworten konnte. */
+describe('GlobalSearch – lädt, keine Treffer, Serverfehler', () => {
+  it('zeigt "Keine Treffer", wenn der Server eine leere Liste liefert', async () => {
+    mockApi.mockResolvedValue([])
+    zeige()
+
+    await userEvent.type(screen.getByRole('combobox'), 'Nachname')
+    expect(await screen.findByText('Keine Treffer.')).toBeTruthy()
+  })
+
+  it('zeigt einen Serverfehler als Fehlermeldung, nicht als "Keine Treffer"', async () => {
+    mockApi.mockRejectedValue(new Error('Die Suche ist gerade nicht erreichbar.'))
+    zeige()
+
+    await userEvent.type(screen.getByRole('combobox'), 'Nachname')
+
+    const meldung = await screen.findByRole('alert')
+    expect(meldung.textContent).toBe('Die Suche ist gerade nicht erreichbar.')
+    expect(screen.queryByText('Keine Treffer.')).toBeNull()
+  })
+
+  it('rendert einen Serverfehler niemals als [object Object]', async () => {
+    // So, wie lib/api.ts einen FastAPI-422 normalisiert.
+    mockApi.mockRejectedValue(new Error('q: String should have at least 2 characters'))
+    zeige()
+
+    await userEvent.type(screen.getByRole('combobox'), 'Nachname')
+
+    await screen.findByRole('alert')
+    expect(document.body.textContent).not.toContain('[object Object]')
+  })
+
+  it('meldet während der Anfrage, dass gesucht wird', async () => {
+    let aufloesen!: (wert: unknown) => void
+    mockApi.mockImplementation(() => new Promise(res => {aufloesen = res}) as never)
+    zeige()
+
+    await userEvent.type(screen.getByRole('combobox'), 'Nachname')
+    expect(await screen.findByText('Wird gesucht …')).toBeTruthy()
+
+    aufloesen([treffer()])
+    await waitFor(() => expect(screen.queryByText('Wird gesucht …')).toBeNull())
+  })
+
+  it('blendet bei zu kurzer Eingabe gar nichts ein', async () => {
+    mockApi.mockResolvedValue([])
+    zeige()
+
+    await userEvent.type(screen.getByRole('combobox'), 'M')
+
+    await waitFor(() => expect(mockApi).not.toHaveBeenCalled())
+    expect(screen.queryByText('Keine Treffer.')).toBeNull()
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('ersetzt eine Fehlermeldung durch die Treffer des nächsten Versuchs', async () => {
+    mockApi.mockRejectedValueOnce(new Error('Serverfehler'))
+    zeige()
+
+    const feld = screen.getByRole('combobox')
+    await userEvent.type(feld, 'Nachname')
+    await screen.findByRole('alert')
+
+    mockApi.mockResolvedValue([treffer()])
+    await userEvent.type(feld, 'n')
+
+    expect(await screen.findByText('Familie Nachname')).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+})

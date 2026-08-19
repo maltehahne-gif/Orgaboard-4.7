@@ -13,7 +13,7 @@ import {jetztLokal,zeiteingabeZuIso} from '../lib/datum'
 type RentalEmployee={id:string;display_name:string}
 
 const leeresFormular=()=>({product_id:'',customer_id:'',employee_id:'',serial_number:'',issued_at:jetztLokal(),due_at:'',status:'rented',notes:''})
-export function RentalsPage(){const {me}=useAuth();const isTeamLeader=darfVerwalten(me?.role);const [rows,setRows]=useState<Rental[]>([]);const [customers,setCustomers]=useState<Customer[]>([]);const [products,setProducts]=useState<Product[]>([]);const [employees,setEmployees]=useState<RentalEmployee[]>([]);const [open,setOpen]=useState(false);const [busy,setBusy]=useState(false);const [form,setForm]=useState(leeresFormular());const [summary,setSummary]=useState<{active:number;overdue:number;due_soon:number;reminder_days:number}|null>(null);const [ladefehler,setLadefehler]=useState<string|null>(null);const toast=useToast();
+export function RentalsPage(){const {me}=useAuth();const isTeamLeader=darfVerwalten(me?.role);const [rows,setRows]=useState<Rental[]>([]);const [customers,setCustomers]=useState<Customer[]>([]);const [products,setProducts]=useState<Product[]>([]);const [employees,setEmployees]=useState<RentalEmployee[]>([]);const [open,setOpen]=useState(false);const [busy,setBusy]=useState(false);const [statusBusyId,setStatusBusyId]=useState<string|null>(null);const [form,setForm]=useState(leeresFormular());const [summary,setSummary]=useState<{active:number;overdue:number;due_soon:number;reminder_days:number}|null>(null);const [ladefehler,setLadefehler]=useState<string|null>(null);const toast=useToast();
 
 useEffect(()=>{if(!isTeamLeader){setEmployees([]);return}api<RentalEmployee[]>('/team/employees').then(setEmployees).catch(()=>setEmployees([]))},[isTeamLeader]);
 
@@ -83,7 +83,28 @@ const filteredRentals=useMemo(()=>{
   rentalFilter,
 ]);
 
-async function save(e:FormEvent){e.preventDefault();if(busy)return;if(isTeamLeader&&!form.employee_id){toast('Bitte einen Mitarbeiter auswählen.','error');return}setBusy(true);try{await api('/rentals',{method:'POST',body:JSON.stringify({...form,employee_id:isTeamLeader?form.employee_id:null,serial_number:form.serial_number||null,notes:form.notes||null,issued_at:zeiteingabeZuIso(form.issued_at),due_at:form.due_at?zeiteingabeZuIso(form.due_at):null,returned_at:null})});setOpen(false);load();toast('Verleih gespeichert')}catch(err){toast(err instanceof Error?err.message:'Fehler','error')}finally{setBusy(false)}}async function changeStatus(id:string,status:string){try{await api(`/rentals/${id}/status`,{method:'PATCH',body:JSON.stringify({status,returned_at:status==='returned'?new Date().toISOString():null})});load();toast('Verleihstatus aktualisiert')}catch(err){toast(err instanceof Error?err.message:'Fehler','error')}}return <div className="page"><div className="page-head"><div><h1>Verleihgeräte</h1><p>Ausgabe, Fälligkeit und Rückgabe im Blick.</p></div><button className="primary" onClick={()=>{setForm(leeresFormular());setOpen(true)}}><Plus size={18}/> Gerät ausgeben</button></div>{ladefehler&&<LoadError meldung={ladefehler} onRetry={load}/>}{summary&&(summary.overdue>0||summary.due_soon>0)&&
+async function save(e:FormEvent){e.preventDefault();if(busy)return;if(isTeamLeader&&!form.employee_id){toast('Bitte einen Mitarbeiter auswählen.','error');return}setBusy(true);try{await api('/rentals',{method:'POST',body:JSON.stringify({...form,employee_id:isTeamLeader?form.employee_id:null,serial_number:form.serial_number||null,notes:form.notes||null,issued_at:zeiteingabeZuIso(form.issued_at),due_at:form.due_at?zeiteingabeZuIso(form.due_at):null,returned_at:null})});setOpen(false);load();toast('Verleih gespeichert')}catch(err){toast(err instanceof Error?err.message:'Fehler','error')}finally{setBusy(false)}}/* statusBusyId sperrt genau das eine Gerät, dessen Status gerade gesetzt
+     wird. Ohne die Sperre lösen zwei schnelle Änderungen zwei Anfragen aus,
+     und welche zuletzt ankommt, entscheidet über den gespeicherten Status -
+     bei "zurückgegeben" ist das der Unterschied zwischen abgeschlossen und
+     weiter verliehen. */
+  async function changeStatus(id:string,status:string){
+    if(statusBusyId===id)return
+    setStatusBusyId(id)
+    try{
+      await api(`/rentals/${id}/status`,{method:'PATCH',body:JSON.stringify({status,returned_at:status==='returned'?new Date().toISOString():null})})
+      load()
+      toast('Verleihstatus aktualisiert')
+    }catch(err){
+      toast(err instanceof Error?err.message:'Verleihstatus konnte nicht geändert werden','error')
+      // Zurück auf den Stand des Servers - sonst zeigt die Auswahl einen
+      // Status an, der nie gespeichert wurde.
+      load()
+    }finally{
+      setStatusBusyId(null)
+    }
+  }
+  return <div className="page"><div className="page-head"><div><h1>Verleihgeräte</h1><p>Ausgabe, Fälligkeit und Rückgabe im Blick.</p></div><button className="primary" onClick={()=>{setForm(leeresFormular());setOpen(true)}}><Plus size={18}/> Gerät ausgeben</button></div>{ladefehler&&<LoadError meldung={ladefehler} onRetry={load}/>}{summary&&(summary.overdue>0||summary.due_soon>0)&&
   <div className={summary.overdue>0?'rental-warning overdue':'rental-warning'}>
     <AlertTriangle size={17}/>
     <div>
@@ -173,7 +194,7 @@ className={`rental-auto-state ${computedRentalState(r)}`}
 ?'🔴 Überfällig'
 :'🟡 Aktiv'}
 </span>
-<select aria-label={`Status von ${r.product_name} bei ${r.customer_name}`} value={r.status} onChange={e=>changeStatus(r.id,e.target.value)}><option value="rented">verliehen</option><option value="due">Rückgabe fällig</option><option value="returned">zurückgegeben</option></select><small>Rückgabe: {formatDateTime(r.due_at)}</small></div></div>)}</div>
+<select aria-label={`Status von ${r.product_name} bei ${r.customer_name}`} value={r.status} disabled={statusBusyId===r.id} onChange={e=>changeStatus(r.id,e.target.value)}><option value="rented">verliehen</option><option value="due">Rückgabe fällig</option><option value="returned">zurückgegeben</option></select><small>Rückgabe: {formatDateTime(r.due_at)}</small></div></div>)}</div>
 
 </>}
 

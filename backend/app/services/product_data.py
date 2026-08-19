@@ -6,7 +6,7 @@ show uncertain prices/images as facts.
 """
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from app.models import Product, ProductImage, ProductPrice
+from app.models import Product, ProductImage
 
 
 def upsert_verified_product(db: Session, payload: dict) -> Product:
@@ -26,17 +26,12 @@ def upsert_verified_product(db: Session, payload: dict) -> Product:
     product.source_kind = payload.get("source_kind", "manual_verified")
     product.source_updated_at = payload.get("source_updated_at") or datetime.now(timezone.utc)
     product.verified = bool(payload.get("verified", False))
-    if payload.get("price"):
-        price = payload["price"]
-        db.add(ProductPrice(
-            product_id=product.id,
-            amount_cents=int(price["amount_cents"]),
-            currency=price.get("currency", "EUR"),
-            valid_from=price.get("valid_from"),
-            valid_to=price.get("valid_to"),
-            source_url=price["source_url"],
-            verified=bool(price.get("verified", False)),
-        ))
+    # Der Preis wird bewusst nicht hier eingehaengt: die Preiszeitachse
+    # (welcher Preis gilt ab wann, welcher wird dadurch abgeschlossen)
+    # gehoert an genau eine Stelle - routers/products.py. Wuerde hier ein
+    # zweiter, eigener Weg Preise anlegen, entstuenden beim wiederholten
+    # Speichern desselben Produkts zwei gleichzeitig offene Preise, und
+    # welcher gilt, haenge an der Sortierung statt an einer Entscheidung.
     if payload.get("image"):
         image = payload["image"]
         db.add(ProductImage(

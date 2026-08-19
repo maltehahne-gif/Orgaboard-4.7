@@ -11780,3 +11780,107 @@ to{
     overflow-wrap:anywhere;
   }
 }
+
+/* ---------------------------------------------------------------------
+   Ergebnis eines CSV-Imports (components/ImportSummary.tsx)
+
+   Ersetzt das frühere console.info: die Gründe für übersprungene Zeilen
+   gehören dorthin, wo der Benutzer hinschaut.
+   --------------------------------------------------------------------- */
+.import-summary{
+  margin-bottom:14px;
+  padding:11px 14px;
+
+  border:1px solid #23402f;
+  border-radius:11px;
+
+  background:#131c17;
+  color:#d6e6dc;
+  font-size:13px;
+  line-height:1.55;
+}
+
+.import-summary.has-skipped{
+  border-color:#3a2c17;
+  background:#1c1710;
+  color:#e4d3ba;
+}
+
+.import-summary-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.import-summary-head .icon-button{
+  flex:none;
+  font-size:18px;
+  line-height:1;
+}
+
+.import-summary-reasons{
+  margin:9px 0 0;
+  padding-left:0;
+  list-style:none;
+
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.import-summary-reasons li{
+  /* Lange Begründungen brechen um, statt die Karte breiter zu machen. */
+  overflow-wrap:anywhere;
+}
+
+.import-summary-count{
+  display:inline-block;
+  min-width:38px;
+  font-variant-numeric:tabular-nums;
+  font-weight:600;
+}
+
+.import-summary-reasons small{
+  opacity:.75;
+}
+
+/* ---------------------------------------------------------------------
+   Buntewoche: mehrere Termine in derselben Zelle
+
+   10:00 und 10:30 fallen in dieselbe Stunde. Vorher überschrieb der zweite
+   Termin den ersten und verschwand aus der Woche; jetzt stehen beide
+   untereinander in derselben Zelle.
+   --------------------------------------------------------------------- */
+.bunte-termin{
+  display:block;
+}
+
+.bunte-termin + .bunte-termin{
+  margin-top:4px;
+  padding-top:4px;
+  border-top:1px solid rgba(0,0,0,.18);
+}
+
+.bunte-termin strong,
+.bunte-termin span{
+  display:block;
+}
+
+/* ---------------------------------------------------------------------
+   Globale Suche: die drei Zustände sichtbar machen
+
+   Vorher blieb das Ergebnisfeld in allen drei Fällen einfach zu - ein
+   Serverfehler sah aus wie "keine Treffer", und der Benutzer suchte
+   weiter nach etwas, das die Suche gerade gar nicht beantworten konnte.
+   --------------------------------------------------------------------- */
+.search-popover .search-state{
+  margin:0;
+  padding:14px 16px;
+  color:var(--muted);
+  font-size:13px;
+}
+
+.search-popover .search-state.is-error{
+  color:#ffadad;
+}

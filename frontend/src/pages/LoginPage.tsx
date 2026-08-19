@@ -14,6 +14,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 
+import {api} from '../lib/api'
 import {useAuth} from '../lib/auth'
 import {Logo} from '../components/Logo'
 import {LoginDustChase} from '../components/LoginDustChase'
@@ -176,39 +177,21 @@ export function LoginPage(){
 
     try{
 
-      const response=
-        await fetch(
-          '/api/v1/auth/password-reset/request',
-          {
-            method:'POST',
+      // Über api() statt eigenem fetch: dort werden Validierungsfehler
+      // des Servers (422 mit einer Liste aus loc/msg) zu einem lesbaren
+      // Satz gemacht. Ein eigenes `data?.detail` ergäbe dort
+      // "[object Object]" - der Benutzer wüsste nicht einmal, welches
+      // Feld gemeint ist.
+      await api(
+        '/auth/password-reset/request',
+        {
+          method:'POST',
 
-            headers:{
-              'Content-Type':'application/json',
-            },
-
-            body:JSON.stringify({
-              email:email.trim(),
-            }),
-          }
-        )
-
-
-      let data:any={}
-
-      try{
-        data=await response.json()
-      }catch{
-        // Falls Server keine JSON-Antwort liefert
-      }
-
-
-      if(!response.ok){
-
-        throw new Error(
-          data?.detail
-          || 'Reset-Link konnte nicht angefordert werden.'
-        )
-      }
+          body:JSON.stringify({
+            email:email.trim(),
+          }),
+        }
+      )
 
 
       setMessage(
@@ -281,40 +264,17 @@ export function LoginPage(){
 
     try{
 
-      const response=
-        await fetch(
-          '/api/v1/auth/password-reset/confirm',
-          {
-            method:'POST',
+      await api(
+        '/auth/password-reset/confirm',
+        {
+          method:'POST',
 
-            headers:{
-              'Content-Type':'application/json',
-            },
-
-            body:JSON.stringify({
-              token:resetToken,
-              new_password:newPassword,
-            }),
-          }
-        )
-
-
-      let data:any={}
-
-      try{
-        data=await response.json()
-      }catch{
-        // keine JSON-Antwort
-      }
-
-
-      if(!response.ok){
-
-        throw new Error(
-          data?.detail
-          || 'Passwort konnte nicht geändert werden.'
-        )
-      }
+          body:JSON.stringify({
+            token:resetToken,
+            new_password:newPassword,
+          }),
+        }
+      )
 
 
       backToLogin()

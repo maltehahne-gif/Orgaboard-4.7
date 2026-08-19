@@ -122,6 +122,69 @@ def money(cents: int | None) -> str:
     return f"{cents / 100:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+def _uhrzeit(wert) -> str:
+    return wert.strftime("%H:%M") if hasattr(wert, "strftime") else str(wert)[11:16]
+
+
+# Zusatzzeilen fuer Termine ausserhalb der Standardzeiten. Sie erscheinen
+# nur, wenn es solche Termine gibt - im Normalfall sieht die Tabelle aus wie
+# die Vorlage.
+FRUEH_LABEL = "vor 08:00"
+SPAET_LABEL = "nach 20:00"
+
+
+def _raster(termine: list[dict]) -> tuple[list[tuple[str, int]], dict[tuple[int, int], list[dict]]]:
+    """Zeilen der Wochentabelle und die Termine je Zelle.
+
+    Zwei Dinge, die vorher still danebengingen:
+
+    1. Zwei Termine in derselben Stunde - etwa 10:00 und 10:30 - landeten
+       im selben Schluessel eines Dictionary. Der zweite ueberschrieb den
+       ersten, und im PDF stand nur noch einer. Deshalb sammelt jede Zelle
+       jetzt eine Liste.
+    2. Ein Termin um 07:00 oder um 21:00 fand ueberhaupt keine Zeile und
+       verschwand ersatzlos. Dafuer gibt es jetzt je eine Zusatzzeile am
+       Anfang und am Ende - aber nur, wenn wirklich ein solcher Termin
+       existiert.
+
+    Rueckgabe: die Zeilen als (Beschriftung, Zeilenindex) und die Termine
+    je (Tag, Zeilenindex), jeweils nach Startzeit sortiert.
+    """
+    stunden = [h for _, h in SLOTS]
+    erste, letzte = min(stunden), max(stunden)
+
+    frueh = [t for t in termine if t["hour"] < erste]
+    spaet = [t for t in termine if t["hour"] > letzte]
+
+    zeilen: list[tuple[str, int]] = []
+    zeile_je_stunde: dict[int, int] = {}
+    naechste = 1
+
+    if frueh:
+        zeilen.append((FRUEH_LABEL, naechste))
+        frueh_zeile = naechste
+        naechste += 1
+    for label, stunde in SLOTS:
+        zeilen.append((label, naechste))
+        zeile_je_stunde[stunde] = naechste
+        naechste += 1
+    if spaet:
+        zeilen.append((SPAET_LABEL, naechste))
+        spaet_zeile = naechste
+
+    zellen: dict[tuple[int, int], list[dict]] = {}
+    for t in sorted(termine, key=lambda x: (x["day_index"], str(x["start_at"]))):
+        if t["hour"] < erste:
+            zeile = frueh_zeile
+        elif t["hour"] > letzte:
+            zeile = spaet_zeile
+        else:
+            zeile = zeile_je_stunde[t["hour"]]
+        zellen.setdefault((t["day_index"], zeile), []).append(t)
+
+    return zeilen, zellen
+
+
 def build_pdf(payload: dict) -> bytes:
     buffer = BytesIO()
     from reportlab.platypus import SimpleDocTemplate
@@ -132,20 +195,26 @@ def build_pdf(payload: dict) -> bytes:
     story.append(Paragraph(title, styles["Heading2"]))
     story.append(Spacer(1, 6))
     weekday_names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+
+    zeilen_stunden, cell_events = _raster(payload["appointments"])
+
     data = [["Uhrzeit", *weekday_names]]
-    cell_events = {(a["day_index"], a["hour"]): a for a in payload["appointments"]}
-    for slot_label, hour in SLOTS:
-        row = [slot_label]
-        for day_idx in range(7):
-            event = cell_events.get((day_idx, hour))
-            if event:
-                start = event["start_at"]
-                start_label = start.strftime("%H:%M") if hasattr(start, "strftime") else str(start)[11:16]
-                row.append(f"{start_label}\n{event['label']}")
-            else:
-                row.append("")
-        data.append(row)
-    table = Table(data, colWidths=[76] + [95] * 7, rowHeights=[24] + [31] * len(SLOTS))
+    for slot_label, _ in zeilen_stunden:
+        data.append([slot_label] + ["" for _ in range(7)])
+
+    for (tag, zeile), termine in cell_events.items():
+        data[zeile][tag + 1] = "\n".join(
+            f"{_uhrzeit(t['start_at'])} {t['label']}" for t in termine
+        )
+
+    # Zeilenhoehe waechst mit der vollsten Zelle: zwei Termine in derselben
+    # Stunde brauchen zwei Zeilen, sonst wird der zweite abgeschnitten.
+    hoehen = [24]
+    for _, index in zeilen_stunden:
+        proTag = [len(cell_events.get((tag, index), [])) for tag in range(7)]
+        hoehen.append(max(31, 16 * max(proTag or [0]) + 6))
+
+    table = Table(data, colWidths=[76] + [95] * 7, rowHeights=hoehen)
     style = [
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#3e4a44")),
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#d8ddc4")),
@@ -156,11 +225,11 @@ def build_pdf(payload: dict) -> bytes:
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("FONTSIZE", (0, 0), (-1, -1), 7.5),
     ]
-    hour_to_row = {h: idx + 1 for idx, (_, h) in enumerate(SLOTS)}
-    for a in payload["appointments"]:
-        row = hour_to_row.get(a["hour"])
-        if row:
-            style.append(("BACKGROUND", (a["day_index"] + 1, row), (a["day_index"] + 1, row), colors.HexColor(APPT_COLORS.get(a["appointment_type"], "#6c7a86"))))
+    for (tag, zeile), termine in cell_events.items():
+        # Bei mehreren Terminen in einer Zelle faerbt der erste - die
+        # Uhrzeiten im Text sagen ohnehin genauer, was dort steht.
+        farbe = APPT_COLORS.get(termine[0]["appointment_type"], "#6c7a86")
+        style.append(("BACKGROUND", (tag + 1, zeile), (tag + 1, zeile), colors.HexColor(farbe)))
     table.setStyle(TableStyle(style))
     story.append(table)
     story.append(Spacer(1, 8))

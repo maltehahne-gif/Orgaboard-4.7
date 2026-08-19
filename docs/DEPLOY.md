@@ -105,6 +105,41 @@ docker compose exec db pg_dump -U orgaboard orgaboard > backup-$(date +%F).sql
 Die Chat-Anhänge liegen im Volume `orgaboard_chat_media` und sind im
 Datenbank-Dump **nicht** enthalten – bei Bedarf separat sichern.
 
+## Kunden einem Mitarbeiter zuordnen (Gebietslisten)
+
+`app/tools/gebietszuordnung.py` ordnet Kunden aus den Gebietslisten dem
+zuständigen Mitarbeiter zu. Geändert wird ausschließlich
+`customers.employee_id` – Adresse, Telefon, E-Mail, Notizen, Sperrvermerke,
+Verkäufe, Termine, Angebote, Verleih und Historien bleiben unberührt.
+
+**Immer zuerst den Trockenlauf.** Er liest, rechnet und berichtet, schreibt
+aber nichts:
+
+```bash
+docker compose exec backend python -m app.tools.gebietszuordnung
+```
+
+Der Bericht nennt Benutzer- und Employee-ID, die Mengen je Gebiet und Ort
+sowie die Fälle, die bewusst offen bleiben. Er enthält keine Namen,
+Anschriften, Telefonnummern oder E-Mail-Adressen.
+
+Erst danach, nach Sicherung (siehe oben), die Änderung:
+
+```bash
+docker compose exec backend python -m app.tools.gebietszuordnung \
+  --apply --sicherung /tmp/zuordnung-vorher.csv
+```
+
+Die Sicherungsdatei hält je geändertem Kunden die vorherige Employee-ID fest
+– der Weg zurück, falls die Zuordnung doch nicht passt. Ohne `--sicherung`
+verweigert `--apply` den Dienst.
+
+Wer bestehende Zuordnungen anderer Mitarbeiter gar nicht antasten will,
+ergänzt `--fremdzuordnung-behalten`; dann werden sie nur gezählt und im
+Bericht ausgewiesen.
+
+Ein zweiter Lauf ändert nichts mehr – das Werkzeug ist wiederholbar.
+
 ## Noch offen
 
 Die Routenplanung löst Kundenadressen über die öffentlichen Demo-Dienste

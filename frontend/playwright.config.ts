@@ -5,8 +5,9 @@ import {defineConfig, devices} from '@playwright/test'
  *
  * Startet drei kurzlebige Prozesse für die Dauer des Testlaufs:
  *   1. Ein lokaler SMTP-Auffänger (app/tools/fake_smtp.py) - fängt jede
- *      Mail ab, verschickt nichts wirklich. Automatisierte Tests dürfen
- *      keine echte E-Mail an orgaboard@gmail.com auslösen.
+ *      Mail ab, verschickt nichts wirklich. Er wird nur noch für den
+ *      Passwort-Reset gebraucht; Feedback läuft seit dieser Runde
+ *      vollständig intern über das Nachrichtensystem.
  *   2. Das Backend gegen eine frische SQLite-Datei mit den Standard-
  *      Testbenutzern aus app/seed.py.
  *   3. Der Vite-Dev-Server, der /api und /ws bereits zum Backend
@@ -20,7 +21,13 @@ import {defineConfig, devices} from '@playwright/test'
 const E2E_DB = 'e2e-playwright.db'
 const E2E_JWT_SECRET = 'e2e-nur-lokal-nicht-fuer-produktion-verwenden-lange-genug'
 const E2E_SEED_PASSWORD = 'OrgaBoard-E2E-2026!'
-const E2E_FEEDBACK_TO = 'e2e-feedback-sink@example.com'
+
+// Feedback geht seit dieser Runde intern an jeden aktiven
+// Systemadministrator. Ohne so ein Konto gäbe es keinen Empfänger - der
+// Server antwortet dann bewusst mit 503, statt ein Feedback zu speichern,
+// das niemand liest. Deshalb legt der Start hier eines an.
+const E2E_ADMIN_EMAIL = 'e2e-systemadmin@example.com'
+const E2E_ADMIN_PASSWORD = 'OrgaBoard-E2E-Admin-2026!'
 
 const backendEnv = {
   ENV: 'development',
@@ -35,12 +42,16 @@ const backendEnv = {
   SMTP_PORT: '1025',
   SMTP_FROM_EMAIL: 'orgaboard-e2e@example.com',
   SMTP_USE_TLS: 'false',
-  FEEDBACK_EMAIL_TO: E2E_FEEDBACK_TO,
+  SYSTEM_ADMIN_EMAIL: E2E_ADMIN_EMAIL,
+  SYSTEM_ADMIN_PASSWORD: E2E_ADMIN_PASSWORD,
 }
 
 export const E2E_USERS = {
   employee: {email: 'bjoern.hahne@example.com', password: E2E_SEED_PASSWORD},
+  otherEmployee: {email: 'jessica.wunder@example.com', password: E2E_SEED_PASSWORD},
+  thirdEmployee: {email: 'susanne.menzel@example.com', password: E2E_SEED_PASSWORD},
   teamLeader: {email: 'carsten.boehrensen@example.com', password: E2E_SEED_PASSWORD},
+  systemAdmin: {email: E2E_ADMIN_EMAIL, password: E2E_ADMIN_PASSWORD},
 }
 
 export default defineConfig({

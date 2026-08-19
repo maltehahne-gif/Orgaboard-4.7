@@ -278,7 +278,10 @@ def import_customers(
         if schluessel in vorhanden:
             uebersprungen += 1
             if len(hinweise) < 20:
-                hinweise.append(f"Zeile {nummer}: {werte['first_name']} {werte['last_name']} gibt es bereits")
+                # Bewusst ohne Namen: die Hinweise werden dem Benutzer
+                # angezeigt, und eine Liste von Kundennamen auf dem
+                # Bildschirm ist ein Datenexport, kein Importergebnis.
+                hinweise.append(f"Zeile {nummer}: dieser Kunde ist bereits angelegt")
             continue
 
         kunde = Customer(

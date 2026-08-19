@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.core.database import Base, SessionLocal, engine  # noqa: E402
 from app.core.ratelimit import login_limiter  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
-from app.core.timeutils import local_today  # noqa: E402
+from app.core.timeutils import day_bounds, local_today  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import (  # noqa: E402
     Appointment,
@@ -81,6 +81,13 @@ def _login(client, email="anna@example.com"):
 
 
 def _auffrischen(user_id):
+    """Die neu angelegten Meldungen - so wie sie im Postfach ankommen."""
+    neu, _zu_pushen = _auffrischen_beide(user_id)
+    return neu
+
+
+def _auffrischen_beide(user_id):
+    """(neu angelegt, davon als Push zu verschicken)."""
     db = SessionLocal()
     try:
         return benachrichtigungen_auffrischen(db, db.get(User, user_id))
@@ -142,13 +149,19 @@ def test_derselbe_anlass_entsteht_nur_einmal(client):
 def test_viele_termine_ergeben_eine_tagesmeldung(client):
     """Der Tagesueberblick fasst zusammen, statt je Termin zu melden."""
     p = _person()
+    tag_start, _ = day_bounds(local_today())
     db = SessionLocal()
     try:
-        # Weit genug weg, damit sie nicht zusaetzlich als "bald" zaehlen.
-        for stunde in (6, 7, 8):
+        # Feste Uhrzeiten des laufenden Tages statt "jetzt + n Stunden": mit
+        # einem Versatz landeten die Termine bei einem Testlauf am spaeten
+        # Abend im naechsten Tag, und der Tagesueberblick blieb aus - der
+        # Test schlug dann allein wegen der Uhrzeit des Laufs fehl.
+        # Vormittags liegen sie ausserdem zuverlaessig ausserhalb des
+        # "bald"-Fensters.
+        for stunde in (9, 10, 11):
             db.add(Appointment(
                 customer_id=p["customer"], employee_id=p["employee"],
-                start_at=datetime.now(timezone.utc) + timedelta(hours=stunde),
+                start_at=tag_start + timedelta(hours=stunde),
                 status=AppointmentStatus.PLANNED,
             ))
         db.commit()
@@ -391,3 +404,117 @@ def test_push_versand_ohne_schluessel_bleibt_folgenlos(client):
         assert webpush.senden(db, neu) == 0
     finally:
         db.close()
+
+
+# ------------------------------------------- Kanaele einzeln schaltbar
+
+def _einstellung(client, kopf, kategorie, in_app, push):
+    antwort = client.put(
+        f"/api/v1/notifications/settings/{kategorie.value}",
+        json={"in_app": in_app, "push": push}, headers=kopf,
+    )
+    assert antwort.status_code == 200, antwort.text
+
+
+def _termin_bald(p):
+    db = SessionLocal()
+    try:
+        db.add(Appointment(
+            customer_id=p["customer"], employee_id=p["employee"],
+            start_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+            status=AppointmentStatus.CONFIRMED,
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+
+def test_push_aus_verschickt_keinen_push(client):
+    """Die Zusicherung aus dem Auftrag: push=false sendet nicht doch.
+
+    Frueher las der Versand die Einstellung ueberhaupt nicht - jeder neu
+    angelegte Eintrag ging als Push hinaus.
+    """
+    p = _person()
+    _termin_bald(p)
+    kopf = _login(client)
+    _einstellung(client, kopf, NotificationCategory.APPOINTMENT_SOON, in_app=True, push=False)
+
+    neu, zu_pushen = _auffrischen_beide(p["user"])
+
+    # Im Postfach steht die Meldung ...
+    assert NotificationCategory.APPOINTMENT_SOON.value in {n.kind for n in neu}
+    # ... aber sie geht nicht als Push hinaus.
+    assert NotificationCategory.APPOINTMENT_SOON.value not in {n.kind for n in zu_pushen}
+
+
+def test_push_an_und_postfach_aus_verschickt_trotzdem(client):
+    """in_app=false, push=true - vorher kam gar nichts an.
+
+    Der Eintrag entstand nur, wenn das Postfach eingeschaltet war; ohne ihn
+    gab es auch nichts zu verschicken.
+    """
+    p = _person()
+    _termin_bald(p)
+    kopf = _login(client)
+    _einstellung(client, kopf, NotificationCategory.APPOINTMENT_SOON, in_app=False, push=True)
+
+    _neu, zu_pushen = _auffrischen_beide(p["user"])
+    assert NotificationCategory.APPOINTMENT_SOON.value in {n.kind for n in zu_pushen}
+
+
+def test_postfach_aus_blendet_die_meldung_in_der_liste_aus(client):
+    """Der Eintrag bleibt als Merker bestehen, sichtbar ist er nicht."""
+    p = _person()
+    _termin_bald(p)
+    kopf = _login(client)
+    _einstellung(client, kopf, NotificationCategory.APPOINTMENT_SOON, in_app=False, push=True)
+
+    liste = client.get("/api/v1/notifications", headers=kopf).json()
+    arten = {n["kind"] for n in liste}
+    assert NotificationCategory.APPOINTMENT_SOON.value not in arten
+
+
+def test_postfach_an_zeigt_die_meldung_in_der_liste(client):
+    p = _person()
+    _termin_bald(p)
+    kopf = _login(client)
+    _einstellung(client, kopf, NotificationCategory.APPOINTMENT_SOON, in_app=True, push=False)
+
+    liste = client.get("/api/v1/notifications", headers=kopf).json()
+    assert NotificationCategory.APPOINTMENT_SOON.value in {n["kind"] for n in liste}
+
+
+def test_beide_kanaele_aus_legt_gar_nichts_an(client):
+    p = _person()
+    _termin_bald(p)
+    kopf = _login(client)
+    _einstellung(client, kopf, NotificationCategory.APPOINTMENT_SOON, in_app=False, push=False)
+
+    neu, zu_pushen = _auffrischen_beide(p["user"])
+    assert NotificationCategory.APPOINTMENT_SOON.value not in {n.kind for n in neu}
+    assert NotificationCategory.APPOINTMENT_SOON.value not in {n.kind for n in zu_pushen}
+
+
+def test_der_listenabruf_verschickt_nur_erlaubte_pushes(client, monkeypatch):
+    """Gegenprobe am echten Endpunkt, nicht nur an der Ableitung."""
+    from app.services import webpush
+
+    verschickt: list[str] = []
+
+    def merken(db, meldungen):
+        verschickt.extend(n.kind for n in meldungen)
+        return len(meldungen)
+
+    monkeypatch.setattr(webpush, "senden", merken)
+
+    p = _person()
+    _termin_bald(p)
+    kopf = _login(client)
+    _einstellung(client, kopf, NotificationCategory.APPOINTMENT_SOON, in_app=True, push=False)
+    _einstellung(client, kopf, NotificationCategory.APPOINTMENT_TODAY, in_app=True, push=False)
+
+    client.get("/api/v1/notifications", headers=kopf)
+
+    assert NotificationCategory.APPOINTMENT_SOON.value not in verschickt
+    assert NotificationCategory.APPOINTMENT_TODAY.value not in verschickt

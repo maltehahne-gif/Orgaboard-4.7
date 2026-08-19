@@ -13,10 +13,12 @@ import {
   X,
 } from 'lucide-react'
 import {api, downloadFile, formatDateTime, money} from '../lib/api'
+import {positionenFehler, preisInCent} from '../lib/positionen'
 import type {Customer, Offer, Product} from '../types'
 import {Modal} from '../components/Modal'
 import {ProductCombobox} from '../components/ProductCombobox'
 import {useToast} from '../components/Toast'
+import {LoadError} from '../components/LoadError'
 import {useAuth} from '../lib/auth'
 import {darfVerwalten} from '../lib/roles'
 import {heuteIso} from '../lib/datum'
@@ -65,6 +67,7 @@ export function OffersPage(){
 
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
   const [actionBusy, setActionBusy] = useState<string | null>(null)
 
   const [customerSearch, setCustomerSearch] = useState('')
@@ -90,13 +93,27 @@ export function OffersPage(){
     setRows(offerData)
     setCustomers(customerData)
     setProducts(productData)
+    setLadefehler(null)
   }
 
-  useEffect(() => { load().catch(console.error) }, [])
+  /* Ein fehlgeschlagener Abruf ging vorher nur in die Entwicklerkonsole.
+     Auf dem Bildschirm stand dann "Noch keine Angebote" - der Benutzer
+     glaubte, es gäbe keine, obwohl nur der Server nicht erreichbar war. */
+  function laden(){
+    load().catch(err =>
+      setLadefehler(err instanceof Error ? err.message : 'Die Angebote sind gerade nicht erreichbar.'),
+    )
+  }
+
+  useEffect(() => { laden() }, [])
 
   useEffect(() => {
     if (!isTeamLeader) { setEmployees([]); return }
-    api<OfferEmployee[]>('/team/employees').then(setEmployees).catch(console.error)
+    api<OfferEmployee[]>('/team/employees')
+      .then(setEmployees)
+      .catch(err =>
+        setLadefehler(err instanceof Error ? err.message : 'Die Mitarbeiterliste ist gerade nicht erreichbar.'),
+      )
   }, [isTeamLeader])
 
   useEffect(() => {
@@ -182,8 +199,12 @@ export function OffersPage(){
     if (busy) return
     if (!form.customer_id) { toast('Bitte einen Kunden auswählen.'); return }
     if (isTeamLeader && !form.employee_id) { toast('Bitte einen Mitarbeiter auswählen.'); return }
-    const invalid = form.items.some(item => !item.product_id || item.quantity <= 0 || !item.price_eur)
-    if (invalid) { toast('Bitte bei jedem Eintrag ein Produkt auswählen.'); return }
+    // Preis und Menge werden hier in die Werte umgerechnet, die das
+    // Backend erwartet. Aus einer Fehleingabe entstünde dabei still ein
+    // NaN, das JSON.stringify zu `null` macht - der Server lehnte dann ein
+    // Feld ab, das im Formular gar nicht vorkommt.
+    const positionsfehler = positionenFehler(form.items)
+    if (positionsfehler) { toast(positionsfehler, 'error'); return }
 
     setBusy(true)
     try {
@@ -198,7 +219,7 @@ export function OffersPage(){
           items: form.items.map(item => ({
             product_id: item.product_id,
             quantity: Number(item.quantity),
-            unit_price_cents: Math.round(Number(item.price_eur.replace(',', '.')) * 100),
+            unit_price_cents: preisInCent(item.price_eur),
           })),
         }),
       })
@@ -300,6 +321,8 @@ export function OffersPage(){
           </button>
         </div>
       </div>
+
+      {ladefehler && <LoadError meldung={ladefehler} onRetry={laden} />}
 
       <section className="sales-filter-panel card">
         <div className="sales-filter-search">

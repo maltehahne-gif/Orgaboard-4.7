@@ -22,6 +22,14 @@ function resultHref(result: Result): string {
 export function GlobalSearch() {
   const [q, setQ] = useState('')
   const [results, setResults] = useState<Result[]>([])
+  // Drei Zustände, die vorher alle gleich aussahen: solange gesucht wird,
+  // wenn nichts gefunden wurde, und wenn der Server nicht antwortet. Früher
+  // wurde in allen drei Fällen einfach nichts eingeblendet - ein
+  // Serverfehler war von "keine Treffer" nicht zu unterscheiden, und der
+  // Benutzer suchte weiter nach etwas, das die Suche gerade gar nicht
+  // beantworten konnte.
+  const [zustand, setZustand] = useState<'leer' | 'laedt' | 'fertig' | 'fehler'>('leer')
+  const [fehlertext, setFehlertext] = useState('')
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -38,19 +46,24 @@ export function GlobalSearch() {
     const t = setTimeout(() => {
       if (q.trim().length < 2) {
         setResults([])
+        setZustand('leer')
         setActiveIndex(-1)
         return
       }
       const myId = ++requestId.current
+      setZustand('laedt')
       api<Result[]>(`/search?q=${encodeURIComponent(q)}`)
         .then(data => {
           if (requestId.current !== myId) return
           setResults(data)
+          setZustand('fertig')
           setActiveIndex(-1)
         })
-        .catch(() => {
+        .catch(err => {
           if (requestId.current !== myId) return
           setResults([])
+          setZustand('fehler')
+          setFehlertext(err instanceof Error ? err.message : 'Die Suche ist gerade nicht erreichbar.')
         })
     }, 250)
     return () => clearTimeout(t)
@@ -111,6 +124,9 @@ export function GlobalSearch() {
   }
 
   const showResults = open && results.length > 0
+  // Das Feld bleibt auch dann geöffnet, wenn es nichts zu zeigen gibt -
+  // sonst wäre die Antwort auf jede Suche ein leerer Bildschirm.
+  const showPopover = open && q.trim().length >= 2 && zustand !== 'leer'
 
   return (
     <div className="global-search" ref={containerRef}>
@@ -131,14 +147,25 @@ export function GlobalSearch() {
         autoComplete="off"
       />
       {q ? (
-        <button type="button" className="icon-button" onClick={() => { setQ(''); setResults([]); inputRef.current?.focus() }} aria-label="Suche leeren">
+        <button type="button" className="icon-button" onClick={() => { setQ(''); setResults([]); setZustand('leer'); inputRef.current?.focus() }} aria-label="Suche leeren">
           <X size={15} />
         </button>
       ) : (
         <span className="global-search-hint">⌘K</span>
       )}
-      {showResults && (
+      {showPopover && (
         <div className="search-popover" role="listbox" id="global-search-listbox">
+          {zustand === 'laedt' && (
+            <p className="search-state" role="status">Wird gesucht …</p>
+          )}
+          {zustand === 'fehler' && (
+            <p className="search-state is-error" role="alert">
+              {fehlertext}
+            </p>
+          )}
+          {zustand === 'fertig' && results.length === 0 && (
+            <p className="search-state" role="status">Keine Treffer.</p>
+          )}
           {results.map((r, index) => (
             <button
               type="button"

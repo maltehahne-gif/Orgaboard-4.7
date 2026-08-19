@@ -16,7 +16,11 @@ from app.models import (
     User,
 )
 from app.services import webpush
-from app.services.notify import benachrichtigungen_auffrischen, einstellungen_uebersicht
+from app.services.notify import (
+    benachrichtigungen_auffrischen,
+    einstellungen_uebersicht,
+    sichtbare_kategorien,
+)
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -38,9 +42,17 @@ def list_notifications(user: User = Depends(get_current_user), db: Session = Dep
     hinaus. Faellt der Push-Versand aus, bleibt das Postfach davon
     unberuehrt - deshalb steht er hinter dem Anlegen, nicht davor.
     """
-    neu = benachrichtigungen_auffrischen(db, user)
-    if neu:
-        webpush.senden(db, neu)
+    _neu, zu_pushen = benachrichtigungen_auffrischen(db, user)
+    if zu_pushen:
+        # Nur die Anlaesse, fuer die der Benutzer Push eingeschaltet hat.
+        # Vorher ging jeder neue Eintrag hinaus, ganz gleich, was in den
+        # Einstellungen stand.
+        webpush.senden(db, zu_pushen)
+
+    # Kategorien, deren Postfachanzeige abgeschaltet ist, bleiben aussen vor.
+    # Ihre Eintraege existieren trotzdem - sie sind der Merker, damit
+    # derselbe Anlass nicht bei jedem Abruf erneut als Push hinausgeht.
+    sichtbar = {k.value for k in sichtbare_kategorien(db, user.id)}
 
     rows = db.scalars(
         select(Notification)
@@ -48,7 +60,7 @@ def list_notifications(user: User = Depends(get_current_user), db: Session = Dep
         .order_by(Notification.created_at.desc())
         .limit(100)
     ).all()
-    return [_out(n) for n in rows]
+    return [_out(n) for n in rows if n.kind in sichtbar]
 
 
 @router.patch("/{notification_id}/read", dependencies=[Depends(require_csrf)])

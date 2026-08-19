@@ -14,6 +14,75 @@ export const AUTH_EXPIRED_EVENT = 'orgaboard:auth-expired'
 // angezeigten Login-Formularfehler überschreiben.
 const AUTH_EVENT_EXEMPT_PATHS = ['/auth/login']
 
+// Feldnamen, die in einer Fehlermeldung nichts zu suchen haben: FastAPI
+// stellt jedem Pfad die Herkunft voran ("body", "query", "path"). Für den
+// Benutzer zählt das Feld, nicht wo im HTTP-Request es stand.
+const LOC_RAUSCHEN = new Set(['body', 'query', 'path', 'header', 'cookie'])
+
+// Wie viele Einzelfehler höchstens ausgeschrieben werden. Ein Formular mit
+// zwanzig Pflichtfeldern soll eine lesbare Meldung ergeben, keine Textwand.
+const MAX_EINZELFEHLER = 4
+
+/** Der Feldpfad eines FastAPI-Validierungsfehlers, z. B. "price -> source_url". */
+function feldpfad(loc: unknown): string {
+  if (!Array.isArray(loc)) return ''
+  const teile = loc
+    .filter(teil => typeof teil === 'string' || typeof teil === 'number')
+    .map(teil => String(teil))
+    .filter(teil => !LOC_RAUSCHEN.has(teil))
+  return teile.join('.')
+}
+
+/** Eine einzelne Fehlerangabe zu genau einem Satz Text. */
+function einzelfehler(eintrag: unknown): string {
+  if (eintrag === null || eintrag === undefined) return ''
+  if (typeof eintrag === 'string') return eintrag.trim()
+  if (typeof eintrag === 'number' || typeof eintrag === 'boolean') return String(eintrag)
+
+  if (typeof eintrag === 'object') {
+    const daten = eintrag as Record<string, unknown>
+    // FastAPI/Pydantic: {type, loc, msg, input}. msg ist der Klartext.
+    const meldung = typeof daten.msg === 'string' ? daten.msg.trim() : ''
+    const feld = feldpfad(daten.loc)
+    if (meldung && feld) return `${feld}: ${meldung}`
+    if (meldung) return meldung
+
+    // Andere Formen, die im Projekt vorkommen können.
+    for (const schluessel of ['detail', 'message', 'error', 'reason']) {
+      const wert = daten[schluessel]
+      if (typeof wert === 'string' && wert.trim()) return wert.trim()
+    }
+  }
+
+  return ''
+}
+
+/**
+ * Macht aus dem, was der Server als `detail` liefert, einen Satz für Menschen.
+ *
+ * Der Server antwortet je nach Fehlerart unterschiedlich: ein HTTPException
+ * liefert einen String, ein Validierungsfehler (422) eine Liste von Objekten
+ * mit `loc` und `msg`. Wer diese Liste ungeprüft in eine Zeichenkette steckt,
+ * bekommt "[object Object]" auf den Bildschirm - für den Benutzer schlicht
+ * keine Information. Deshalb läuft jede Fehlermeldung durch diese eine
+ * Stelle, statt dass jede Seite ihr eigenes Raten anstellt.
+ */
+export function fehlertextAus(detail: unknown, ersatz: string): string {
+  if (detail === null || detail === undefined) return ersatz
+
+  if (typeof detail === 'string') return detail.trim() || ersatz
+
+  if (Array.isArray(detail)) {
+    const saetze = detail.map(einzelfehler).filter(Boolean)
+    if (!saetze.length) return ersatz
+    const sichtbar = saetze.slice(0, MAX_EINZELFEHLER)
+    const rest = saetze.length - sichtbar.length
+    return sichtbar.join('; ') + (rest > 0 ? ` (und ${rest} weitere)` : '')
+  }
+
+  return einzelfehler(detail) || ersatz
+}
+
 function csrfToken(): string {
   const match = document.cookie.split('; ').find(x => x.startsWith('orgaboard_csrf='))
   return match ? decodeURIComponent(match.split('=').slice(1).join('=')) : ''
@@ -26,12 +95,13 @@ export async function api<T>(path:string, options:RequestInit = {}):Promise<T> {
   if (!['GET','HEAD','OPTIONS'].includes(method)) headers.set('X-CSRF-Token', csrfToken())
   const response = await fetch(`${BASE}${path}`, {...options, headers, credentials:'include'})
   if (!response.ok) {
-    let detail = `Fehler ${response.status}`
-    try { const data = await response.json(); detail = data.detail || detail } catch {}
+    const ersatz = `Fehler ${response.status}`
+    let detail: unknown = null
+    try { detail = (await response.json())?.detail } catch {}
     if (response.status === 401 && !AUTH_EVENT_EXEMPT_PATHS.includes(path)) {
       window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT))
     }
-    throw new Error(detail)
+    throw new Error(fehlertextAus(detail, ersatz))
   }
   if (response.status === 204) return undefined as T
   const ct = response.headers.get('content-type') || ''
