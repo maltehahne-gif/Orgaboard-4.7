@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from io import BytesIO
 from pydantic import BaseModel, Field, field_validator
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -17,6 +17,7 @@ from app.models import Customer, Product, Sale, SaleChannel, SaleItem, User
 from app.services.realtime import manager
 from app.services.serializers import employee_name, sale_k70_total, sale_total, sale_units
 from app.services.stats import is_k70_category, refresh_weekly_stat
+from app.services.verkaufstabelle import wochentabelle
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
@@ -122,6 +123,26 @@ def list_sales(employee_id: str | None = None, user: User = Depends(get_current_
     if scope:
         stmt = stmt.where(Sale.employee_id == scope)
     return [serialize(db, s) for s in db.scalars(stmt).all()]
+
+
+@router.get("/wochentabelle")
+def verkaufstabelle_woche(
+    week_start: date | None = Query(default=None),
+    employee_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Die Verkaufstabelle als Wochenblatt nach der Papiervorlage.
+
+    Der Ausschnitt läuft über dieselbe Regel wie die Verkaufsliste: ein
+    Mitarbeiter sieht ausschließlich seine eigene Woche, eine Führungsrolle
+    wählt einen Mitarbeiter aus.
+    """
+    scope = scoped_employee_id(db, user, employee_id)
+    if scope is None:
+        raise HTTPException(status_code=400, detail="Bitte einen Mitarbeiter auswählen")
+    tag = week_start or local_today()
+    return wochentabelle(db, scope, tag - timedelta(days=tag.weekday()))
 
 
 @router.get("/export.xlsx")

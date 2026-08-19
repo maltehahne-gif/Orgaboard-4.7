@@ -1,4 +1,4 @@
-import {cleanup, render, screen, waitFor} from '@testing-library/react'
+import {cleanup, render, screen, waitFor, within} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {afterEach, describe, expect, it, vi} from 'vitest'
 
@@ -30,41 +30,88 @@ function alsRolle(role: 'EMPLOYEE' | 'TEAM_LEADER' | 'REGIONAL_LEAD' | 'SYSTEM_A
       role,
       must_change_password: false,
       employee: {id: 'emp-me', display_name: 'Mira Musterfrau', position: 'Vertriebspartner', monthly_units_target: 30, weekly_revenue_target_cents: null},
-    } as any,
+    },
     loading: false,
     login: vi.fn(),
     logout: vi.fn(),
     refresh: vi.fn(),
-  })
+  } as never)
 }
 
-function verkauf(overrides: Record<string, unknown> = {}) {
+const SPALTEN = {
+  contact_ways: [
+    {key: 'promotion', label: 'Promotion'},
+    {key: 'recommendation', label: 'Empfehlung'},
+    {key: 'premium', label: 'Premium Check-in'},
+    {key: 'kd_daten', label: 'KD-Daten'},
+    {key: 'adm', label: 'ADM'},
+  ],
+  profi: [
+    {key: 'job_ticket', label: 'Job-Ticket'},
+    {key: 'recommendation', label: 'Empfehlung'},
+    {key: 'premium', label: 'Premium Check-in'},
+  ],
+  products: [
+    {key: 'roboter', label: 'Roboter'},
+    {key: 'kobold', label: 'Kobold'},
+    {key: 'tiger', label: 'Tiger'},
+    {key: 'elektrobuerste', label: 'Elektrobürste'},
+    {key: 'saugwischer', label: 'Saugwischer'},
+    {key: 'polsterbuerste', label: 'Polsterbürste'},
+    {key: 'service', label: 'Service'},
+    {key: 'demotuecher', label: 'Demotücher'},
+  ],
+}
+
+function leereProdukte(overrides: Record<string, {sold:number; presented:boolean}> = {}) {
+  const out: Record<string, {sold:number; presented:boolean}> = {}
+  for (const spalte of SPALTEN.products) out[spalte.key] = {sold: 0, presented: false}
+  return {...out, ...overrides}
+}
+
+function zeile(overrides: Record<string, unknown> = {}) {
   return {
-    id: 's1',
-    customer_id: 'k1',
+    sale_id: 's1',
+    time: '10:30',
     customer_name: 'Familie Nachname',
-    employee_id: 'emp-me',
-    appointment_id: null,
-    sold_at: '2026-06-05T09:00:00Z',
-    channel: 'field',
-    notes: null,
-    items: [
-      {id: 'i1', product_id: 'p1', name: 'VK7', quantity: 1, unit_price_cents: 250000, total_cents: 250000},
-    ],
-    total_cents: 250000,
+    customer_address: 'Musterweg 1, 24340 Eckernförde',
+    contact_way: 'kd_daten',
+    is_customer: true,
+    is_target_customer: false,
+    area: 'field',
+    profi: null,
+    trade_in: false,
+    products: leereProdukte({kobold: {sold: 1, presented: false}}),
     units: 1,
+    product_revenue_cents: 250000,
+    k70_revenue_cents: 6000,
     cancelled: false,
-    cancelled_at: null,
-    cancellation_reason: null,
-    counts_total_cents: 250000,
-    counts_units: 1,
     ...overrides,
   }
 }
 
-function antworteMitVerkaeufen(sales: unknown[], employees: unknown[] = []) {
+function blatt(zeilenJeTag: Record<number, unknown[]> = {}, totals?: Record<string, unknown>) {
+  const wochentage = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag']
+  const leereSumme = {units: 0, product_revenue_cents: 0, k70_revenue_cents: 0, products: {}}
+  return {
+    employee: {id: 'emp-me', name: 'Mira Musterfrau'},
+    week_start: '2026-06-01',
+    week_end: '2026-06-07',
+    calendar_week: 23,
+    days: wochentage.map((weekday, index) => ({
+      date: `2026-06-0${index + 1}`,
+      weekday,
+      rows: zeilenJeTag[index] || [],
+      totals: leereSumme,
+    })),
+    totals: totals || {units: 0, product_revenue_cents: 0, k70_revenue_cents: 0, products: {}},
+    columns: SPALTEN,
+  }
+}
+
+function antworteMit(daten: unknown, employees: unknown[] = []) {
   mockApi.mockImplementation(async (path: string) => {
-    if (path === '/sales') return sales as never
+    if (path.startsWith('/sales/wochentabelle')) return daten as never
     if (path === '/team/employees') return employees as never
     throw new Error(`Unerwarteter Aufruf: ${path}`)
   })
@@ -73,7 +120,7 @@ function antworteMitVerkaeufen(sales: unknown[], employees: unknown[] = []) {
 describe('Verkaufstabelle – echte Daten statt Dummy-Werten', () => {
   it('zeigt keine fest eingebauten Namen wie Max Mustermann oder Firma Beispiel', async () => {
     alsRolle('EMPLOYEE')
-    antworteMitVerkaeufen([verkauf()])
+    antworteMit(blatt({0: [zeile()]}))
     render(<SalesReportPage />)
 
     await waitFor(() => expect(screen.getByText('Familie Nachname')).toBeTruthy())
@@ -85,94 +132,146 @@ describe('Verkaufstabelle – echte Daten statt Dummy-Werten', () => {
 
   it('zeigt mehrere Verkäufe als mehrere Zeilen', async () => {
     alsRolle('EMPLOYEE')
-    antworteMitVerkaeufen([
-      verkauf({id: 's1', customer_name: 'Kunde Eins'}),
-      verkauf({id: 's2', customer_name: 'Kunde Zwei', items: [{id: 'i2', product_id: 'p2', name: 'SP7', quantity: 2, unit_price_cents: 100000, total_cents: 200000}]}),
-    ])
+    antworteMit(blatt({
+      0: [zeile({sale_id: 's1', customer_name: 'Kunde Eins'})],
+      2: [zeile({sale_id: 's2', customer_name: 'Kunde Zwei'})],
+    }))
     render(<SalesReportPage />)
 
     await waitFor(() => expect(screen.getByText('Kunde Eins')).toBeTruthy())
     expect(screen.getByText('Kunde Zwei')).toBeTruthy()
-    expect(screen.getByRole('cell', {name: '2'})).toBeTruthy()
-  })
-
-  it('zeigt jede Verkaufsposition eines Verkaufs mit mehreren Produkten einzeln', async () => {
-    alsRolle('EMPLOYEE')
-    antworteMitVerkaeufen([verkauf({
-      items: [
-        {id: 'i1', product_id: 'p1', name: 'VK7', quantity: 1, unit_price_cents: 250000, total_cents: 250000},
-        {id: 'i2', product_id: 'p2', name: 'SP7', quantity: 3, unit_price_cents: 50000, total_cents: 150000},
-      ],
-    })])
-    render(<SalesReportPage />)
-
-    await waitFor(() => expect(screen.getByText('VK7')).toBeTruthy())
-    expect(screen.getByText('SP7')).toBeTruthy()
-    expect(screen.getAllByRole('row')).toHaveLength(3) // Kopfzeile + 2 Positionen
   })
 
   it('zeigt bei keinen Verkäufen einen echten Leerzustand, keine Dummy-Zeilen', async () => {
     alsRolle('EMPLOYEE')
-    antworteMitVerkaeufen([])
+    antworteMit(blatt())
     render(<SalesReportPage />)
 
-    await waitFor(() => expect(screen.getByText('Noch keine Verkäufe erfasst.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('In dieser Woche wurde noch kein Verkauf erfasst.')).toBeTruthy())
     expect(screen.queryByText('Max Mustermann')).toBeNull()
     const pdfButton = screen.getByRole('button', {name: /PDF exportieren/})
     expect(pdfButton.hasAttribute('disabled')).toBe(true)
   })
+})
 
-  it('markiert einen stornierten Verkauf eindeutig', async () => {
+describe('Verkaufstabelle – Aufbau nach der Vorlage', () => {
+  it('führt alle sieben Wochentage als eigenen Block', async () => {
     alsRolle('EMPLOYEE')
-    antworteMitVerkaeufen([verkauf({cancelled: true, cancellation_reason: 'Kunde zurückgetreten'})])
+    antworteMit(blatt({0: [zeile()]}))
     render(<SalesReportPage />)
 
-    await waitFor(() => expect(screen.getByText('Storniert')).toBeTruthy())
-    expect(screen.queryByText('Aktiv')).toBeNull()
+    await waitFor(() => expect(screen.getByText('Familie Nachname')).toBeTruthy())
+    for (const tag of ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag']) {
+      expect(screen.getByRole('rowheader', {name: tag})).toBeTruthy()
+    }
+  })
+
+  it('führt die Kopfzeilen der Vorlage', async () => {
+    alsRolle('EMPLOYEE')
+    antworteMit(blatt({0: [zeile()]}))
+    render(<SalesReportPage />)
+
+    await waitFor(() => expect(screen.getByText('Familie Nachname')).toBeTruthy())
+    for (const kopf of ['Uhrzeit', 'Kunde, Anschrift', 'Kontaktweg', 'Gebiet', 'Profi', 'Vorgeführt = X / Verkauft = Anzahl', 'Einheiten und Umsätze']) {
+      expect(screen.getByRole('columnheader', {name: kopf})).toBeTruthy()
+    }
+  })
+
+  it('führt jede Produktspalte der Vorlage', async () => {
+    alsRolle('EMPLOYEE')
+    antworteMit(blatt({0: [zeile()]}))
+    render(<SalesReportPage />)
+
+    await waitFor(() => expect(screen.getByText('Familie Nachname')).toBeTruthy())
+    for (const spalte of SPALTEN.products) {
+      expect(screen.getByRole('columnheader', {name: spalte.label})).toBeTruthy()
+    }
+  })
+
+  it('kreuzt den Kontaktweg in der Farbspalte der Vorlage an', async () => {
+    alsRolle('EMPLOYEE')
+    antworteMit(blatt({0: [zeile({contact_way: 'promotion'})]}))
+    const {container} = render(<SalesReportPage />)
+
+    await waitFor(() => expect(screen.getByText('Familie Nachname')).toBeTruthy())
+    const reihe = screen.getByText('Familie Nachname').closest('tr')!
+    expect(reihe.querySelector('td.sheet-contact-promotion')?.textContent).toBe('X')
+    expect(reihe.querySelector('td.sheet-contact-ko')?.textContent).toBe('')
+    // Die Farben stehen ausschließlich in den Klassen der Vorlage.
+    expect(container.querySelector('td[style]')).toBeNull()
+  })
+
+  it('zeigt verkaufte Stückzahl als Anzahl und Vorgeführtes als X', async () => {
+    alsRolle('EMPLOYEE')
+    antworteMit(blatt({
+      0: [zeile({products: leereProdukte({
+        kobold: {sold: 2, presented: false},
+        saugwischer: {sold: 0, presented: true},
+      })})],
+    }))
+    render(<SalesReportPage />)
+
+    await waitFor(() => expect(screen.getByText('Familie Nachname')).toBeTruthy())
+    const reihe = screen.getByText('Familie Nachname').closest('tr')!
+    const zellen = within(reihe).getAllByText((_, element) => element?.classList.contains('sales-sheet-product-cell') === true)
+    expect(zellen.map(z => z.textContent)).toEqual(['', '2', '', '', 'X', '', '', ''])
+  })
+
+  it('zeigt einen Summenbereich mit Einheiten, Produktumsatz und K70-Umsatz', async () => {
+    alsRolle('EMPLOYEE')
+    antworteMit(blatt(
+      {0: [zeile()]},
+      {units: 3, product_revenue_cents: 500000, k70_revenue_cents: 12000, products: {kobold: 2}},
+    ))
+    render(<SalesReportPage />)
+
+    await waitFor(() => expect(screen.getByText('Familie Nachname')).toBeTruthy())
+    const summe = screen.getByRole('rowheader', {name: 'Summe'}).closest('tr')!
+    expect(within(summe).getByText('3')).toBeTruthy()
+    expect(within(summe).getByText('5.000,00 €')).toBeTruthy()
+    expect(within(summe).getByText('120,00 €')).toBeTruthy()
   })
 })
 
 describe('Verkaufstabelle – Rollen-Scope', () => {
-  it('zeigt einem Mitarbeiter keine Mitarbeiterspalte und keinen Mitarbeiterfilter', async () => {
+  it('zeigt einem Mitarbeiter keinen Mitarbeiterfilter', async () => {
     alsRolle('EMPLOYEE')
-    antworteMitVerkaeufen([verkauf()])
+    antworteMit(blatt({0: [zeile()]}))
     render(<SalesReportPage />)
 
     await waitFor(() => expect(screen.getByText('Familie Nachname')).toBeTruthy())
-    expect(screen.queryByText('Mitarbeiter')).toBeNull()
+    expect(screen.queryByLabelText('Mitarbeiter')).toBeNull()
     expect(mockApi).not.toHaveBeenCalledWith('/team/employees')
   })
 
   it.each(['TEAM_LEADER', 'REGIONAL_LEAD', 'SYSTEM_ADMIN'] as const)(
-    'zeigt %s die Mitarbeiterspalte und den Mitarbeiterfilter',
+    'zeigt %s den Mitarbeiterfilter',
     async role => {
       alsRolle(role)
-      antworteMitVerkaeufen(
-        [verkauf({employee_id: 'emp-anna'})],
-        [{id: 'emp-anna', display_name: 'Anna Mitarbeiterin'}],
-      )
+      antworteMit(blatt({0: [zeile()]}), [{id: 'emp-anna', display_name: 'Anna Mitarbeiterin'}])
       render(<SalesReportPage />)
 
-      await waitFor(() => expect(screen.getAllByText('Anna Mitarbeiterin').length).toBeGreaterThan(0))
-      expect(screen.getByRole('columnheader', {name: 'Mitarbeiter'})).toBeTruthy()
+      await waitFor(() => expect(screen.getByText('Familie Nachname')).toBeTruthy())
+      expect(screen.getByLabelText('Mitarbeiter')).toBeTruthy()
+      expect(await screen.findByRole('option', {name: 'Anna Mitarbeiterin'})).toBeTruthy()
     },
   )
 })
 
-describe('Verkaufstabelle – Filter', () => {
-  it('filtert die Positionen über die Suche', async () => {
+describe('Verkaufstabelle – Wochenwechsel', () => {
+  it('lädt beim Blättern die Woche davor', async () => {
     alsRolle('EMPLOYEE')
-    antworteMitVerkaeufen([
-      verkauf({id: 's1', customer_name: 'Kunde Eins', items: [{id: 'i1', product_id: 'p1', name: 'VK7', quantity: 1, unit_price_cents: 250000, total_cents: 250000}]}),
-      verkauf({id: 's2', customer_name: 'Kunde Zwei', items: [{id: 'i2', product_id: 'p1', name: 'VK7', quantity: 1, unit_price_cents: 250000, total_cents: 250000}]}),
-    ])
+    antworteMit(blatt({0: [zeile()]}))
     render(<SalesReportPage />)
 
-    await waitFor(() => expect(screen.getByText('Kunde Eins')).toBeTruthy())
-    const suche = screen.getByPlaceholderText(/Suchen/)
-    await userEvent.type(suche, 'Eins')
+    await waitFor(() => expect(screen.getByText('Familie Nachname')).toBeTruthy())
+    const ersteWoche = mockApi.mock.calls.filter(c => String(c[0]).startsWith('/sales/wochentabelle')).length
 
-    expect(screen.getByText('Kunde Eins')).toBeTruthy()
-    expect(screen.queryByText('Kunde Zwei')).toBeNull()
+    await userEvent.click(screen.getByRole('button', {name: 'Vorherige Woche'}))
+
+    await waitFor(() => {
+      const jetzt = mockApi.mock.calls.filter(c => String(c[0]).startsWith('/sales/wochentabelle')).length
+      expect(jetzt).toBeGreaterThan(ersteWoche)
+    })
   })
 })
