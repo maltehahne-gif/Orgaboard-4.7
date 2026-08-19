@@ -26,19 +26,51 @@ SLOTS = [
     ("17:00 – 18:00", 17), ("18:00 – 19:00", 18), ("19:00 – 20:00", 19),
 ]
 
+# Dieselben Farben wie appointmentTypeOptions in
+# frontend/src/lib/appointments.ts. Liefen sie auseinander, zeigte der
+# PDF-Export einen anderen Termin als der Bildschirm daneben.
 APPT_COLORS = {
-    "promotion": "#bd632e",
-    "recommendation": "#4d3a7f",
-    "premium_checkin": "#a66b95",
-    "customer": "#5ba84f",
-    "team": "#3698d0",
-    "telephone": "#efd82e",
-    "other": "#6c7a86",
+    "promotion": "#ffc400",
+    "recommendation": "#c77dff",
+    "premium_checkin": "#ffb7c8",
+    "customer": "#34d769",
+    "team": "#28c7e8",
+    "telephone": "#ffcf23",
+    "other": "#ff4545",
 }
+
+
+# Raster der Wochenansicht. 15 Minuten sind die kleinste Einheit, in der
+# ein Termin angelegt werden kann - alles Groebere wuerde einen
+# Viertelstundentermin auf eine volle Stunde aufblaehen und damit eine
+# Belegung vortaeuschen, die es nicht gibt. Stunden und mehrstuendige
+# Termine ergeben sich daraus von selbst als Vielfache.
+GRID_STEP_MINUTES = 15
+GRID_DEFAULT_START_MINUTES = 6 * 60
+GRID_DEFAULT_END_MINUTES = 22 * 60
+
+# Ohne Ende gilt ein Termin als einstuendig - dieselbe Annahme wie im
+# Kalenderexport (frontend/src/lib/appointments.ts).
+DEFAULT_DURATION_MINUTES = 60
 
 
 def monday_of(d: date) -> date:
     return d - timedelta(days=d.weekday())
+
+
+def stunde_ab(minuten: int) -> int:
+    """Auf die volle Stunde davor. Die Zeitspalte beschriftet Stunden - ein
+    Raster, das um 05:45 beginnt, haette eine angebrochene erste Zeile."""
+    return max(minuten - minuten % 60, 0)
+
+
+def stunde_auf(minuten: int) -> int:
+    rest = minuten % 60
+    return min(minuten if rest == 0 else minuten + 60 - rest, 24 * 60)
+
+
+def zeit_label(minuten: int) -> str:
+    return f"{minuten // 60:02d}:{minuten % 60:02d}"
 
 
 def make_payload(db: Session, employee_id: str, week_start: date) -> dict:
@@ -52,17 +84,45 @@ def make_payload(db: Session, employee_id: str, week_start: date) -> dict:
         .order_by(Appointment.start_at)
     ).all()
     appts = []
+    # Das Raster waechst mit den Terminen: ein Termin um 05:30 oder bis
+    # 23:00 soll sichtbar sein und nicht ausserhalb der Tabelle liegen.
+    grid_start = GRID_DEFAULT_START_MINUTES
+    grid_end = GRID_DEFAULT_END_MINUTES
     for a in appointments:
         c = db.get(Customer, a.customer_id) if a.customer_id else None
         local_start = to_business_tz(a.start_at)
         local_end = to_business_tz(a.end_at) if a.end_at else None
+        start_minutes = local_start.hour * 60 + local_start.minute
+        if local_end and local_end > local_start:
+            # Ein Termin, der ueber Mitternacht laeuft, endet fuer die
+            # Wochenansicht am Tagesende - sonst waere seine Laenge negativ
+            # und der Block verschwaende.
+            tage = (local_end.date() - local_start.date()).days
+            end_minutes = local_end.hour * 60 + local_end.minute + tage * 24 * 60
+        else:
+            end_minutes = start_minutes + DEFAULT_DURATION_MINUTES
+        end_minutes = min(end_minutes, 24 * 60)
+        duration = max(end_minutes - start_minutes, GRID_STEP_MINUTES)
+        grid_start = min(grid_start, stunde_ab(start_minutes))
+        grid_end = max(grid_end, stunde_auf(start_minutes + duration))
+        kundenname = f"{c.first_name} {c.last_name}".strip() if c else None
         appts.append({
             "id": a.id,
             "day_index": local_start.weekday(),
             "hour": local_start.hour,
             "start_at": local_start,
             "end_at": local_end,
-            "label": f"{c.first_name} {c.last_name}" if c else (a.notes or "Termin"),
+            "label": kundenname or (a.notes or "Termin"),
+            "customer_id": a.customer_id,
+            "customer_name": kundenname,
+            # Minuten ab Mitternacht der Ortszeit. Die Wochenansicht rechnet
+            # damit die Blockhoehe aus; ein Zeitstempel allein reicht dafuer
+            # nicht, weil die Umrechnung in die Ortszeit sonst im Browser
+            # nochmals stattfinden muesste.
+            "start_minutes": start_minutes,
+            "end_minutes": start_minutes + duration,
+            "duration_minutes": duration,
+            "time_label": f"{zeit_label(start_minutes)} - {zeit_label(min(start_minutes + duration, 24 * 60))}",
             "appointment_type": a.appointment_type.value,
             "status": a.status.value,
         })
@@ -98,6 +158,11 @@ def make_payload(db: Session, employee_id: str, week_start: date) -> dict:
         "week_units": week_units,
         "monthly_units_target": employee.monthly_units_target,
         "slots": [{"label": s, "hour": h} for s, h in SLOTS],
+        "grid": {
+            "start_minutes": grid_start,
+            "end_minutes": grid_end,
+            "step_minutes": GRID_STEP_MINUTES,
+        },
         "legend": APPT_COLORS,
     }
 

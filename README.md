@@ -51,7 +51,9 @@ Alle Konten müssen das Passwort beim ersten Login ändern.
 - Kunden, Termine, Verkäufe mit mehreren Artikeln, Produktvorstellungen und Verleih
 - automatische Umsatz- und Einheitenberechnung mit Monatsziel 30
 - Teamleiter-Dashboard
-- digitale Buntewoche und PDF-Export
+- digitale Buntewoche als Wochenraster mit anklickbaren Terminblöcken, PDF-Export
+- Verkaufstabelle als Wochenblatt nach der Papiervorlage
+- Rechnung zu jedem Verkauf, mit PDF-Beleg
 - interne Nachrichten und WebSocket-Aktualisierung
 - kontrollierter KI-Assistent mit Tool-/Function-Calling
 - lokaler KI-Fallback ohne API-Key für Kernabfragen

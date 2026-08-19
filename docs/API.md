@@ -6,7 +6,8 @@ Basis: `/api/v1`
 - `/dashboard` – persönliche/ausgewählte Kennzahlen
 - `/customers` – Kunden CRUD
 - `/appointments` – Termine CRUD/Status
-- `/sales` – Verkäufe mit mehreren Items
+- `/sales` – Verkäufe mit mehreren Items, `/sales/wochentabelle` als Wochenblatt
+- `/invoices` – Rechnungen zu Verkäufen, `/invoices/{id}/pdf` als Beleg
 - `/presentations` – Produktvorstellungen
 - `/products` – verifizierte Produkte + Teamleiter-Import
 - `/rentals` – Verleih + Status

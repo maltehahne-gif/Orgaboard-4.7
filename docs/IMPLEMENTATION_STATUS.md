@@ -32,6 +32,9 @@
 | 28 | Rollen serverseitig | ✅ |
 | 29 | Keine erfundenen produktiven Daten | ✅ Designprinzip/Validierung |
 | 30 | Auto-Refresh nach Änderungen | ✅ WebSocket-Events; Dashboard reagiert, andere Seiten laden bei Aktionen neu |
+| 31 | Buntewoche als Wochenraster mit Terminblöcken | ✅ 15-Minuten-Raster, Block über den ganzen Zeitraum, anklickbar |
+| 32 | Verkaufstabelle nach Papiervorlage | ✅ Wochenblatt mit Kontaktweg, Gebiet, Produktspalten und Summen |
+| 33 | Rechnung zu jedem Verkauf | ✅ automatisch beim Speichern, mit PDF-Beleg nach Vordruck |
 
 ## Externe Voraussetzungen
 

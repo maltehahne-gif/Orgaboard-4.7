@@ -27,19 +27,40 @@ export function AppointmentsPage(){
   const [ladend,setLadend]=useState(true)
   const [ladefehler,setLadefehler]=useState<string|null>(null)
   const [statusBusyId,setStatusBusyId]=useState<string|null>(null)
+  const [gesuchterTermin,setGesuchterTermin]=useState<string|null>(null)
   const toast=useToast()
   const isTeamLeader=darfVerwalten(me?.role)
   const location=useLocation()
   const navigate=useNavigate()
 
   // Sprung aus der Kundenakte: Maske gleich mit dem Kunden oeffnen.
+  // Sprung aus der Buntewoche: den angeklickten Termin oeffnen. Der Termin
+  // steht beim Eintreffen noch nicht in rows - die Liste laedt erst -,
+  // deshalb wird die ID gemerkt und unten aufgeloest, sobald sie da ist.
   useEffect(()=>{
     const state=location.state as any
     if(state?.openCreate){
       setEditor({initialDay:new Date(),customerId:state.customerId})
       navigate(location.pathname,{replace:true,state:null})
+    }else if(state?.openAppointmentId){
+      setGesuchterTermin(state.openAppointmentId)
+      navigate(location.pathname,{replace:true,state:null})
     }
   },[location.state])
+
+  useEffect(()=>{
+    if(!gesuchterTermin)return
+    const appointment=rows.find(row=>row.id===gesuchterTermin)
+    if(appointment){
+      setEditor({appointment})
+      setGesuchterTermin(null)
+    }else if(!ladend){
+      // Geladen, aber nicht dabei: der Termin gehoert zu einem anderen
+      // Mitarbeiter oder wurde inzwischen geloescht.
+      setGesuchterTermin(null)
+      toast('Dieser Termin ist nicht mehr vorhanden.','error')
+    }
+  },[gesuchterTermin,rows,ladend,toast])
 
   const load=useCallback(async()=>{
     try{

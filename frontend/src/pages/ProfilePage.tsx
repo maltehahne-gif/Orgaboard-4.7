@@ -42,6 +42,22 @@ export function inCent(eingabe: string): number | null {
 
 type Zielfelder = {einheiten: string; woche: string; gebiet: string; gesamt: string}
 
+/* Anschrift und Telefonnummer des Kundenberaters. Sie stehen oben links auf
+   jeder Rechnung, die er ausstellt - deshalb pflegt sie jeder selbst. Fest
+   im Code hinterlegt waere sie fuer genau einen Berater richtig. */
+type Kontaktdaten = {
+  full_name: string
+  phone: string | null
+  street: string | null
+  house_number: string | null
+  postal_code: string | null
+  city: string | null
+}
+
+const LEERE_KONTAKTDATEN: Kontaktdaten = {
+  full_name: '', phone: '', street: '', house_number: '', postal_code: '', city: '',
+}
+
 function ausProfil(p: P): Zielfelder {
   return {
     einheiten: String(p.monthly_units_target),
@@ -56,6 +72,8 @@ export function ProfilePage() {
   const [p, setP] = useState<P | null>(null)
   const [ziele, setZiele] = useState<Zielfelder | null>(null)
   const [pw, setPw] = useState({current_password: '', new_password: ''})
+  const [kontakt, setKontakt] = useState<Kontaktdaten | null>(null)
+  const [kontaktBusy, setKontaktBusy] = useState(false)
   const [ladefehler, setLadefehler] = useState<string | null>(null)
   const [zieleBusy, setZieleBusy] = useState(false)
   const [pwBusy, setPwBusy] = useState(false)
@@ -72,6 +90,37 @@ export function ProfilePage() {
   }
 
   useEffect(load, [])
+
+  useEffect(() => {
+    api<Kontaktdaten>('/profile/kontaktdaten')
+      .then(daten => setKontakt({...LEERE_KONTAKTDATEN, ...daten}))
+      .catch(() => setKontakt(LEERE_KONTAKTDATEN))
+  }, [])
+
+  async function kontaktdatenSpeichern(e: FormEvent) {
+    e.preventDefault()
+    if (!kontakt || kontaktBusy) return
+    setKontaktBusy(true)
+    try {
+      const gespeichert = await api<Kontaktdaten>('/profile/kontaktdaten', {
+        method: 'PUT',
+        body: JSON.stringify({
+          phone: kontakt.phone,
+          street: kontakt.street,
+          house_number: kontakt.house_number,
+          postal_code: kontakt.postal_code,
+          city: kontakt.city,
+        }),
+      })
+      setKontakt({...LEERE_KONTAKTDATEN, ...gespeichert})
+      await refresh()
+      toast('Kontaktdaten gespeichert')
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Kontaktdaten konnten nicht gespeichert werden', 'error')
+    } finally {
+      setKontaktBusy(false)
+    }
+  }
 
   async function targets(e: FormEvent) {
     e.preventDefault()
@@ -191,6 +240,60 @@ export function ProfilePage() {
 
           <div className="form-actions span-2">
             <button className="primary" disabled={zieleBusy}>{zieleBusy ? 'Speichert…' : 'Ziele speichern'}</button>
+          </div>
+        </form>
+
+        <form className="card form-grid" onSubmit={kontaktdatenSpeichern}>
+          <h2 className="span-2">Kontaktdaten für Rechnungen</h2>
+
+          <p className="span-2 muted profil-hinweis">
+            Diese Angaben stehen oben links auf jeder Rechnung, die du erstellst.
+          </p>
+
+          <label>
+            Straße
+            <input
+              value={kontakt?.street || ''}
+              onChange={e => setKontakt({...(kontakt || LEERE_KONTAKTDATEN), street: e.target.value})}
+            />
+          </label>
+
+          <label>
+            Hausnummer
+            <input
+              value={kontakt?.house_number || ''}
+              onChange={e => setKontakt({...(kontakt || LEERE_KONTAKTDATEN), house_number: e.target.value})}
+            />
+          </label>
+
+          <label>
+            PLZ
+            <input
+              value={kontakt?.postal_code || ''}
+              onChange={e => setKontakt({...(kontakt || LEERE_KONTAKTDATEN), postal_code: e.target.value})}
+            />
+          </label>
+
+          <label>
+            Ort
+            <input
+              value={kontakt?.city || ''}
+              onChange={e => setKontakt({...(kontakt || LEERE_KONTAKTDATEN), city: e.target.value})}
+            />
+          </label>
+
+          <label className="span-2">
+            Telefon / Mobil
+            <input
+              value={kontakt?.phone || ''}
+              onChange={e => setKontakt({...(kontakt || LEERE_KONTAKTDATEN), phone: e.target.value})}
+            />
+          </label>
+
+          <div className="form-actions span-2">
+            <button className="primary" disabled={kontaktBusy || !kontakt}>
+              {kontaktBusy ? 'Speichert…' : 'Kontaktdaten speichern'}
+            </button>
           </div>
         </form>
 

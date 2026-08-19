@@ -70,3 +70,4 @@ def sale_units(db: Session, sale_id: str) -> int:
         for quantity, product_name, category in rows
         if not is_k70_category(category)
     )
+

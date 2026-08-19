@@ -66,3 +66,16 @@ export function formatDateTime(value:string|null|undefined) {
   // auch wenn einer von ihnen gerade im Ausland unterwegs ist.
   return new Intl.DateTimeFormat('de-DE',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Berlin'}).format(new Date(value))
 }
+
+/** Nur der Tag - für Tabellen, die Datum und Uhrzeit in eigenen Spalten
+ *  führen. Dieselbe feste Zeitzone wie formatDateTime(). */
+export function formatDate(value:string|null|undefined) {
+  if (!value) return '–'
+  return new Intl.DateTimeFormat('de-DE',{dateStyle:'medium',timeZone:'Europe/Berlin'}).format(new Date(value))
+}
+
+/** Nur die Uhrzeit, passend zu formatDate(). */
+export function formatTime(value:string|null|undefined) {
+  if (!value) return '–'
+  return new Intl.DateTimeFormat('de-DE',{timeStyle:'short',timeZone:'Europe/Berlin'}).format(new Date(value))
+}

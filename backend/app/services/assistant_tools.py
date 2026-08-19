@@ -9,6 +9,7 @@ from app.core.audit import audit
 from app.core.rbac import current_employee, resolve_employee_by_name
 from app.core.timeutils import day_bounds, month_bounds, week_bounds
 from app.models import Appointment, AppointmentProduct, AppointmentStatus, AppointmentType, Customer, CustomerNote, Employee, FollowUp, FollowUpReason, FollowUpStatus, Message, Product, ProductPresentation, Rental, RentalStatus, Role, Sale, SaleChannel, SaleItem, User
+from app.services.rechnung import rechnung_zu_verkauf
 from app.services.serializers import current_price, product_out, sale_units
 from app.services.stats import refresh_weekly_stat, revenue_between, units_between
 
@@ -406,12 +407,16 @@ def execute_tool(db: Session, user: User, name: str, args: dict,
         db.add(s);db.flush()
         for p,item in resolved:db.add(SaleItem(sale_id=s.id,product_id=p.id,product_name_snapshot=p.name,quantity=item["quantity"],unit_price_cents=item["unit_price_cents"]))
         db.flush()
-        # Gleiche Nachbereitung wie im regulaeren Endpunkt: ohne diese beiden
-        # Zeilen tauchten ueber die KI angelegte Verkaeufe weder in der
-        # Wochenstatistik noch im Audit-Log auf.
+        # Gleiche Nachbereitung wie im regulaeren Endpunkt: ohne diese Zeilen
+        # tauchten ueber die KI angelegte Verkaeufe weder in der
+        # Wochenstatistik noch im Audit-Log auf - und ohne die Rechnung
+        # haette derselbe Verkauf ueber die Maske einen Beleg und ueber die
+        # KI keinen.
         refresh_weekly_stat(db,e.id,s.sold_at.date())
+        invoice=rechnung_zu_verkauf(db,s,user)
         audit(db,user,"sale.created_via_assistant","sale",s.id,after={"customer_id":c.id,"employee_id":e.id,"item_count":len(resolved)})
-        db.commit();return {"created":True,"sale_id":s.id,"units":sale_units(db,s.id),"total_cents":sum(i[1]["quantity"]*i[1]["unit_price_cents"] for i in resolved)}
+        audit(db,user,"invoice.created","invoice",invoice.id,after={"number":invoice.number,"sale_id":s.id})
+        db.commit();return {"created":True,"sale_id":s.id,"invoice_number":invoice.number,"units":sale_units(db,s.id),"total_cents":sum(i[1]["quantity"]*i[1]["unit_price_cents"] for i in resolved)}
 
     if name == "send_message":
         # Dieselbe Sichtbarkeit wie in der Empfaengerauswahl. Ohne sie waere

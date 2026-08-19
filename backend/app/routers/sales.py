@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from io import BytesIO
 from pydantic import BaseModel, Field, field_validator
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -13,10 +13,12 @@ from app.core.database import get_db
 from app.core.rbac import require_team_leader, scoped_employee_id
 from app.core.security import get_current_user, require_csrf
 from app.core.timeutils import datum_plausibel, fruehestes_datum, local_today, spaetestes_datum
-from app.models import Customer, Product, Sale, SaleChannel, SaleItem, User
+from app.models import Appointment, Customer, Employee, Product, Sale, SaleChannel, SaleItem, User
 from app.services.realtime import manager
-from app.services.serializers import employee_name, sale_total, sale_units
-from app.services.stats import refresh_weekly_stat
+from app.services.serializers import employee_name
+from app.services.stats import is_k70_category, product_unit_count_from_name, refresh_weekly_stat
+from app.services.rechnung import rechnung_zu_verkauf, serialize as rechnung_serialisieren
+from app.services.verkaufstabelle import wochentabelle
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
@@ -62,24 +64,111 @@ class SaleIn(BaseModel):
         return wert
 
 
-def serialize(db: Session, s: Sale):
-    c = db.get(Customer, s.customer_id)
-    items = db.scalars(select(SaleItem).where(SaleItem.sale_id == s.id)).all()
+class Verkaufskontext:
+    """Alles, was serialize() braucht - fuer viele Verkaeufe auf einmal.
+
+    Ohne das kostete jeder einzelne Verkauf sechs Abfragen: Kunde,
+    Positionen, Produkte, K70-Anteil, Einheiten, Mitarbeiter. Bei 500
+    Verkaeufen in der Liste sind das dreitausend Abfragen fuer eine
+    Seite. Mit Kontext bleiben es vier - unabhaengig davon, wie viele
+    Verkaeufe es sind.
+    """
+
+    __slots__ = ("positionen", "kunden", "mitarbeiter")
+
+    def __init__(self, positionen, kunden, mitarbeiter):
+        self.positionen = positionen
+        self.kunden = kunden
+        self.mitarbeiter = mitarbeiter
+
+
+def lade_kontext(db: Session, sales: list[Sale]) -> Verkaufskontext:
+    sale_ids = [s.id for s in sales]
+    positionen: dict[str, list[tuple[SaleItem, str | None, str | None]]] = {sid: [] for sid in sale_ids}
+    if sale_ids:
+        # Der Katalogname, nicht der Namensschnappschuss: die Einheitenzahl
+        # kommt bei sale_units() ebenfalls von dort. Zwei Quellen fuer
+        # dieselbe Zahl liefen frueher oder spaeter auseinander.
+        for item, name, kategorie in db.execute(
+            select(SaleItem, Product.name, Product.category)
+            .outerjoin(Product, Product.id == SaleItem.product_id)
+            .where(SaleItem.sale_id.in_(sale_ids))
+            .order_by(SaleItem.id)
+        ).all():
+            positionen[item.sale_id].append((item, name, kategorie))
+
+    kunden = {
+        c.id: c
+        for c in db.scalars(
+            select(Customer).where(Customer.id.in_({s.customer_id for s in sales}))
+        ).all()
+    } if sales else {}
+
+    mitarbeiter = {
+        e.id: e.display_name
+        for e in db.scalars(
+            select(Employee).where(Employee.id.in_({s.employee_id for s in sales}))
+        ).all()
+    } if sales else {}
+
+    return Verkaufskontext(positionen, kunden, mitarbeiter)
+
+
+def serialize(db: Session, s: Sale, kontext: Verkaufskontext | None = None):
+    kontext = kontext or lade_kontext(db, [s])
+    c = kontext.kunden.get(s.customer_id)
+    positionen = kontext.positionen.get(s.id, [])
+
+    gesamt = 0
+    k70 = 0
+    einheiten = 0
+    zeilen = []
+    for item, katalogname, kategorie in positionen:
+        betrag = item.quantity * item.unit_price_cents
+        gesamt += betrag
+        # Dieselbe Abgrenzung wie im Dashboard und in der Buntewoche
+        # (services/stats.is_k70_category): K70 zaehlt nicht als Einheit,
+        # sondern als eigener Umsatz.
+        ist_k70 = is_k70_category(kategorie)
+        if ist_k70:
+            k70 += betrag
+        else:
+            einheiten += item.quantity * product_unit_count_from_name(katalogname)
+        zeilen.append({
+            "id": item.id,
+            "product_id": item.product_id,
+            "name": item.product_name_snapshot,
+            "category": kategorie,
+            "is_k70": ist_k70,
+            "quantity": item.quantity,
+            "unit_price_cents": item.unit_price_cents,
+            # Umsatz einer Position: Menge x Verkaufspreis.
+            "total_cents": betrag,
+        })
+
     return {
         "id": s.id, "customer_id": s.customer_id,
         "customer_name": f"{c.first_name} {c.last_name}" if c else "Unbekannt",
-        "employee_id": s.employee_id, "appointment_id": s.appointment_id, "sold_at": s.sold_at,
+        "employee_id": s.employee_id,
+        # Die Verkaufstabelle zeigt den Mitarbeiter je Zeile. Ihn dort aus
+        # einer zweiten Abfrage zusammenzusuchen ginge nur fuer die eigenen
+        # Verkaeufe gut - fremde Namen kennt die Oberflaeche sonst nicht.
+        "employee_name": kontext.mitarbeiter.get(s.employee_id, "Unbekannt"),
+        "appointment_id": s.appointment_id, "sold_at": s.sold_at,
         "channel": s.channel.value, "notes": s.notes,
         "cancelled": s.cancelled_at is not None,
         "cancelled_at": s.cancelled_at,
         "cancellation_reason": s.cancellation_reason,
-        "items": [{"id": i.id, "product_id": i.product_id, "name": i.product_name_snapshot, "quantity": i.quantity, "unit_price_cents": i.unit_price_cents, "total_cents": i.quantity*i.unit_price_cents} for i in items],
-        "total_cents": sum(i.quantity*i.unit_price_cents for i in items),
-        "units": sale_units(db, s.id),
+        "items": zeilen,
+        "total_cents": gesamt,
+        "k70_total_cents": k70,
+        "product_total_cents": gesamt - k70,
+        "units": einheiten,
         # Was der Verkauf zu den Kennzahlen beitraegt. Bei einem Storno null,
         # ohne dass die urspruenglichen Betraege verschwinden.
-        "counts_total_cents": 0 if s.cancelled_at else sum(i.quantity*i.unit_price_cents for i in items),
-        "counts_units": 0 if s.cancelled_at else sale_units(db, s.id),
+        "counts_total_cents": 0 if s.cancelled_at else gesamt,
+        "counts_units": 0 if s.cancelled_at else einheiten,
+        "counts_k70_cents": 0 if s.cancelled_at else k70,
     }
 
 
@@ -89,7 +178,29 @@ def list_sales(employee_id: str | None = None, user: User = Depends(get_current_
     stmt = select(Sale).order_by(Sale.sold_at.desc())
     if scope:
         stmt = stmt.where(Sale.employee_id == scope)
-    return [serialize(db, s) for s in db.scalars(stmt).all()]
+    sales = list(db.scalars(stmt).all())
+    kontext = lade_kontext(db, sales)
+    return [serialize(db, s, kontext) for s in sales]
+
+
+@router.get("/wochentabelle")
+def verkaufstabelle_woche(
+    week_start: date | None = Query(default=None),
+    employee_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Die Verkaufstabelle als Wochenblatt nach der Papiervorlage.
+
+    Der Ausschnitt läuft über dieselbe Regel wie die Verkaufsliste: ein
+    Mitarbeiter sieht ausschließlich seine eigene Woche, eine Führungsrolle
+    wählt einen Mitarbeiter aus.
+    """
+    scope = scoped_employee_id(db, user, employee_id)
+    if scope is None:
+        raise HTTPException(status_code=400, detail="Bitte einen Mitarbeiter auswählen")
+    tag = week_start or local_today()
+    return wochentabelle(db, scope, tag - timedelta(days=tag.weekday()))
 
 
 @router.get("/export.xlsx")
@@ -160,6 +271,16 @@ async def create_sale(data: SaleIn, user: User = Depends(get_current_user), db: 
         raise HTTPException(status_code=403, detail="Kunde gehört nicht zu diesem Mitarbeiter")
     if not data.items:
         raise HTTPException(status_code=400, detail="Ein Verkauf benötigt mindestens ein Produkt")
+    # Der Termin lief bisher ungeprueft durch. Ein fremder Termin haengt
+    # damit am eigenen Verkauf - und seine Terminart und seine
+    # Vorfuehrungen stehen in der eigenen Verkaufstabelle
+    # (services/verkaufstabelle.py), obwohl sie zu jemand anderem gehoeren.
+    if data.appointment_id:
+        termin = db.get(Appointment, data.appointment_id)
+        if not termin:
+            raise HTTPException(status_code=404, detail="Termin nicht gefunden")
+        if termin.employee_id != employee_id:
+            raise HTTPException(status_code=403, detail="Der Termin gehört zu einem anderen Mitarbeiter")
     resolved: list[tuple[Product, SaleItemIn]] = []
     for item in data.items:
         p = db.get(Product, item.product_id)
@@ -174,10 +295,15 @@ async def create_sale(data: SaleIn, user: User = Depends(get_current_user), db: 
         db.add(SaleItem(sale_id=s.id, product_id=p.id, product_name_snapshot=p.name, quantity=item.quantity, unit_price_cents=item.unit_price_cents))
     db.flush()
     refresh_weekly_stat(db, employee_id, s.sold_at.date())
+    # Die Rechnung entsteht mit dem Verkauf. Erst auf Zuruf angelegt fehlte
+    # sie genau dann, wenn der Kunde sie vor der Tuer verlangt.
+    invoice = rechnung_zu_verkauf(db, s, user)
     audit(db, user, "sale.created", "sale", s.id, after=serialize(db, s))
+    audit(db, user, "invoice.created", "invoice", invoice.id, after=rechnung_serialisieren(db, invoice))
     db.commit()
     await manager.publish({"type":"data.changed","entity":"sale"}, employee_id=employee_id)
-    return serialize(db, s)
+    await manager.publish({"type":"data.changed","entity":"invoice"}, employee_id=employee_id)
+    return {**serialize(db, s), "invoice_id": invoice.id, "invoice_number": invoice.number}
 
 @router.post("/{sale_id}/cancel", dependencies=[Depends(require_csrf)])
 async def cancel_sale(

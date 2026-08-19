@@ -45,6 +45,13 @@ def user_payload(db: Session, user: User) -> dict:
         "full_name": user.full_name,
         "role": user.role.value,
         "must_change_password": user.must_change_password,
+        "phone": user.phone,
+        # Anschrift des Kundenberaters. Steht auf jeder Rechnung, die er
+        # ausstellt - die Oberflaeche zeigt sie deshalb im Profil an.
+        "street": user.street,
+        "house_number": user.house_number,
+        "postal_code": user.postal_code,
+        "city": user.city,
         "employee": None if not employee else {
             "id": employee.id,
             "display_name": employee.display_name,

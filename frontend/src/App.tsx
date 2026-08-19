@@ -1,4 +1,4 @@
-import {useEffect} from 'react'
+import {lazy, Suspense, useEffect} from 'react'
 import {Navigate,Route,Routes,useLocation} from 'react-router-dom'
 import {useAuth} from './lib/auth'
 import {darfVerwalten, istSystemAdmin} from './lib/roles'
@@ -7,7 +7,6 @@ import {LoginPage} from './pages/LoginPage'
 import {DashboardPage} from './pages/DashboardPage'
 import {AIPage} from './pages/AIPage'
 import {AppointmentsPage} from './pages/AppointmentsPage'
-import {RoutePlanningPage} from './pages/RoutePlanningPage'
 import {CustomersPage} from './pages/CustomersPage'
 import {CustomerDetailPage} from './pages/CustomerDetailPage'
 import {CrmPipelinePage} from './pages/CrmPipelinePage'
@@ -16,7 +15,7 @@ import {HistoryPage} from './pages/HistoryPage'
 import {ProductsPage} from './pages/ProductsPage'
 import {OffersPage} from './pages/OffersPage'
 import {SalesPage} from './pages/SalesPage'
-import SalesReportPage from './pages/SalesReportPage'
+import {InvoicesPage} from './pages/InvoicesPage'
 import {RentalsPage} from './pages/RentalsPage'
 import {BuntewochePage} from './pages/BuntewochePage'
 import {MessagesPage} from './pages/MessagesPage'
@@ -30,6 +29,14 @@ import {TradeInsPage} from './pages/TradeInsPage'
 import {ReportsPage} from './pages/ReportsPage'
 import {SysAdminPage} from './pages/SysAdminPage'
 import {FeedbackPage} from './pages/FeedbackPage'
+
+// Zwei Seiten bringen schwere Bibliotheken mit: die Routenplanung eine
+// Kartenbibliothek, die Verkaufstabelle den PDF-Erzeuger. Fest eingebunden
+// laden beide bei jedem Aufruf der Anwendung mit - auch beim Anmelden und
+// auf der Startseite, wo sie niemand braucht. Nachgeladen werden sie erst,
+// wenn ihre Route tatsächlich angesteuert wird.
+const RoutePlanningPage = lazy(() => import('./pages/RoutePlanningPage').then(m => ({default: m.RoutePlanningPage})))
+const SalesReportPage = lazy(() => import('./pages/SalesReportPage'))
 
 // Merkt sich den Pfad, von dem aus ein Benutzer zum Login umgeleitet wurde -
 // egal ob beim ersten Aufruf ohne Sitzung oder weil sie zwischendurch
@@ -91,4 +98,4 @@ function Pfadverfolgung(){
   return null
 }
 
-export default function App(){return <><Pfadverfolgung/><Routes><Route path="/login" element={<LoginRoute/>}/><Route element={<Guard/>}><Route index element={<DashboardPage/>}/><Route path="ki" element={<AIPage/>}/><Route path="termine" element={<AppointmentsPage/>}/><Route path="routenplanung" element={<RoutePlanningPage/>}/><Route path="kunden" element={<CustomersPage/>}/><Route path="kunden/:customerId" element={<CustomerDetailPage/>}/><Route path="pipeline" element={<CrmPipelinePage/>}/><Route path="nachfassen" element={<FollowUpsPage/>}/><Route path="verlauf" element={<HistoryPage/>}/><Route path="feedback" element={<FeedbackPage/>}/><Route path="produkte" element={<ProductsPage/>}/><Route path="angebote" element={<OffersPage/>}/><Route path="verkaeufe" element={<SalesPage/>}/><Route path="verkaufstabelle" element={<SalesReportPage/>}/><Route path="berichte" element={<ReportsPage/>}/><Route path="verleih" element={<RentalsPage/>}/><Route path="altgeraete" element={<TradeInsPage/>}/><Route path="buntewoche" element={<BuntewochePage/>}/><Route path="nachrichten" element={<MessagesPage/>}/><Route path="profil" element={<ProfilePage/>}/><Route path="cockpit" element={<TL><ManagementCockpitPage/></TL>}/><Route path="vergleich" element={<TL><ComparisonPage/></TL>}/><Route path="team" element={<TL><TeamPage/></TL>}/><Route path="teamstatistiken" element={<TL><TeamStatsPage/></TL>}/><Route path="verwaltung" element={<TL><AdminPage/></TL>}/><Route path="system" element={<SA><SysAdminPage/></SA>}/></Route><Route path="*" element={<Navigate to="/" replace/>}/></Routes></>}
+export default function App(){return <><Pfadverfolgung/><Suspense fallback={<div className="loading">Seite wird geladen…</div>}><Routes><Route path="/login" element={<LoginRoute/>}/><Route element={<Guard/>}><Route index element={<DashboardPage/>}/><Route path="ki" element={<AIPage/>}/><Route path="termine" element={<AppointmentsPage/>}/><Route path="routenplanung" element={<RoutePlanningPage/>}/><Route path="kunden" element={<CustomersPage/>}/><Route path="kunden/:customerId" element={<CustomerDetailPage/>}/><Route path="pipeline" element={<CrmPipelinePage/>}/><Route path="nachfassen" element={<FollowUpsPage/>}/><Route path="verlauf" element={<HistoryPage/>}/><Route path="feedback" element={<FeedbackPage/>}/><Route path="produkte" element={<ProductsPage/>}/><Route path="angebote" element={<OffersPage/>}/><Route path="verkaeufe" element={<SalesPage/>}/><Route path="verkaufstabelle" element={<SalesReportPage/>}/><Route path="rechnungen" element={<InvoicesPage/>}/><Route path="berichte" element={<ReportsPage/>}/><Route path="verleih" element={<RentalsPage/>}/><Route path="altgeraete" element={<TradeInsPage/>}/><Route path="buntewoche" element={<BuntewochePage/>}/><Route path="nachrichten" element={<MessagesPage/>}/><Route path="profil" element={<ProfilePage/>}/><Route path="cockpit" element={<TL><ManagementCockpitPage/></TL>}/><Route path="vergleich" element={<TL><ComparisonPage/></TL>}/><Route path="team" element={<TL><TeamPage/></TL>}/><Route path="teamstatistiken" element={<TL><TeamStatsPage/></TL>}/><Route path="verwaltung" element={<TL><AdminPage/></TL>}/><Route path="system" element={<SA><SysAdminPage/></SA>}/></Route><Route path="*" element={<Navigate to="/" replace/>}/></Routes></Suspense></>}
