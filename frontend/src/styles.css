@@ -11780,3 +11780,121 @@ to{
     overflow-wrap:anywhere;
   }
 }
+
+
+/* ===== Buntewoche – Wochenraster mit Terminblöcken =====
+   Der Wochenhintergrund ist durchgehend rot. Farbe bekommt ausschließlich
+   ein belegter Termin, und zwar die Farbe seiner Terminart aus
+   lib/appointments.ts. Freie Zeit, Status und Wochentag färben nichts ein -
+   sonst wäre nicht mehr zu erkennen, was tatsächlich belegt ist. */
+
+.bunte-scroll{
+  background:#8d1513;
+  border-color:#5f0f0e;
+}
+
+.bunte.bunte-woche{
+  table-layout:fixed;
+}
+
+.bunte.bunte-woche th,
+.bunte.bunte-woche td{
+  height:auto;
+  border-color:#5f0f0e;
+}
+
+.bunte.bunte-woche thead th{
+  background:#6d100f;
+  color:#fff;
+  height:44px;
+}
+
+.bunte.bunte-woche thead th small{
+  color:#f6c9c8;
+}
+
+.bunte.bunte-woche tbody th.time-col{
+  background:#6d100f;
+  color:#fff;
+  vertical-align:top;
+  text-align:center;
+  font-size:12px;
+  font-weight:700;
+  padding-top:3px;
+}
+
+.bunte.bunte-woche td{
+  background:#a81b19;
+  padding:0;
+  height:20px;
+}
+
+.bunte.bunte-woche td.bunte-block-cell{
+  padding:2px;
+  vertical-align:top;
+}
+
+.bunte.bunte-woche tr.bunte-hour-start td{
+  border-top-color:#d98684;
+}
+
+.bunte-appt{
+  width:100%;
+  height:100%;
+  min-height:18px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:1px;
+  padding:2px 6px;
+  border:1px solid rgba(0,0,0,.35);
+  border-radius:5px;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);
+  color:#111614;
+  font:inherit;
+  text-align:left;
+  overflow:hidden;
+  cursor:pointer;
+}
+
+.bunte-appt strong{
+  font-size:12px;
+  line-height:1.15;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.bunte-appt-time{
+  font-size:11px;
+  font-weight:700;
+  line-height:1.1;
+}
+
+.bunte-appt-range{
+  font-size:10px;
+  line-height:1.1;
+  opacity:.85;
+}
+
+/* Eine Viertel- oder halbe Stunde ist zu flach für drei Zeilen: dort steht
+   der Name neben der Uhrzeit, der Zeitraum entfällt. */
+.bunte-appt.is-short{
+  flex-direction:row;
+  align-items:center;
+  gap:6px;
+  padding:1px 5px;
+}
+
+.bunte-appt.is-short .bunte-appt-range{
+  display:none;
+}
+
+.bunte-appt:hover{
+  filter:brightness(1.08);
+}
+
+.bunte-appt:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:-2px;
+}
