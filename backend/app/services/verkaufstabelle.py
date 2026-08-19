@@ -133,14 +133,18 @@ def wochentabelle(db: Session, employee_id: str, week_start: date) -> dict:
     ).all()
     sale_ids = [s.id for s in sales]
 
-    positionen: dict[str, list[tuple[SaleItem, str | None]]] = {sid: [] for sid in sale_ids}
+    positionen: dict[str, list[tuple[SaleItem, str | None, str | None]]] = {sid: [] for sid in sale_ids}
     if sale_ids:
-        for item, kategorie in db.execute(
-            select(SaleItem, Product.category)
+        # Katalogname und Kategorie in einer Abfrage. Der Katalogname zaehlt,
+        # nicht der Namensschnappschuss: die Einheitenzahl kommt bei
+        # sale_units() ebenfalls von dort, und zwei Quellen fuer dieselbe
+        # Zahl liefen frueher oder spaeter auseinander.
+        for item, name, kategorie in db.execute(
+            select(SaleItem, Product.name, Product.category)
             .outerjoin(Product, Product.id == SaleItem.product_id)
             .where(SaleItem.sale_id.in_(sale_ids))
         ).all():
-            positionen[item.sale_id].append((item, kategorie))
+            positionen[item.sale_id].append((item, name, kategorie))
 
     kunden = {
         c.id: c
@@ -188,14 +192,14 @@ def wochentabelle(db: Session, employee_id: str, week_start: date) -> dict:
         einheiten = 0
         produktumsatz = 0
         k70 = 0
-        for item, kategorie in positionen.get(s.id, []):
+        for item, katalogname, kategorie in positionen.get(s.id, []):
             betrag = item.quantity * item.unit_price_cents
             if is_k70_category(kategorie):
                 k70 += betrag
                 continue
             produktumsatz += betrag
-            einheiten += item.quantity * product_unit_count_from_name(item.product_name_snapshot)
-            spalte = produktspalte(item.product_name_snapshot, kategorie)
+            einheiten += item.quantity * product_unit_count_from_name(katalogname)
+            spalte = produktspalte(katalogname or item.product_name_snapshot, kategorie)
             if spalte:
                 produkte[spalte]["sold"] += item.quantity
 

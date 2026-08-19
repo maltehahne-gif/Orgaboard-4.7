@@ -21,7 +21,6 @@ from sqlalchemy.orm import sessionmaker  # noqa: E402
 from app.core.database import Base  # noqa: E402
 from app.models import Customer, Employee, Product, Role, Sale, SaleItem, User  # noqa: E402
 from app.routers.sales import serialize  # noqa: E402
-from app.services.serializers import sale_k70_total  # noqa: E402
 
 
 @pytest.fixture
@@ -128,7 +127,7 @@ def test_ohne_k70_produkt_bleibt_der_k70_umsatz_null(db, verkaufsdaten):
 def test_k70_erkennung_ignoriert_gross_und_kleinschreibung(db, verkaufsdaten):
     employee, customer = verkaufsdaten
     s = verkauf(db, employee, customer, [(produkt(db, "Reiniger", kategorie=" k70 "), 2, 1000)])
-    assert sale_k70_total(db, s.id) == 2000
+    assert serialize(db, s)["k70_total_cents"] == 2000
 
 
 def test_verkauf_liefert_die_spalten_der_verkaufstabelle(db, verkaufsdaten):

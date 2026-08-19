@@ -239,6 +239,33 @@ describe('Verkauf erfassen – Produkte ankreuzen', () => {
     })
   })
 
+  it('nennt nach dem Speichern die Nummer der angelegten Rechnung', async () => {
+    alsMitarbeiter()
+    mockApi.mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path === '/sales' && options?.method === 'POST') {
+        return {id: 's-neu', invoice_number: 'RE-2026-0007'} as never
+      }
+      if (path === '/sales') return [] as never
+      if (path === '/customers') return [KUNDE] as never
+      if (path.startsWith('/products')) return PRODUKTE as never
+      if (path === '/team/employees') return [] as never
+      throw new Error(`Unerwarteter Aufruf: ${path}`)
+    })
+    render(<SalesPage />)
+    await waitFor(() => expect(screen.getByText(/Keine Verkäufe/)).toBeTruthy())
+    await userEvent.click(screen.getByRole('button', {name: /Verkauf erfassen/}))
+
+    await userEvent.type(screen.getByPlaceholderText('Kunde suchen ...'), 'Anna')
+    await userEvent.click(await screen.findByRole('button', {name: /Anna Beispiel/}))
+    const auswahl = screen.getByRole('group', {name: 'Produkte auswählen'})
+    await userEvent.click(within(auswahl).getAllByRole('checkbox')[0])
+    await userEvent.click(screen.getByRole('button', {name: 'Verkauf speichern'}))
+
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(
+      'Verkauf gespeichert. Rechnung RE-2026-0007 wurde angelegt.',
+    ))
+  })
+
   it('speichert nicht ohne angekreuztes Produkt', async () => {
     await maskeOeffnen()
 

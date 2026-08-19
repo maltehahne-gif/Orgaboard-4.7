@@ -171,6 +171,41 @@ def test_zweiter_aufruf_erzeugt_keine_zweite_rechnung(client):
     assert len(client.get("/api/v1/invoices").json()) == 1
 
 
+def test_auch_ein_ueber_die_ki_angelegter_verkauf_bekommt_eine_rechnung(client):
+    """Sonst hätte derselbe Verkauf über die Maske einen Beleg und über die
+    KI keinen - und niemand merkte es, bis der Kunde danach fragt."""
+    from datetime import date
+
+    from app.services.assistant_tools import execute_tool
+
+    p = anlegen("mira@example.com", "Mira Musterfrau")
+    pid = produkt()
+    db = SessionLocal()
+    try:
+        user = db.get(User, p["user"])
+        ergebnis = execute_tool(
+            db, user, "create_sale",
+            {
+                "customer_id": p["customer"],
+                "sold_at": datetime.combine(date.today(), datetime.min.time()).isoformat(),
+                "channel": "field",
+                "items": [{"product_id": pid, "quantity": 1, "unit_price_cents": 250000}],
+            },
+            # Der Bestaetigungsschritt gehoert dem Endpunkt, nicht diesem Test.
+            bestaetigt=True,
+        )
+    finally:
+        db.close()
+
+    assert ergebnis.get("created") is True, ergebnis
+    assert ergebnis["invoice_number"].startswith("RE-")
+
+    anmelden(client, "mira@example.com")
+    rechnungen = client.get("/api/v1/invoices").json()
+    assert len(rechnungen) == 1
+    assert rechnungen[0]["sale_id"] == ergebnis["sale_id"]
+
+
 # ---------------------------------------------------------- Inhalt
 
 def test_rechnung_traegt_den_ausstellenden_mitarbeiter_mit_anschrift(client):

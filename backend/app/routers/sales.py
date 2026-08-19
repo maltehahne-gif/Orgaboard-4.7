@@ -13,10 +13,10 @@ from app.core.database import get_db
 from app.core.rbac import require_team_leader, scoped_employee_id
 from app.core.security import get_current_user, require_csrf
 from app.core.timeutils import datum_plausibel, fruehestes_datum, local_today, spaetestes_datum
-from app.models import Appointment, Customer, Product, Sale, SaleChannel, SaleItem, User
+from app.models import Appointment, Customer, Employee, Product, Sale, SaleChannel, SaleItem, User
 from app.services.realtime import manager
-from app.services.serializers import employee_name, sale_k70_total, sale_total, sale_units
-from app.services.stats import is_k70_category, refresh_weekly_stat
+from app.services.serializers import employee_name
+from app.services.stats import is_k70_category, product_unit_count_from_name, refresh_weekly_stat
 from app.services.rechnung import rechnung_zu_verkauf, serialize as rechnung_serialisieren
 from app.services.verkaufstabelle import wochentabelle
 
@@ -64,18 +64,88 @@ class SaleIn(BaseModel):
         return wert
 
 
-def serialize(db: Session, s: Sale):
-    c = db.get(Customer, s.customer_id)
-    items = db.scalars(select(SaleItem).where(SaleItem.sale_id == s.id)).all()
-    kategorien = {
-        p.id: p.category
-        for p in db.scalars(
-            select(Product).where(Product.id.in_([i.product_id for i in items]))
+class Verkaufskontext:
+    """Alles, was serialize() braucht - fuer viele Verkaeufe auf einmal.
+
+    Ohne das kostete jeder einzelne Verkauf sechs Abfragen: Kunde,
+    Positionen, Produkte, K70-Anteil, Einheiten, Mitarbeiter. Bei 500
+    Verkaeufen in der Liste sind das dreitausend Abfragen fuer eine
+    Seite. Mit Kontext bleiben es vier - unabhaengig davon, wie viele
+    Verkaeufe es sind.
+    """
+
+    __slots__ = ("positionen", "kunden", "mitarbeiter")
+
+    def __init__(self, positionen, kunden, mitarbeiter):
+        self.positionen = positionen
+        self.kunden = kunden
+        self.mitarbeiter = mitarbeiter
+
+
+def lade_kontext(db: Session, sales: list[Sale]) -> Verkaufskontext:
+    sale_ids = [s.id for s in sales]
+    positionen: dict[str, list[tuple[SaleItem, str | None, str | None]]] = {sid: [] for sid in sale_ids}
+    if sale_ids:
+        # Der Katalogname, nicht der Namensschnappschuss: die Einheitenzahl
+        # kommt bei sale_units() ebenfalls von dort. Zwei Quellen fuer
+        # dieselbe Zahl liefen frueher oder spaeter auseinander.
+        for item, name, kategorie in db.execute(
+            select(SaleItem, Product.name, Product.category)
+            .outerjoin(Product, Product.id == SaleItem.product_id)
+            .where(SaleItem.sale_id.in_(sale_ids))
+            .order_by(SaleItem.id)
+        ).all():
+            positionen[item.sale_id].append((item, name, kategorie))
+
+    kunden = {
+        c.id: c
+        for c in db.scalars(
+            select(Customer).where(Customer.id.in_({s.customer_id for s in sales}))
         ).all()
-    } if items else {}
-    gesamt = sum(i.quantity * i.unit_price_cents for i in items)
-    k70 = sale_k70_total(db, s.id)
-    einheiten = sale_units(db, s.id)
+    } if sales else {}
+
+    mitarbeiter = {
+        e.id: e.display_name
+        for e in db.scalars(
+            select(Employee).where(Employee.id.in_({s.employee_id for s in sales}))
+        ).all()
+    } if sales else {}
+
+    return Verkaufskontext(positionen, kunden, mitarbeiter)
+
+
+def serialize(db: Session, s: Sale, kontext: Verkaufskontext | None = None):
+    kontext = kontext or lade_kontext(db, [s])
+    c = kontext.kunden.get(s.customer_id)
+    positionen = kontext.positionen.get(s.id, [])
+
+    gesamt = 0
+    k70 = 0
+    einheiten = 0
+    zeilen = []
+    for item, katalogname, kategorie in positionen:
+        betrag = item.quantity * item.unit_price_cents
+        gesamt += betrag
+        # Dieselbe Abgrenzung wie im Dashboard und in der Buntewoche
+        # (services/stats.is_k70_category): K70 zaehlt nicht als Einheit,
+        # sondern als eigener Umsatz.
+        ist_k70 = is_k70_category(kategorie)
+        if ist_k70:
+            k70 += betrag
+        else:
+            einheiten += item.quantity * product_unit_count_from_name(katalogname)
+        zeilen.append({
+            "id": item.id,
+            "product_id": item.product_id,
+            "name": item.product_name_snapshot,
+            "category": kategorie,
+            "is_k70": ist_k70,
+            "quantity": item.quantity,
+            "unit_price_cents": item.unit_price_cents,
+            # Umsatz einer Position: Menge x Verkaufspreis.
+            "total_cents": betrag,
+        })
+
     return {
         "id": s.id, "customer_id": s.customer_id,
         "customer_name": f"{c.first_name} {c.last_name}" if c else "Unbekannt",
@@ -83,29 +153,14 @@ def serialize(db: Session, s: Sale):
         # Die Verkaufstabelle zeigt den Mitarbeiter je Zeile. Ihn dort aus
         # einer zweiten Abfrage zusammenzusuchen ginge nur fuer die eigenen
         # Verkaeufe gut - fremde Namen kennt die Oberflaeche sonst nicht.
-        "employee_name": employee_name(db, s.employee_id),
+        "employee_name": kontext.mitarbeiter.get(s.employee_id, "Unbekannt"),
         "appointment_id": s.appointment_id, "sold_at": s.sold_at,
         "channel": s.channel.value, "notes": s.notes,
         "cancelled": s.cancelled_at is not None,
         "cancelled_at": s.cancelled_at,
         "cancellation_reason": s.cancellation_reason,
-        "items": [
-            {
-                "id": i.id,
-                "product_id": i.product_id,
-                "name": i.product_name_snapshot,
-                "category": kategorien.get(i.product_id),
-                "is_k70": is_k70_category(kategorien.get(i.product_id)),
-                "quantity": i.quantity,
-                "unit_price_cents": i.unit_price_cents,
-                # Umsatz einer Position: Menge x Verkaufspreis.
-                "total_cents": i.quantity * i.unit_price_cents,
-            }
-            for i in items
-        ],
+        "items": zeilen,
         "total_cents": gesamt,
-        # K70 zaehlt nicht als Einheit und wird als eigener Umsatz gefuehrt -
-        # dieselbe Abgrenzung wie im Dashboard und in der Buntewoche.
         "k70_total_cents": k70,
         "product_total_cents": gesamt - k70,
         "units": einheiten,
@@ -123,7 +178,9 @@ def list_sales(employee_id: str | None = None, user: User = Depends(get_current_
     stmt = select(Sale).order_by(Sale.sold_at.desc())
     if scope:
         stmt = stmt.where(Sale.employee_id == scope)
-    return [serialize(db, s) for s in db.scalars(stmt).all()]
+    sales = list(db.scalars(stmt).all())
+    kontext = lade_kontext(db, sales)
+    return [serialize(db, s, kontext) for s in sales]
 
 
 @router.get("/wochentabelle")

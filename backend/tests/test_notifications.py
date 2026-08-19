@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.core.database import Base, SessionLocal, engine  # noqa: E402
 from app.core.ratelimit import login_limiter  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
-from app.core.timeutils import local_today  # noqa: E402
+from app.core.timeutils import BUSINESS_TZ, local_today  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import (  # noqa: E402
     Appointment,
@@ -140,15 +140,32 @@ def test_derselbe_anlass_entsteht_nur_einmal(client):
 
 
 def test_viele_termine_ergeben_eine_tagesmeldung(client):
-    """Der Tagesueberblick fasst zusammen, statt je Termin zu melden."""
+    """Der Tagesueberblick fasst zusammen, statt je Termin zu melden.
+
+    Die Termine liegen an festen Uhrzeiten des heutigen Kalendertags, nicht
+    "in sechs bis acht Stunden": Ab dem spaeten Nachmittag fiel der letzte
+    davon auf den Folgetag, der Tagesueberblick zaehlte nur noch zwei
+    Termine, und der Test schlug jeden Nachmittag fehl - an einer Stelle,
+    die mit der Uhrzeit nichts zu tun hat.
+    """
     p = _person()
     db = SessionLocal()
     try:
-        # Weit genug weg, damit sie nicht zusaetzlich als "bald" zaehlen.
-        for stunde in (6, 7, 8):
+        jetzt = datetime.now(BUSINESS_TZ)
+        tagesbeginn = jetzt.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Drei Uhrzeiten des heutigen Tages, die zu keiner Tageszeit ins
+        # "bald"-Fenster fallen (siehe TERMIN_BALD_MINUTEN): in der Nacht die
+        # spaeten Stunden, sonst die fruehen - die liegen dann bereits hinter
+        # uns, und "bald" zaehlt ohnehin nur Kuenftiges.
+        stunden = (21, 22, 23) if jetzt.hour < 3 else (0, 1, 2)
+        for stunde in stunden:
+            beginn = tagesbeginn + timedelta(hours=stunde)
+            assert beginn < jetzt or beginn - jetzt > timedelta(minutes=90), (
+                "Der Termin darf nicht zusaetzlich als \"bald\" gemeldet werden"
+            )
             db.add(Appointment(
                 customer_id=p["customer"], employee_id=p["employee"],
-                start_at=datetime.now(timezone.utc) + timedelta(hours=stunde),
+                start_at=beginn.astimezone(timezone.utc),
                 status=AppointmentStatus.PLANNED,
             ))
         db.commit()

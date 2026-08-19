@@ -513,6 +513,17 @@ export function SalesPage(){
   }
 
 
+  const gefilterteProdukte=
+    useMemo(
+      ()=>productMatches(productSearch),
+      // productMatches liest products und productSearch - mehr geht nicht
+      // ein. Ohne das Auswendiglernen liefe die Suche zweimal je
+      // Darstellung: einmal fuer den Leerzustand, einmal fuer die Liste.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [products,productSearch]
+    )
+
+
   function selectedProduct(
     item:SaleItemForm
   ){
@@ -523,6 +534,23 @@ export function SalesPage(){
         === item.product_id
     )
   }
+
+
+  /* Nachschlagen statt suchen. Die Filterung lief je Verkauf und je
+     Position einmal durch die gesamte Kunden- und Produktliste - bei 150
+     Produkten und ein paar hundert Verkäufen wird daraus bei jedem
+     Tastendruck im Suchfeld sechsstellig viel Arbeit. */
+  const kundenNachId=
+    useMemo(
+      ()=>new Map(customers.map(customer=>[customer.id,customer])),
+      [customers]
+    )
+
+  const produkteNachId=
+    useMemo(
+      ()=>new Map(products.map(produkt=>[produkt.id,produkt])),
+      [products]
+    )
 
 
   const filteredSales=
@@ -671,44 +699,26 @@ export function SalesPage(){
 
 
         const customer=
-          customers.find(
-            item=>
-              item.id
-              ===current.customer_id
+          kundenNachId.get(
+            current.customer_id
           )
 
         const itemNames=
           (current.items||[])
-            .map((item:any)=>{
-
-              const product=
-                products.find(
-                  entry=>
-                    entry.id
-                    ===item.product_id
-                )
-
-              return (
-                item.name
-                ||product?.name
-                ||''
-              )
-            })
+            .map((item:any)=>
+              item.name
+              ||produkteNachId.get(item.product_id)?.name
+              ||''
+            )
 
 
         const itemCategories=
           (current.items||[])
-            .map((item:any)=>{
-
-              const product=
-                products.find(
-                  entry=>
-                    entry.id
-                    ===item.product_id
-                )
-
-              return product?.category||''
-            })
+            .map((item:any)=>
+              item.category
+              ||produkteNachId.get(item.product_id)?.category
+              ||''
+            )
 
 
         if(productQuery){
@@ -756,8 +766,8 @@ export function SalesPage(){
 
     },[
       rows,
-      customers,
-      products,
+      kundenNachId,
+      produkteNachId,
       salesSearch,
       salesPeriod,
       salesFrom,
@@ -884,7 +894,7 @@ export function SalesPage(){
 
     try{
 
-      await api(
+      const gespeichert=await api<{invoice_number?:string}>(
         '/sales',
         {
           method:'POST',
@@ -939,7 +949,11 @@ export function SalesPage(){
 
 
       toast(
-        'Verkauf gespeichert. Umsatz und Einheiten wurden aktualisiert.'
+        gespeichert?.invoice_number
+          // Die Rechnung entsteht mit dem Verkauf. Ohne den Hinweis suchte
+          // man sie unter /rechnungen, ohne zu wissen, dass es sie gibt.
+          ? `Verkauf gespeichert. Rechnung ${gespeichert.invoice_number} wurde angelegt.`
+          : 'Verkauf gespeichert. Umsatz und Einheiten wurden aktualisiert.'
       )
 
       setOpen(false)
@@ -1318,8 +1332,8 @@ export function SalesPage(){
               const s:any=sale
 
               const customer=
-                customers.find(
-                  c=>c.id===s.customer_id
+                kundenNachId.get(
+                  s.customer_id
                 )
 
               const units=
@@ -1708,14 +1722,14 @@ export function SalesPage(){
             aria-label="Produkte auswählen"
           >
 
-            {productMatches(productSearch).length===0 && (
+            {gefilterteProdukte.length===0 && (
               <p className="sale-product-picker-empty">
                 Kein Produkt gefunden.
                 Du kannst es zuerst im Produktkatalog anlegen.
               </p>
             )}
 
-            {productMatches(productSearch).map(produkt=>{
+            {gefilterteProdukte.map(produkt=>{
 
               const gewaehlt=
                 form.items.some(
