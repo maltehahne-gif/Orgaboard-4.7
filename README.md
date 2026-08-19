@@ -89,6 +89,7 @@ GitHub allein hostet keine PostgreSQL-/FastAPI-Anwendung dauerhaft; Codespaces d
 - `START-HIER.md` – schnellster Start
 - `docs/DEPLOY.md` – Ausrollen auf einen Server mit bestehenden Daten
 - `docs/ROADMAP.md` – Funktionsstand und geplante Ausbaustufen
+- `docs/MARKTANALYSE.md` – Marktanalyse und Geschäftsmodell
 - `docs/ARCHITECTURE.md` – Systemarchitektur
 - `docs/DATABASE.md` – Datenmodell
 - `docs/RBAC.md` – Rollen- und Berechtigungsmatrix
