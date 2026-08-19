@@ -324,7 +324,10 @@ export default function SalesReportPage(){
                 })}
 
                 <tr className="sales-sheet-total-row">
-                  <th scope="row" colSpan={3 + spalten.contact_ways.length + 4 + spalten.profi.length + 1}>Summe</th>
+                  <th scope="row" colSpan={3 + spalten.contact_ways.length + 4 + spalten.profi.length}>Summe</th>
+                  {/* Altgeräte werden nicht summiert - auf der Vorlage ist
+                      dieses Feld schraffiert. */}
+                  <td className="sales-sheet-alt-total"/>
                   {spalten.products.map(s => (
                     <td className="sales-sheet-product-cell" key={`t-${s.key}`}>
                       {blatt.totals.products[s.key] || ''}
@@ -332,7 +335,7 @@ export default function SalesReportPage(){
                   ))}
                   <td className="sales-sheet-number">{blatt.totals.units || ''}</td>
                   <td className="sales-sheet-money">{money(blatt.totals.product_revenue_cents)}</td>
-                  <td className="sales-sheet-money sales-sheet-alt-total">{money(blatt.totals.k70_revenue_cents)}</td>
+                  <td className="sales-sheet-money">{money(blatt.totals.k70_revenue_cents)}</td>
                 </tr>
 
                 {!hatZeilen && (
