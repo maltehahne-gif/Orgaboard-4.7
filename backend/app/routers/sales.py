@@ -17,6 +17,7 @@ from app.models import Customer, Product, Sale, SaleChannel, SaleItem, User
 from app.services.realtime import manager
 from app.services.serializers import employee_name, sale_k70_total, sale_total, sale_units
 from app.services.stats import is_k70_category, refresh_weekly_stat
+from app.services.rechnung import rechnung_zu_verkauf, serialize as rechnung_serialisieren
 from app.services.verkaufstabelle import wochentabelle
 
 router = APIRouter(prefix="/sales", tags=["sales"])
@@ -227,10 +228,15 @@ async def create_sale(data: SaleIn, user: User = Depends(get_current_user), db: 
         db.add(SaleItem(sale_id=s.id, product_id=p.id, product_name_snapshot=p.name, quantity=item.quantity, unit_price_cents=item.unit_price_cents))
     db.flush()
     refresh_weekly_stat(db, employee_id, s.sold_at.date())
+    # Die Rechnung entsteht mit dem Verkauf. Erst auf Zuruf angelegt fehlte
+    # sie genau dann, wenn der Kunde sie vor der Tuer verlangt.
+    invoice = rechnung_zu_verkauf(db, s, user)
     audit(db, user, "sale.created", "sale", s.id, after=serialize(db, s))
+    audit(db, user, "invoice.created", "invoice", invoice.id, after=rechnung_serialisieren(db, invoice))
     db.commit()
     await manager.publish({"type":"data.changed","entity":"sale"}, employee_id=employee_id)
-    return serialize(db, s)
+    await manager.publish({"type":"data.changed","entity":"invoice"}, employee_id=employee_id)
+    return {**serialize(db, s), "invoice_id": invoice.id, "invoice_number": invoice.number}
 
 @router.post("/{sale_id}/cancel", dependencies=[Depends(require_csrf)])
 async def cancel_sale(

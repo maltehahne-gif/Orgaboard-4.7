@@ -1,11 +1,21 @@
 export type Role = 'EMPLOYEE' | 'TEAM_LEADER' | 'REGIONAL_LEAD' | 'SYSTEM_ADMIN'
 export interface Employee { id:string; display_name:string; position:string; monthly_units_target:number; weekly_revenue_target_cents:number|null }
-export interface Me { id:string; email:string; full_name:string; role:Role; must_change_password:boolean; employee:Employee|null }
+export interface Me { id:string; email:string; full_name:string; role:Role; must_change_password:boolean; employee:Employee|null; phone?:string|null; street?:string|null; house_number?:string|null; postal_code?:string|null; city?:string|null }
 export interface Customer { id:string; employee_id:string; first_name:string; last_name:string; full_name:string; street:string; house_number:string; postal_code:string; city:string; phone:string|null; email:string|null; notes:string|null; created_at?:string; address:string }
 export interface Product { id:string; name:string; category:string; description:string|null; functions:string[]; technical:Record<string,unknown>; variants:unknown[]; accessories:unknown[]; official_url:string|null; source_url:string|null; source_kind:string|null; source_updated_at:string|null; verified:boolean; price:{amount_cents:number;currency:string;source_url:string;fetched_at:string}|null; image:{url:string;alt_text:string|null;source_url:string;usage_note:string|null}|null }
 export interface Appointment { id:string; customer_id:string|null; customer_name:string|null; employee_id:string; start_at:string; end_at:string|null; appointment_type:string; status:string; notes:string|null; address:string|null; phone:string|null; email:string|null; products:{id:string;name:string}[] }
 export interface SaleItem { id?:string; product_id:string; name?:string; category?:string|null; is_k70?:boolean; quantity:number; unit_price_cents:number; total_cents?:number }
 export interface Sale { id:string; customer_id:string; customer_name:string; employee_id:string; employee_name:string; appointment_id:string|null; sold_at:string; channel:string; notes:string|null; items:SaleItem[]; total_cents:number; k70_total_cents:number; product_total_cents:number; units:number; cancelled:boolean; cancelled_at:string|null; cancellation_reason:string|null; counts_total_cents:number; counts_units:number; counts_k70_cents:number }
+export interface InvoiceItem { id:string; position:number; product_id:string|null; name:string; quantity:number; unit_price_cents:number; vat_percent:number; total_cents:number }
+export interface Invoice {
+  id:string; number:string; sale_id:string; customer_id:string; employee_id:string
+  issued_on:string; service_on:string
+  issuer:{name:string; street:string|null; postal_code:string|null; city:string|null; phone:string|null}
+  customer:{name:string; contact:string|null; street:string|null; postal_code:string|null; city:string|null; phone:string|null; email:string|null}
+  payment_method:'cash'|'card'|null; payment_method_label:string|null; notes:string|null
+  items:InvoiceItem[]; subtotal_cents:number; vat_cents:number; total_cents:number
+  created_at:string
+}
 export interface TradeIn { id:string; customer_id:string; customer_name:string; employee_id:string; sale_id:string|null; model:string; serial_number:string|null; condition:string; condition_label:string; status:string; status_label:string; received_on:string; notes:string|null; created_at:string }
 export interface Rental { id:string; product_id:string; product_name:string|null; customer_id:string; customer_name:string|null; customer_phone:string|null; employee_id:string; serial_number:string|null; issued_at:string; due_at:string|null; returned_at:string|null; status:string; notes:string|null; is_overdue:boolean; due_soon:boolean; days_until_due:number|null; days_overdue:number }
 export interface OfferItem { id?:string; product_id:string; name?:string; quantity:number; unit_price_cents:number; total_cents?:number }

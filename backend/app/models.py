@@ -252,6 +252,13 @@ class User(Base):
     first_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # Anschrift des Kundenberaters. Sie steht auf jeder Rechnung, die er
+    # erstellt - deshalb am Benutzer und nicht als feste Angabe im Code:
+    # jeder Berater hat seine eigene, und sie aendert sich mit einem Umzug.
+    street: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    house_number: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    postal_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(500))
     role: Mapped[Role] = mapped_column(Enum(Role), default=Role.EMPLOYEE, index=True)
@@ -459,6 +466,86 @@ class SaleItem(Base):
     product_name_snapshot: Mapped[str] = mapped_column(String(255))
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     unit_price_cents: Mapped[int] = mapped_column(Integer)
+
+
+class PaymentMethod(str, enum.Enum):
+    """Zahlungsart des Rechnungsvordrucks."""
+
+    CASH = "cash"    # Barzahlung
+    CARD = "card"    # Kartenzahlung
+
+
+class Invoice(Base):
+    """Rechnung zu einem Verkauf.
+
+    Entsteht automatisch, sobald ein Verkauf gespeichert wird - eine
+    Rechnung, die erst auf Zuruf angelegt wird, fehlt genau dann, wenn der
+    Kunde sie verlangt.
+
+    Auffaellig viele Schnappschuesse: Berater, Anschriften, Positionen. Das
+    ist Absicht. Eine ausgestellte Rechnung ist ein Beleg. Zoege sie ihre
+    Angaben aus Benutzer- und Kundenstammdaten, saehe derselbe Beleg nach
+    einem Umzug oder einer Namensaenderung anders aus als beim Ausstellen -
+    und niemand koennte nachweisen, was tatsaechlich uebergeben wurde.
+    """
+
+    __tablename__ = "invoices"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    number: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    # Eine Rechnung je Verkauf. Wird der Verkauf geloescht, faellt sie mit -
+    # ohne Verkauf gibt es nichts zu berechnen.
+    sale_id: Mapped[str] = mapped_column(
+        ForeignKey("sales.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id"), index=True)
+    employee_id: Mapped[str] = mapped_column(ForeignKey("employees.id"), index=True)
+
+    issued_on: Mapped[date] = mapped_column(Date, index=True)
+    # Leistungsdatum: wann verkauft wurde. Kann vom Rechnungsdatum abweichen.
+    service_on: Mapped[date] = mapped_column(Date)
+
+    # Berater, wie er zum Zeitpunkt der Ausstellung hiess und wohnte.
+    issuer_name: Mapped[str] = mapped_column(String(255))
+    issuer_street: Mapped[str | None] = mapped_column(String(220), nullable=True)
+    issuer_postal_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    issuer_city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    issuer_phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
+    # Kunde, wie er zum Zeitpunkt der Ausstellung hiess und wohnte.
+    customer_name: Mapped[str] = mapped_column(String(255))
+    customer_street: Mapped[str | None] = mapped_column(String(220), nullable=True)
+    customer_postal_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    customer_city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    customer_phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    customer_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    customer_contact: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    payment_method: Mapped[PaymentMethod | None] = mapped_column(
+        Enum(PaymentMethod), nullable=True
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+
+
+class InvoiceItem(Base):
+    """Rechnungsposition. Preis und Name als Schnappschuss, wie beim Verkauf."""
+
+    __tablename__ = "invoice_items"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    invoice_id: Mapped[str] = mapped_column(
+        ForeignKey("invoices.id", ondelete="CASCADE"), index=True
+    )
+    product_id: Mapped[str | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"), nullable=True
+    )
+    position: Mapped[int] = mapped_column(Integer, default=1)
+    name_snapshot: Mapped[str] = mapped_column(String(255))
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    # Bruttopreis je Stueck. Verkauft wird an Endkunden; der Preis auf dem
+    # Vordruck ist der, den der Kunde bezahlt.
+    unit_price_cents: Mapped[int] = mapped_column(Integer)
+    vat_percent: Mapped[int] = mapped_column(Integer, default=19)
 
 
 class OfferStatus(str, enum.Enum):
