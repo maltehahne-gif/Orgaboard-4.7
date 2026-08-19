@@ -70,3 +70,24 @@ def sale_units(db: Session, sale_id: str) -> int:
         for quantity, product_name, category in rows
         if not is_k70_category(category)
     )
+
+
+def sale_k70_total(db: Session, sale_id: str) -> int:
+    """Der K70-Anteil eines Verkaufs in Cent.
+
+    Dieselbe Abgrenzung wie in sale_units() und revenue_between(): K70 ist
+    keine Einheit, sondern ein eigener Umsatz. Waeren es zwei Definitionen,
+    zeigte die Verkaufstabelle einen anderen K70-Umsatz als das Dashboard,
+    und niemand wuesste, welcher stimmt.
+    """
+    rows = db.execute(
+        select(SaleItem.quantity, SaleItem.unit_price_cents, Product.category)
+        .select_from(SaleItem)
+        .outerjoin(Product, Product.id == SaleItem.product_id)
+        .where(SaleItem.sale_id == sale_id)
+    ).all()
+    return sum(
+        int(quantity or 0) * int(unit_price_cents or 0)
+        for quantity, unit_price_cents, category in rows
+        if is_k70_category(category)
+    )

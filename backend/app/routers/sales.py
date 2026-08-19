@@ -15,8 +15,8 @@ from app.core.security import get_current_user, require_csrf
 from app.core.timeutils import datum_plausibel, fruehestes_datum, local_today, spaetestes_datum
 from app.models import Customer, Product, Sale, SaleChannel, SaleItem, User
 from app.services.realtime import manager
-from app.services.serializers import employee_name, sale_total, sale_units
-from app.services.stats import refresh_weekly_stat
+from app.services.serializers import employee_name, sale_k70_total, sale_total, sale_units
+from app.services.stats import is_k70_category, refresh_weekly_stat
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
@@ -65,21 +65,53 @@ class SaleIn(BaseModel):
 def serialize(db: Session, s: Sale):
     c = db.get(Customer, s.customer_id)
     items = db.scalars(select(SaleItem).where(SaleItem.sale_id == s.id)).all()
+    kategorien = {
+        p.id: p.category
+        for p in db.scalars(
+            select(Product).where(Product.id.in_([i.product_id for i in items]))
+        ).all()
+    } if items else {}
+    gesamt = sum(i.quantity * i.unit_price_cents for i in items)
+    k70 = sale_k70_total(db, s.id)
+    einheiten = sale_units(db, s.id)
     return {
         "id": s.id, "customer_id": s.customer_id,
         "customer_name": f"{c.first_name} {c.last_name}" if c else "Unbekannt",
-        "employee_id": s.employee_id, "appointment_id": s.appointment_id, "sold_at": s.sold_at,
+        "employee_id": s.employee_id,
+        # Die Verkaufstabelle zeigt den Mitarbeiter je Zeile. Ihn dort aus
+        # einer zweiten Abfrage zusammenzusuchen ginge nur fuer die eigenen
+        # Verkaeufe gut - fremde Namen kennt die Oberflaeche sonst nicht.
+        "employee_name": employee_name(db, s.employee_id),
+        "appointment_id": s.appointment_id, "sold_at": s.sold_at,
         "channel": s.channel.value, "notes": s.notes,
         "cancelled": s.cancelled_at is not None,
         "cancelled_at": s.cancelled_at,
         "cancellation_reason": s.cancellation_reason,
-        "items": [{"id": i.id, "product_id": i.product_id, "name": i.product_name_snapshot, "quantity": i.quantity, "unit_price_cents": i.unit_price_cents, "total_cents": i.quantity*i.unit_price_cents} for i in items],
-        "total_cents": sum(i.quantity*i.unit_price_cents for i in items),
-        "units": sale_units(db, s.id),
+        "items": [
+            {
+                "id": i.id,
+                "product_id": i.product_id,
+                "name": i.product_name_snapshot,
+                "category": kategorien.get(i.product_id),
+                "is_k70": is_k70_category(kategorien.get(i.product_id)),
+                "quantity": i.quantity,
+                "unit_price_cents": i.unit_price_cents,
+                # Umsatz einer Position: Menge x Verkaufspreis.
+                "total_cents": i.quantity * i.unit_price_cents,
+            }
+            for i in items
+        ],
+        "total_cents": gesamt,
+        # K70 zaehlt nicht als Einheit und wird als eigener Umsatz gefuehrt -
+        # dieselbe Abgrenzung wie im Dashboard und in der Buntewoche.
+        "k70_total_cents": k70,
+        "product_total_cents": gesamt - k70,
+        "units": einheiten,
         # Was der Verkauf zu den Kennzahlen beitraegt. Bei einem Storno null,
         # ohne dass die urspruenglichen Betraege verschwinden.
-        "counts_total_cents": 0 if s.cancelled_at else sum(i.quantity*i.unit_price_cents for i in items),
-        "counts_units": 0 if s.cancelled_at else sale_units(db, s.id),
+        "counts_total_cents": 0 if s.cancelled_at else gesamt,
+        "counts_units": 0 if s.cancelled_at else einheiten,
+        "counts_k70_cents": 0 if s.cancelled_at else k70,
     }
 
 

@@ -7,7 +7,6 @@ import {
 
 import {
   Check,
-  ChevronDown,
   Download,
   Plus,
   Search,
@@ -20,7 +19,8 @@ import {
 import {
   api,
   downloadFile,
-  formatDateTime,
+  formatDate,
+  formatTime,
   money,
 } from '../lib/api'
 
@@ -31,7 +31,6 @@ import type {
 } from '../types'
 
 import {Modal} from '../components/Modal'
-import {ProductCombobox} from '../components/ProductCombobox'
 import {useToast} from '../components/Toast'
 import {useAuth} from '../lib/auth'
 import {darfVerwalten} from '../lib/roles'
@@ -214,13 +213,8 @@ export function SalesPage(){
   const [customerSearchOpen,setCustomerSearchOpen]=
     useState(false)
 
-
-  const emptyItem=():SaleItemForm=>({
-    product_id:'',
-    quantity:1,
-    price_eur:'',
-    search:'',
-  })
+  const [productSearch,setProductSearch]=
+    useState('')
 
 
   const [form,setForm]=useState({
@@ -229,9 +223,7 @@ export function SalesPage(){
     sold_at:jetztLokal(),
     channel:'other',
     notes:'',
-    items:[
-      emptyItem(),
-    ] as SaleItemForm[],
+    items:[] as SaleItemForm[],
   })
 
 
@@ -292,13 +284,12 @@ export function SalesPage(){
       sold_at:jetztLokal(),
       channel:'other',
       notes:'',
-      items:[
-        emptyItem(),
-      ],
+      items:[],
     })
 
     setCustomerSearch('')
     setCustomerSearchOpen(false)
+    setProductSearch('')
   }
 
 
@@ -318,38 +309,94 @@ export function SalesPage(){
   },[location.state])
 
 
-  function addItem(){
-
-    setForm(current=>({
-      ...current,
-
-      items:[
-        ...current.items,
-        emptyItem(),
-      ],
-    }))
-  }
-
-
   function removeItem(
     index:number
   ){
 
+    setForm(current=>({
+      ...current,
+
+      items:
+        current.items.filter(
+          (_,i)=>i!==index
+        ),
+    }))
+  }
+
+
+  /**
+   * Kreuzt ein Produkt an oder ab. Der hinterlegte Katalogpreis wird als
+   * Stückpreis übernommen und lässt sich danach anpassen - dieselbe Regel
+   * wie zuvor bei der Auswahl über die Suchliste.
+   */
+  function toggleProduct(
+    product:CatalogProduct
+  ){
+
     setForm(current=>{
 
-      if(current.items.length===1){
-        return current
+      if(
+        current.items.some(
+          item=>item.product_id===product.id
+        )
+      ){
+        return {
+          ...current,
+
+          items:
+            current.items.filter(
+              item=>item.product_id!==product.id
+            ),
+        }
       }
+
+
+      const cents=
+        productPriceCents(product)
+
 
       return {
         ...current,
 
-        items:
-          current.items.filter(
-            (_,i)=>i!==index
-          ),
+        items:[
+          ...current.items,
+          {
+            product_id:product.id,
+            quantity:1,
+            price_eur:
+              cents===null
+                ? ''
+                : (cents/100).toFixed(2),
+            search:product.name,
+          },
+        ],
       }
     })
+  }
+
+
+  /** Umsatz einer Position: Menge × Verkaufspreis. */
+  function positionsUmsatz(
+    item:SaleItemForm
+  ){
+
+    const preis=
+      Number(
+        item.price_eur
+          .replace(',','.')
+      )
+
+    const menge=
+      Number(item.quantity)
+
+    if(
+      !Number.isFinite(preis)
+      || !Number.isFinite(menge)
+    ){
+      return 0
+    }
+
+    return Math.round(preis*100)*menge
   }
 
 
@@ -372,34 +419,6 @@ export function SalesPage(){
               : item
         ),
     }))
-  }
-
-
-  function chooseProduct(
-    index:number,
-    product:CatalogProduct
-  ){
-
-    const cents=
-      productPriceCents(product)
-
-    updateItem(
-      index,
-      {
-        product_id:
-          product.id,
-
-        search:
-          product.name,
-
-        price_eur:
-          cents===null
-            ? ''
-            : (
-                cents / 100
-              ).toFixed(2),
-      }
-    )
   }
 
 
@@ -761,42 +780,41 @@ export function SalesPage(){
 
 
   const totalCents=
-    useMemo(()=>{
+    useMemo(
+      ()=>
+        form.items.reduce(
+          (sum,item)=>
+            sum+positionsUmsatz(item),
+          0
+        ),
+      [form.items]
+    )
 
-      return form.items.reduce(
-        (sum,item)=>{
 
-          const price=
-            Number(
-              item.price_eur
-                .replace(',','.')
-            )
+  /* Der K70-Anteil des Verkaufs. Dieselbe Abgrenzung wie im Backend
+     (services/serializers.sale_k70_total): K70 zaehlt nicht als Einheit,
+     sondern als eigener Umsatz. */
+  const k70Cents=
+    useMemo(
+      ()=>
+        form.items.reduce(
+          (sum,item)=>{
 
-          const quantity=
-            Number(item.quantity)
-
-          if(
-            !Number.isFinite(price)
-            || !Number.isFinite(quantity)
-          ){
-            return sum
-          }
-
-          return (
-            sum
-            + Math.round(
-                price
-                * 100
-                * quantity
+            const produkt=
+              products.find(
+                p=>p.id===item.product_id
               )
-          )
-        },
-        0
-      )
 
-    },[
-      form.items,
-    ])
+            return (produkt?.category || '')
+              .trim()
+              .toLowerCase()==='k70'
+              ? sum+positionsUmsatz(item)
+              : sum
+          },
+          0
+        ),
+      [form.items,products]
+    )
 
 
   async function save(
@@ -833,6 +851,16 @@ export function SalesPage(){
     }
 
 
+    if(form.items.length===0){
+
+      toast(
+        'Bitte mindestens ein Produkt ankreuzen.'
+      )
+
+      return
+    }
+
+
     const invalid=
       form.items.some(
         item=>
@@ -845,7 +873,7 @@ export function SalesPage(){
     if(invalid){
 
       toast(
-        'Bitte bei jedem Eintrag ein Produkt auswählen.'
+        'Bitte bei jedem Produkt Menge und Preis angeben.'
       )
 
       return
@@ -1259,10 +1287,13 @@ export function SalesPage(){
 
           <thead>
             <tr>
-              <th>Datum</th>
               <th>Kunde</th>
-              <th>Produkte</th>
+              <th>Datum</th>
+              <th>Uhrzeit</th>
+              <th>Produkt</th>
+              <th>Einheiten</th>
               <th>Umsatz</th>
+              <th>Umsatz K70</th>
               <th>Aktion</th>
             </tr>
           </thead>
@@ -1273,7 +1304,7 @@ export function SalesPage(){
             {filteredSales.length===0 && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={8}
                   className="empty"
                 >
                   Keine Verkäufe für diese Auswahl gefunden.
@@ -1294,36 +1325,61 @@ export function SalesPage(){
               const units=
                 Number(s.units || 0)
 
+              const produkte=
+                (s.items || [])
+                  .map((item:any)=>
+                    item.quantity>1
+                      ? `${item.quantity}× ${item.name}`
+                      : item.name
+                  )
+
 
               return(
                 <tr key={sale.id}>
 
                   <td>
-                    {formatDateTime(
+                    {customer
+                      ? customerName(customer)
+                      : s.customer_name || '—'
+                    }
+                  </td>
+
+                  <td>
+                    {formatDate(
                       s.sold_at
                     )}
                   </td>
 
                   <td>
-                    {customer
-                      ? customerName(customer)
-                      : '—'
+                    {formatTime(
+                      s.sold_at
+                    )}
+                  </td>
+
+                  <td className="sale-products-cell">
+                    {produkte.length===0
+                      ? '—'
+                      : produkte.join(', ')
                     }
                   </td>
 
                   <td>
                     {units}
-                    {' '}
-                    {units===1
-                      ? 'Einheit'
-                      : 'Einheiten'
-                    }
                   </td>
 
                   <td>
                     {money(
                       Number(
                         s.total_cents
+                        || 0
+                      )
+                    )}
+                  </td>
+
+                  <td>
+                    {money(
+                      Number(
+                        s.k70_total_cents
                         || 0
                       )
                     )}
@@ -1612,24 +1668,118 @@ export function SalesPage(){
               </h3>
 
               <p>
-                Einfach Produktname,
-                Modell oder Kategorie suchen.
+                Produkte ankreuzen, die verkauft wurden.
+                Suche nach Produktname, Modell oder Kategorie.
               </p>
             </div>
 
+            <div className="sale-products-count">
+              {form.items.length}
+              {' '}
+              {form.items.length===1
+                ? 'Produkt gewählt'
+                : 'Produkte gewählt'
+              }
+            </div>
 
-            <button
-              type="button"
-              onClick={addItem}
-            >
-              <Plus size={16}/>
-              Weiteres Produkt
-            </button>
+          </div>
+
+
+          <div className="sale-product-search">
+            <Search size={16}/>
+
+            <input
+              type="search"
+              value={productSearch}
+              placeholder="z. B. VK7, SP7, Polster, Roboter…"
+              aria-label="Produkte durchsuchen"
+              onChange={event=>
+                setProductSearch(
+                  event.target.value
+                )
+              }
+            />
+          </div>
+
+
+          <div
+            className="sale-product-picker"
+            role="group"
+            aria-label="Produkte auswählen"
+          >
+
+            {productMatches(productSearch).length===0 && (
+              <p className="sale-product-picker-empty">
+                Kein Produkt gefunden.
+                Du kannst es zuerst im Produktkatalog anlegen.
+              </p>
+            )}
+
+            {productMatches(productSearch).map(produkt=>{
+
+              const gewaehlt=
+                form.items.some(
+                  item=>item.product_id===produkt.id
+                )
+
+              return(
+                <label
+                  className={
+                    gewaehlt
+                      ? 'sale-product-option is-selected'
+                      : 'sale-product-option'
+                  }
+                  key={produkt.id}
+                >
+
+                  <input
+                    type="checkbox"
+                    checked={gewaehlt}
+                    onChange={()=>
+                      toggleProduct(produkt)
+                    }
+                  />
+
+                  <span className="sale-product-option-text">
+
+                    <strong>
+                      {produkt.name}
+                    </strong>
+
+                    <small>
+                      {produkt.category
+                        || 'Produkt'
+                      }
+                      {produkt.technical?.k70_group
+                        ? ` · ${produkt.technical.k70_group}`
+                        : ''
+                      }
+                      {produkt.technical?.article_number
+                        ? ` · Art. ${produkt.technical.article_number}`
+                        : ''
+                      }
+                    </small>
+
+                  </span>
+
+                  <span className="sale-product-option-price">
+                    {productPriceText(produkt)}
+                  </span>
+
+                </label>
+              )
+            })}
 
           </div>
 
 
           <div className="sale-product-list">
+
+            {form.items.length===0 && (
+              <p className="sale-product-picker-empty">
+                Noch kein Produkt angekreuzt.
+              </p>
+            )}
 
             {form.items.map(
               (item,index)=>{
@@ -1637,16 +1787,11 @@ export function SalesPage(){
                 const selected=
                   selectedProduct(item)
 
-                const matches=
-                  productMatches(
-                    item.search
-                  )
-
 
                 return(
                   <div
                     className="sale-product-entry"
-                    key={index}
+                    key={item.product_id || index}
                   >
 
                     <div className="sale-product-number">
@@ -1656,107 +1801,44 @@ export function SalesPage(){
 
                     <div className="sale-product-main">
 
-                      <ProductCombobox
-                        label="Produkt suchen"
-                        placeholder="z. B. VK7, SP7, Polster, Roboter…"
-                        value={item.search}
-                        options={matches.map(
-                          produkt=>({
-                            id:produkt.id,
-                            name:produkt.name,
-                            category:
-                              produkt.category
-                              ||'Produkt',
-                            meta:[
-                              produkt.technical?.k70_group,
-                              produkt.technical?.article_number
-                                ? `Art. ${produkt.technical.article_number}`
-                                : null,
-                            ]
-                              .filter(Boolean)
-                              .join(' · ')
-                              ||null,
-                            price:
-                              productPriceCents(produkt)===null
-                                ? null
-                                : productPriceText(produkt),
-                          })
-                        )}
-                        emptyText="Kein Produkt gefunden. Du kannst es zuerst im Produktkatalog anlegen."
-                        onChange={wert=>
-                          updateItem(
-                            index,
-                            {
-                              search:wert,
-                              product_id:'',
-                              price_eur:'',
+                      <div className="sale-selected-product">
+
+                        <div className="sale-selected-check">
+                          <Check size={18}/>
+                        </div>
+
+
+                        <div className="sale-selected-info">
+
+                          <strong>
+                            {selected?.name
+                              || item.search
                             }
-                          )
-                        }
-                        onSelect={eintrag=>{
-                          const produkt=
-                            products.find(
-                              p=>p.id===eintrag.id
-                            )
+                          </strong>
 
-                          if(produkt){
-                            chooseProduct(
-                              index,
-                              produkt
-                            )
-                          }
-                        }}
-                        onClear={()=>
-                          updateItem(
-                            index,
-                            {
-                              search:'',
-                              product_id:'',
-                              price_eur:'',
+                          <span>
+                            {selected?.category
+                              || 'Produkt'
                             }
-                          )
-                        }
-                      />
+                            {selected?.technical?.k70_group
+                              ? ` · ${selected.technical.k70_group}`
+                              : ''
+                            }
+                            {selected?.technical?.article_number
+                              ? ` · Art. ${selected.technical.article_number}`
+                              : ''
+                            }
+                          </span>
 
-
-                      {selected && (
-                        <div className="sale-selected-product">
-
-                          <div className="sale-selected-check">
-                            <Check size={18}/>
-                          </div>
-
-
-                          <div className="sale-selected-info">
-
-                            <strong>
-                              {selected.name}
-                            </strong>
-
-                            <span>
-                              {selected.category
-                                || 'Produkt'
-                              }
-                              {selected.technical?.k70_group
-                                ? ` · ${selected.technical.k70_group}`
-                                : ''
-                              }
-                              {selected.technical?.article_number
-                                ? ` · Art. ${selected.technical.article_number}`
-                                : ''
-                              }
-                            </span>
-
-                            {selected.description && (
-                              <p>
-                                {selected.description}
-                              </p>
-                            )}
-
-                          </div>
+                          {selected?.description && (
+                            <p>
+                              {selected.description}
+                            </p>
+                          )}
 
                         </div>
-                      )}
+
+                      </div>
 
 
                       <div className="sale-product-values">
@@ -1818,21 +1900,32 @@ export function SalesPage(){
                           </div>
                         </label>
 
+
+                        <div className="sale-product-line-total">
+                          <small>
+                            Umsatz
+                          </small>
+
+                          <strong>
+                            {money(
+                              positionsUmsatz(item)
+                            )}
+                          </strong>
+                        </div>
+
                       </div>
 
 
-                      {form.items.length>1 && (
-                        <button
-                          type="button"
-                          className="sale-remove-product"
-                          onClick={()=>
-                            removeItem(index)
-                          }
-                        >
-                          <Trash2 size={15}/>
-                          Produkt entfernen
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="sale-remove-product"
+                        onClick={()=>
+                          removeItem(index)
+                        }
+                      >
+                        <Trash2 size={15}/>
+                        Produkt entfernen
+                      </button>
 
                     </div>
 
@@ -1873,6 +1966,21 @@ export function SalesPage(){
             </strong>
 
           </div>
+
+
+          {k70Cents>0 && (
+            <div className="sale-fast-total sale-fast-k70">
+
+              <span>
+                davon Umsatz K70
+              </span>
+
+              <strong>
+                {money(k70Cents)}
+              </strong>
+
+            </div>
+          )}
 
 
           <div className="info-box">

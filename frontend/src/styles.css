@@ -4576,7 +4576,8 @@ body:has(.v7-login-scene) form {
 
   grid-template-columns:
     130px
-    minmax(170px,220px);
+    minmax(170px,220px)
+    minmax(110px,auto);
 
   gap:12px;
 }
@@ -11897,4 +11898,149 @@ to{
 .bunte-appt:focus-visible{
   outline:2px solid #fff;
   outline-offset:-2px;
+}
+
+
+/* ===== Verkauf – Produktauswahl über Ankreuzfelder =====
+   Angekreuzt wird aus dem vorhandenen Produktkatalog. Für jedes
+   angekreuzte Produkt erscheint darunter eine Zeile mit Menge, Stückpreis
+   und dem daraus errechneten Umsatz. */
+
+.sale-products-count{
+  padding:5px 11px;
+  border-radius:999px;
+  background:rgba(52,224,136,.14);
+  color:#42df91;
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+.sale-product-search{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:0 12px;
+  height:42px;
+  border:1px solid #2b3d42;
+  border-radius:11px;
+  background:#0b1519;
+  color:#8ba09b;
+}
+
+.sale-product-search input{
+  flex:1;
+  min-width:0;
+  border:0;
+  background:transparent;
+  color:#f5f7f6;
+  outline:0;
+}
+
+.sale-product-picker{
+  max-height:320px;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  padding:6px;
+  border:1px solid #2b3d42;
+  border-radius:13px;
+  background:rgba(5,24,22,.42);
+}
+
+.sale-product-option{
+  display:grid;
+  grid-template-columns:20px minmax(0,1fr) auto;
+  align-items:center;
+  gap:11px;
+  padding:9px 11px;
+  border:1px solid transparent;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+.sale-product-option:hover{
+  background:rgba(52,224,136,.07);
+}
+
+.sale-product-option.is-selected{
+  border-color:rgba(62,226,143,.4);
+  background:rgba(52,224,136,.12);
+}
+
+.sale-product-option input{
+  width:17px;
+  height:17px;
+  accent-color:#34d769;
+}
+
+.sale-product-option-text{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.sale-product-option-text strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:14px;
+}
+
+.sale-product-option-text small{
+  color:#8ba09b;
+  font-size:11px;
+}
+
+.sale-product-option-price{
+  color:#68dc87;
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+.sale-product-picker-empty{
+  margin:0;
+  padding:14px;
+  color:var(--muted);
+  text-align:center;
+  font-size:13px;
+}
+
+.sale-product-line-total{
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  gap:7px;
+  padding-bottom:10px;
+}
+
+.sale-product-line-total small{
+  color:#cbd2d1;
+  font-size:13px;
+}
+
+.sale-product-line-total strong{
+  color:#68dc87;
+  font-size:15px;
+}
+
+.sale-fast-k70 strong{
+  color:#8fd2ff;
+}
+
+.sale-products-cell{
+  max-width:340px;
+}
+
+@media(max-width:700px){
+  .sale-product-values{
+    grid-template-columns:1fr;
+  }
+
+  .sale-product-line-total{
+    padding-bottom:0;
+  }
 }
