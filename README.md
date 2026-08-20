@@ -101,3 +101,11 @@ GitHub allein hostet keine PostgreSQL-/FastAPI-Anwendung dauerhaft; Codespaces d
 - `docs/SECURITY.md` – Sicherheits-/DSGVO-Konzept
 - `docs/DESIGN_ANALYSIS.md` – Designanalyse
 - `docs/IMPLEMENTATION_STATUS.md` – Funktionsstatus
+
+## Zweites Projekt in diesem Repository
+
+Im Ordner [`raucherhaken24/`](raucherhaken24/) liegt ein eigenständiges Projekt:
+der Webshop **Räucherhaken24** (Räucherbedarf, Fachberatung, Wissensportal).
+Es hat mit OrgaBoard technisch nichts zu tun, teilt sich nur das Repository.
+Start und Datenpflege sind in [`raucherhaken24/README.md`](raucherhaken24/README.md)
+beschrieben.

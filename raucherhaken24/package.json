@@ -1,0 +1,20 @@
+{
+  "name": "raucherhaken24",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Raeucherhaken24 - Webshop, Fachberatung und Wissensportal fuer Raeucherbedarf",
+  "scripts": {
+    "build": "node build.mjs",
+    "preview": "node scripts/serve.mjs",
+    "start": "node build.mjs && node scripts/serve.mjs",
+    "check": "node scripts/check.mjs",
+    "qa": "node scripts/qa.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}
